@@ -1,0 +1,12 @@
+{
+  "name": "youtube-voc-skills",
+  "owner": { "name": "skycloud-maker" },
+  "metadata": { "description": "유튜브 댓글 VoC 분석 업무를 스킬로 넘기기 위한 마켓플레이스" },
+  "plugins": [
+    {
+      "name": "youtube-voc",
+      "source": "./plugin",
+      "description": "유튜브 댓글 VoC 분석 업무를 역할별 스킬로 담은 플러그인"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# 스킬은 여러 운영체제에서 받는다 — 줄바꿈을 LF 한 가지로 둔다 (원본에서 CRLF 차이로 대조가 흔들렸다)
+* text=auto eol=lf
+*.zip binary
+*.skill binary
+*.xlsx binary
+*.docx binary
