@@ -84,6 +84,14 @@ def test_맞대기가_다름을_잡는다(tmp_path):
     wb.save(나 / "b.xlsx")
     assert any("칸 값 다름" in x for x in 맞대기(가, 나))
 
+    # 섹션 4 에 더한 시각 규칙 — 시각만 다르면 같음, 같은 줄의 다른 글자가 다르면 다름
+    for d, t in ((가, "20:28"), (나, "20:34")):
+        (d / "c.md").write_text("만든 날 2026-09-18 %s · 원본 `x.xlsx`\n" % t, encoding="utf-8")
+        (d / "s.json").write_text('{\n "생성": "2026-09-18T%s:10",\n "행": 1\n}\n' % t, encoding="utf-8")
+    assert not any(("c.md" in x or "s.json" in x) for x in 맞대기(가, 나))
+    (나 / "c.md").write_text("만든 날 2026-09-18 20:34 · 원본 `y.xlsx`\n", encoding="utf-8")
+    assert any("c.md" in x for x in 맞대기(가, 나)), "시각 말고 다른 글자가 다르면 다름이어야 한다"
+
     assert 맞대기(tmp_path / "없음", 가), "없는 폴더는 같음이 아니다"
     (tmp_path / "빈1").mkdir(), (tmp_path / "빈2").mkdir()
     assert 맞대기(tmp_path / "빈1", tmp_path / "빈2"), "빈 폴더끼리는 같음이 아니다"
@@ -104,3 +112,25 @@ def test_기준이_재현된다(이름):
     얼린 = BASELINE / "실행" / ("%s_1" % 이름)
     다름 = 맞대기(얼린 / "2판", 그릇 / "2판")
     assert not 다름, "얼린 기준과 다르다:\n" + "\n".join(다름[:20])
+
+
+import 기준_만들기_2차  # noqa: E402
+
+
+@pytest.mark.parametrize("이름", 기준_만들기_2차.실행들)
+def test_판독스킬이_2차_기준과_같다(이름):
+    """★ 새 도구 시험 (섹션 4) — 판독 스킬의 판독폴더_차리기.py 로 차린 폴더에서 같은 일을 하면
+    얼린 2차 기준(옛 꾸러미로 돌린 것)과 결과가 같아야 한다.
+
+    맞대는 자리는 도구가 만든 결과뿐이다 (`볼자리`). 차린 폴더의 지문 · 옛 판이었던 문서는 달라도 된다.
+    """
+    그릇 = BASELINE / "시험실행" / ("스킬_%s" % 이름)
+    if 그릇.exists():
+        shutil.rmtree(그릇)
+    그릇.mkdir(parents=True)
+    코드 = 기준_만들기_2차.차려서_돌리기(이름, 그릇, 기준_만들기_2차.스킬로_차리기)
+    assert 코드 == 0, (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
+    얼린 = BASELINE / "실행" / ("%s_1" % 이름) / "판독"
+    for 자리 in 기준_만들기_2차.볼자리[이름]:
+        다름 = 맞대기(얼린 / 자리, 그릇 / "판독" / 자리)
+        assert not 다름, "%s 가 얼린 기준과 다르다:\n%s" % (자리, "\n".join(다름[:20]))

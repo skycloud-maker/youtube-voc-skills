@@ -1,0 +1,442 @@
+{
+ "설명": "옛 판독 꾸러미 재료의 출처. 옛 make_zip.py 의 목록 그대로 최신 원본에서 복사했다. 글 파일은 줄바꿈만 LF 로 맞췄고 글자는 바꾸지 않았다. 엑셀·워드는 바이트 그대로.",
+ "복사한_날": "2026-09-18",
+ "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 outputs/voc_secondary (갈래 codex/voc-second-stage @ 90078f1, 커밋 안 된 변경 없음)",
+ "고칠_때": "고치면 tests/test_package.py 가 실패한다 — 이유를 `고친_이력` 에 적고 `지금_sha256` 을 갱신한다.",
+ "파일": {
+  "plugin/shared/tools/apply_approved.py": {
+   "원본": "apply_approved.py",
+   "원본_sha256": "6ff39162f76bec7a11e5238958905274b35926e8c36a2f2761b53bac41be1b2c",
+   "지금_sha256": "a2b27a2628ad8493807730a37776bfe646af2f7af06500835644c7536cd9e6b2",
+   "고친_이력": [
+    "2026-09-18 섹션 4 — 옛 폴더를 부르는 대비책 경로만 지웠다 (결정 0001: 코드에 옛 경로가 남으면 결함). 옛 폴더가 없는 다른 PC 에서와 똑같이 돈다. 판정 논리는 바꾸지 않았다."
+   ]
+  },
+  "plugin/shared/tools/build_bundle.py": {
+   "원본": "build_bundle.py",
+   "원본_sha256": "a0d2bb832b124b5f4084fc9e3d0bb1de8bb840aa08d527862edc62c08b6ca808",
+   "지금_sha256": "879e4d84930a30dea378e9622e1e4b158adb0b49e2019ada27bc8f06037a59d8",
+   "고친_이력": [
+    "2026-09-18 섹션 4 — 옛 폴더를 부르는 대비책 경로만 지웠다 (결정 0001: 코드에 옛 경로가 남으면 결함). 옛 폴더가 없는 다른 PC 에서와 똑같이 돈다. 판정 논리는 바꾸지 않았다."
+   ]
+  },
+  "plugin/shared/tools/check_lineage.py": {
+   "원본": "check_lineage.py",
+   "원본_sha256": "7a61ece187ed6dbc1ba803367a46f6ac88e49907a8ffc3e590f407ea96883f4f",
+   "지금_sha256": "d185fe02306121f2c8d59eedb50398ab645d3fb196ac2fc3835c2320853c2602",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/check_selfcheck.py": {
+   "원본": "check_selfcheck.py",
+   "원본_sha256": "ea5f03d4beae4a63bc867146bd254133227d195259a416da809bca1feabc54fe",
+   "지금_sha256": "f9006e43d591696624eb178fa8b16a9fd3e8be9e8749f1098a4fb91df3a1ab59",
+   "고친_이력": [
+    "2026-09-18 섹션 4 — 옛 폴더를 부르는 대비책 경로만 지웠다 (결정 0001: 코드에 옛 경로가 남으면 결함). 옛 폴더가 없는 다른 PC 에서와 똑같이 돈다. 판정 논리는 바꾸지 않았다."
+   ]
+  },
+  "plugin/shared/tools/check_submission.py": {
+   "원본": "check_submission.py",
+   "원본_sha256": "85de41d2508268835f7da70ad1cb536c2c6c1191fac9ebd42256627818349972",
+   "지금_sha256": "146833d6e61a95c1ea8c7222cd00ce11f05b0499a4ff4c80ca8dc328910d9915",
+   "고친_이력": [
+    "2026-09-18 섹션 4 — 옛 폴더를 부르는 대비책 경로만 지웠다 (결정 0001: 코드에 옛 경로가 남으면 결함). 옛 폴더가 없는 다른 PC 에서와 똑같이 돈다. 판정 논리는 바꾸지 않았다."
+   ]
+  },
+  "plugin/shared/tools/handoff.py": {
+   "원본": "handoff.py",
+   "원본_sha256": "225749057ddefef4b6b9a55c7508390a4bcad618d7ab70b5c7ef515202c84190",
+   "지금_sha256": "225749057ddefef4b6b9a55c7508390a4bcad618d7ab70b5c7ef515202c84190",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/run_status.py": {
+   "원본": "run_status.py",
+   "원본_sha256": "2ad594b135603bdb6d558d6e12dfa0495859fb57a1a1296bc9d4b0301d53ae0d",
+   "지금_sha256": "2ad594b135603bdb6d558d6e12dfa0495859fb57a1a1296bc9d4b0301d53ae0d",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/topic_registry.py": {
+   "원본": "topic_registry.py",
+   "원본_sha256": "9766ed13e6dfb525462b8fdd11e3c5aa571417b834925a5d75d2f55d2fc102d7",
+   "지금_sha256": "51640d3b9bd0e28baa8a409f6c71fe9eee95dff6ecac2cba0a7bf9a1c75bde74",
+   "고친_이력": [
+    "2026-09-18 섹션 4 — 옛 폴더를 부르는 대비책 경로만 지웠다 (결정 0001: 코드에 옛 경로가 남으면 결함). 옛 폴더가 없는 다른 PC 에서와 똑같이 돈다. 판정 논리는 바꾸지 않았다."
+   ]
+  },
+  "plugin/shared/tools/verify_quotes.py": {
+   "원본": "verify_quotes.py",
+   "원본_sha256": "e6b25d8684d564dda78f3c3fd5a4b1755f8d2b5e358575e259e0d29488cb4ce1",
+   "지금_sha256": "2cd095c64ad899073d8da3bd52d7df0ff85e97b1f00a8249c08680dcbd5d94c1",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/감독_읽기.py": {
+   "원본": "감독_읽기.py",
+   "원본_sha256": "b033e5c7bc6acfbf0ad06777ba55aaebe93cf6e66ca587556f3ced146ab95694",
+   "지금_sha256": "b033e5c7bc6acfbf0ad06777ba55aaebe93cf6e66ca587556f3ced146ab95694",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/넘어가도_되나.py": {
+   "원본": "넘어가도_되나.py",
+   "원본_sha256": "9e1c0bee45fa6b3d7cb316ad2e1f38e9ab46136f48bfc438fa3cd40978069f35",
+   "지금_sha256": "9e1c0bee45fa6b3d7cb316ad2e1f38e9ab46136f48bfc438fa3cd40978069f35",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/데이터_넣기.py": {
+   "원본": "데이터_넣기.py",
+   "원본_sha256": "c5382752284a45909cd8e3e00cf0e4dab8d3fb77ddc1ed3c247b12823d1f98d0",
+   "지금_sha256": "c5382752284a45909cd8e3e00cf0e4dab8d3fb77ddc1ed3c247b12823d1f98d0",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/보정요청_논의본.py": {
+   "원본": "보정요청_논의본.py",
+   "원본_sha256": "da3015d9cccd587a057cfd244eadae620aba2158302a82e18d95adaa4faa1d12",
+   "지금_sha256": "da3015d9cccd587a057cfd244eadae620aba2158302a82e18d95adaa4faa1d12",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/성실성검사.py": {
+   "원본": "성실성검사.py",
+   "원본_sha256": "e73bb45d84119d8e31045f8f8b4b76ec54c117743164ce77be438a58a599ac1b",
+   "지금_sha256": "e73bb45d84119d8e31045f8f8b4b76ec54c117743164ce77be438a58a599ac1b",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/시트_붙이기.py": {
+   "원본": "시트_붙이기.py",
+   "원본_sha256": "39e4888a69158e978aff8670a8838e23eb38b709d6b0d6a78366d1a7eb8c6bff",
+   "지금_sha256": "39e4888a69158e978aff8670a8838e23eb38b709d6b0d6a78366d1a7eb8c6bff",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/엔진자리.py": {
+   "원본": "엔진자리.py",
+   "원본_sha256": "66c082c92ca478d1f60d916a463f2b4e72f42d97f6549ec1ab1e72bc542db636",
+   "지금_sha256": "0a2772478562e72216fcd390493c6fd3a221a08fb68fb804a01dec6ffbb6b0ee",
+   "고친_이력": [
+    "2026-09-18 섹션 4 — 옛 폴더를 부르는 대비책 경로만 지웠다 (결정 0001: 코드에 옛 경로가 남으면 결함). 옛 폴더가 없는 다른 PC 에서와 똑같이 돈다. 판정 논리는 바꾸지 않았다."
+   ]
+  },
+  "plugin/shared/tools/원문대조검사.py": {
+   "원본": "원문대조검사.py",
+   "원본_sha256": "18a4032118fc3ab38872e7bff8e84f88ff7e3759642d9c732ee43262f08fbae0",
+   "지금_sha256": "18a4032118fc3ab38872e7bff8e84f88ff7e3759642d9c732ee43262f08fbae0",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/자가점검.py": {
+   "원본": "자가점검.py",
+   "원본_sha256": "a7fdf15ee2947037bb1e6894196c1733889a1a68e3bcbb0ca39189fc422c4944",
+   "지금_sha256": "aa3eac4fe428b799bc48e84dcff5fded3be9601d7654ee40554986244398e3ce",
+   "고친_이력": [
+    "2026-09-18 섹션 4 — 옛 폴더를 부르는 대비책 경로만 지웠다 (결정 0001: 코드에 옛 경로가 남으면 결함). 옛 폴더가 없는 다른 PC 에서와 똑같이 돈다. 판정 논리는 바꾸지 않았다."
+   ]
+  },
+  "plugin/shared/tools/조각덮개검사.py": {
+   "원본": "조각덮개검사.py",
+   "원본_sha256": "df801326e8c139c58f64e68eac4bba5936ba14bde94a768f9cf9d129b63829cf",
+   "지금_sha256": "42b98dcb486e7a0576169c3988bb8c1b33d7fa711d9078c26f245e1bce15c5f9",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/지문검사.py": {
+   "원본": "지문검사.py",
+   "원본_sha256": "6a6495cb4e0cb04cf8751f3262ea560d6acfa49a7df255e48303c9f7a5e6e7ce",
+   "지금_sha256": "6a6495cb4e0cb04cf8751f3262ea560d6acfa49a7df255e48303c9f7a5e6e7ce",
+   "고친_이력": []
+  },
+  "plugin/shared/tools/편향검사.py": {
+   "원본": "편향검사.py",
+   "원본_sha256": "e1df366adf2e0f86197355e68a9647ab8f248ae7bdda3dff87d4bdd221d61215",
+   "지금_sha256": "e1df366adf2e0f86197355e68a9647ab8f248ae7bdda3dff87d4bdd221d61215",
+   "고친_이력": []
+  },
+  "plugin/shared/registry/topic_group_map.json": {
+   "원본": "s9_group/topic_group_map.json",
+   "원본_sha256": "7da2bd2c7736490a39dfaafa9c34d444038c6c07b0b58ee72cdeb943158cbb1b",
+   "지금_sha256": "7da2bd2c7736490a39dfaafa9c34d444038c6c07b0b58ee72cdeb943158cbb1b",
+   "고친_이력": []
+  },
+  "plugin/shared/registry/secondary_topics.json": {
+   "원본": "s9_group/secondary_topics.json",
+   "원본_sha256": "d791fd0228ff48756cbb4267f74a50b6d7de627686cfb1c0a7ba7d30217de02a",
+   "지금_sha256": "19f05199ac6a7b3916ff5010c779b3f5c9366ff0d69f32b2a7a448a8f882bddc",
+   "고친_이력": []
+  },
+  "plugin/shared/registry/secondary_enums.json": {
+   "원본": "s9_group/secondary_enums.json",
+   "원본_sha256": "6fd7f40a49547142b7da8a14f4198de5032e6468f42566d474cc271b9f1218ba",
+   "지금_sha256": "c2a0558abf3be904c61deefd421524088fa0f3f7128dfd2ff23427dd8dea1991",
+   "고친_이력": []
+  },
+  "plugin/shared/registry/topic_registry.json": {
+   "원본": "s9_group/topic_registry.json",
+   "원본_sha256": "45787e2c8585bcfaf12ed3b10d660a0bbdb83a55736caa2e371dbc84f9b66115",
+   "지금_sha256": "847849e48c160ddc63cb0359bb75ba324907c3ce5b28649347ec0f293a088201",
+   "고친_이력": []
+  },
+  "plugin/shared/data/7_영상메타.csv": {
+   "원본": "_판독패키지/7_영상메타.csv",
+   "원본_sha256": "b3f7fcc595d6fe71df3055ae03daebddf9b3cddeaecf80342887090dd3379a51",
+   "지금_sha256": "9ed55345bc0441f88ca868b40b6a18d9d0788d2b4459d5351df18657a167ffca",
+   "고친_이력": []
+  },
+  "plugin/shared/common/40_2차판독_수행지시서.md": {
+   "원본": "40_2차판독_수행지시서.md",
+   "원본_sha256": "f8bca4f7748d63a244c7937a7f16285fec9e305b8d50265ab54d7db2d454dcde",
+   "지금_sha256": "8d8b38332fb92ad7ac551443a7021d9f3ac0becb0e8381d5d200b7dcef0b0981",
+   "고친_이력": []
+  },
+  "plugin/shared/common/_판독대상_안내.md": {
+   "원본": "_판독패키지/_판독대상_안내.md",
+   "원본_sha256": "6fff116fb401db9f03a698613f37e01f2f097785843be84f69d93189dcc5f886",
+   "지금_sha256": "bf946936a7a7408234d1d378262738d325a730c43c97cb41311f3611c1164977",
+   "고친_이력": []
+  },
+  "plugin/shared/common/64_VoC_2차_pilot_전체안내.md": {
+   "원본": "64_VoC_2차_pilot_전체안내.md",
+   "원본_sha256": "34a15325a25d2a92d6cbd41be23ed755b7e9e8ca6d0b398d8ef9d95111aa3e1e",
+   "지금_sha256": "34a15325a25d2a92d6cbd41be23ed755b7e9e8ca6d0b398d8ef9d95111aa3e1e",
+   "고친_이력": []
+  },
+  "plugin/shared/common/16_VoC_분석엔진_재현설계서_v13.docx": {
+   "원본": "_설계서/16_VoC_분석엔진_재현설계서_v13.docx",
+   "원본_sha256": "02d566bba4b06636658162ba37bb91356c916d551302d525d75d8138419c35b9",
+   "지금_sha256": "02d566bba4b06636658162ba37bb91356c916d551302d525d75d8138419c35b9",
+   "고친_이력": []
+  },
+  "plugin/shared/common/15_VoC_데이터사전_스키마_v3.2_90컬럼.xlsx": {
+   "원본": "15_VoC_데이터사전_스키마_v3.2_90컬럼.xlsx",
+   "원본_sha256": "9df345b62a61633ad6e566c604caaef9f0299ccd8d52011dd996bc77e526e025",
+   "지금_sha256": "9df345b62a61633ad6e566c604caaef9f0299ccd8d52011dd996bc77e526e025",
+   "고친_이력": []
+  },
+  "plugin/shared/common/출력칸목록.txt": {
+   "원본": "_판독패키지/_기준/출력칸목록.txt",
+   "원본_sha256": "1422c5286c860acfc9a829657d390d6098af5234a4cdf4f18046653ce7f05218",
+   "지금_sha256": "f9b6e8441120e02e6e85b0e7cf8df3283c415ac10ee180843dd00a26d4670ec1",
+   "고친_이력": []
+  },
+  "plugin/shared/common/98_전체흐름_1차부터_4차까지.md": {
+   "원본": "98_전체흐름_1차부터_4차까지.md",
+   "원본_sha256": "260cc3b74c4c5210ea5d7ecb9f679414c821bb19937fc0a6f615e1494196d580",
+   "지금_sha256": "260cc3b74c4c5210ea5d7ecb9f679414c821bb19937fc0a6f615e1494196d580",
+   "고친_이력": []
+  },
+  "plugin/shared/common/VoC_데이터_안내.xlsx": {
+   "원본": "_배포/VoC_데이터_안내.xlsx",
+   "원본_sha256": "c7c2b1cf356c1f607c8c3407766777bac6b3220359a17364bc79176315f3c013",
+   "지금_sha256": "c7c2b1cf356c1f607c8c3407766777bac6b3220359a17364bc79176315f3c013",
+   "고친_이력": []
+  },
+  "plugin/shared/guides/60_2차판독_실무자_사용가이드.md": {
+   "원본": "60_2차판독_실무자_사용가이드.md",
+   "원본_sha256": "50124215279bfe3f0e0704511fa264353b86345186c51afb7c06ac5bc61cd0b0",
+   "지금_sha256": "50124215279bfe3f0e0704511fa264353b86345186c51afb7c06ac5bc61cd0b0",
+   "고친_이력": []
+  },
+  "plugin/shared/guides/61_3차감독_실무자_사용가이드.md": {
+   "원본": "61_3차감독_실무자_사용가이드.md",
+   "원본_sha256": "ebc63bb5e59dd5cd224717aa325eb62882b2fc901dcaf9bb44ec00426b6e9451",
+   "지금_sha256": "2e01d1db59a6432d21d8198fc89d399116a6c4a923536954f311a5accdf84efe",
+   "고친_이력": []
+  },
+  "plugin/shared/guides/62_4차검토_및_번들해설.md": {
+   "원본": "62_4차검토_및_번들해설.md",
+   "원본_sha256": "8fed7d46b376daf50b210307338e87ce1d0468ff0b9374982ea9173e114076da",
+   "지금_sha256": "c011e26c5329be54f954d4321a3f6c03f826cc840e7a2a27193d74a7558d0cbb",
+   "고친_이력": []
+  },
+  "plugin/shared/guides/63_대시보드_사용설명서.md": {
+   "원본": "63_대시보드_사용설명서.md",
+   "원본_sha256": "9c3f9441fecda35ab84028b2a936f10601748dbcb43cdbac82e64c37928b279d",
+   "지금_sha256": "49cd61e1899c41b8fb54dda1f77a5f23f715bde21ebb2dea9897511f93afea4d",
+   "고친_이력": []
+  },
+  "plugin/skills/reading-voc-comments/references/0_붙여넣을_프롬프트_도구형.md": {
+   "원본": "_판독패키지/0_붙여넣을_프롬프트_도구형.md",
+   "원본_sha256": "f35fe64765470bbd558f5d170a922cdb6c46b15fec6faa053727785831dc7055",
+   "지금_sha256": "6684591a12e2a806e1c87fa92dada0bb0c9687f95ca415b3e938a4eafe8c0c6e",
+   "고친_이력": []
+  },
+  "plugin/skills/reading-voc-comments/references/0_붙여넣을_프롬프트_이어서.md": {
+   "원본": "_판독패키지/0_붙여넣을_프롬프트_이어서.md",
+   "원본_sha256": "9c59dc6294d26b7f77dbe148b557cf1eb3897775ef99cb2d6b8636c473c08a3e",
+   "지금_sha256": "28e1f3dee093ad373dcc1121cc6e72321be2a8d2c97f96d12c8899f62572b80b",
+   "고친_이력": []
+  },
+  "plugin/skills/reading-voc-comments/references/30_VoC_2차_번들환원_사양_v0.1.md": {
+   "원본": "30_VoC_2차_번들환원_사양_v0.1.md",
+   "원본_sha256": "600114cd430bf53487113256ba6bcd53e83ea31a048d89cfaf1941f0b66d1673",
+   "지금_sha256": "600114cd430bf53487113256ba6bcd53e83ea31a048d89cfaf1941f0b66d1673",
+   "고친_이력": []
+  },
+  "plugin/skills/reading-voc-comments/assets/0_여기에_결과가_쌓입니다.md": {
+   "원본": "_판독패키지/_결과/0_여기에_결과가_쌓입니다.md",
+   "원본_sha256": "f707031c3705138a343a6c86199671cca5a55395eb1be0fa130fa63a61e4f5b7",
+   "지금_sha256": "678bdfbc0bd78a774bf92b4488528164dfb4f5a7b784792c62073b3e190d09be",
+   "고친_이력": []
+  },
+  "plugin/engine/0_이 폴더는 무엇입니까.md": {
+   "원본": "engine/0_이 폴더는 무엇입니까.md",
+   "원본_sha256": "e300858f43574cbe4aa03c77e08af1096f02a77d3c58ddf30ae147b04002c60e",
+   "지금_sha256": "f43a98bc10d4f66a2977bd8be3395b790f7e67035ad6b652500000fdcf2e2aef",
+   "고친_이력": []
+  },
+  "plugin/engine/src/__init__.py": {
+   "원본": "engine/src/__init__.py",
+   "원본_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "지금_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/__init__.py": {
+   "원본": "engine/src/dashboard60/__init__.py",
+   "원본_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "지금_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/data_contract.py": {
+   "원본": "engine/src/dashboard60/data_contract.py",
+   "원본_sha256": "218f99aaae14df653961fdf02e75f2c15ea4e632ef62558c1eea96094dc662f5",
+   "지금_sha256": "218f99aaae14df653961fdf02e75f2c15ea4e632ef62558c1eea96094dc662f5",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/export_bundle.py": {
+   "원본": "engine/src/dashboard60/export_bundle.py",
+   "원본_sha256": "1fa641d397ee7fad76beb0dd2c1c3e0c69725615397a891abeb4815fe79c7bd0",
+   "지금_sha256": "d98c29d9c2fd969df490d649ff7fd004518b985d7fd8abaa7f03c230441fb85d",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/inquiry_labels.py": {
+   "원본": "engine/src/dashboard60/inquiry_labels.py",
+   "원본_sha256": "f84507aef148a2d5f4aae80547454459b876a9aa0027e124cc0189edff0e4a64",
+   "지금_sha256": "f84507aef148a2d5f4aae80547454459b876a9aa0027e124cc0189edff0e4a64",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/l2_narrative.py": {
+   "원본": "engine/src/dashboard60/l2_narrative.py",
+   "원본_sha256": "24de3041524579addfe86c62e0cf15c23aa106bdf8c279e7a086054ebc775306",
+   "지금_sha256": "46e4fb4f392313901243865aeab017debebb663fb6e107b44c01584cd63d90d6",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/scoring.py": {
+   "원본": "engine/src/dashboard60/scoring.py",
+   "원본_sha256": "0ba037b5a81a2b92d7a4070e1666960e6aa39f11694b1b099971de6f07a9a27e",
+   "지금_sha256": "a1bf71f5cf0b3b20fb6e6831b5ee4cb9a9824a7dd71e075ea22a9ebe85b9be0a",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/views/__init__.py": {
+   "원본": "engine/src/dashboard60/views/__init__.py",
+   "원본_sha256": "5609e44e4ec961729c4b02184e944be6f0bfcf3ee6cc424f2aede5d816913971",
+   "지금_sha256": "0370911fd07e027ef402a17b92e5b4321b16572947e52bc7c77e308294a297a0",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/views/improvement.py": {
+   "원본": "engine/src/dashboard60/views/improvement.py",
+   "원본_sha256": "a496e9e9fad6a10280d941b6c837005d7dc012bfb7b542e7b1ecbcf5e1b0847c",
+   "지금_sha256": "e897f8ee82d9d7879d108bde99feebbdbd84a27496809b16de84a4ab28d31b20",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/views/inquiry.py": {
+   "원본": "engine/src/dashboard60/views/inquiry.py",
+   "원본_sha256": "ba5503b98abc7778e3cc44f61db5828045093f7bf5460420b40ac9d5578c7d3e",
+   "지금_sha256": "aea8948403253362ef1af4742232d254a98a2b187f58e9bd13bbf925aaaa59ed",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/views/overview.py": {
+   "원본": "engine/src/dashboard60/views/overview.py",
+   "원본_sha256": "b3499f7d353ba3240a8178ff15d8e619f6bf13beeaeb8eeab2ae984a4501685b",
+   "지금_sha256": "21ec4fce7fbdfd245b76cdcb3a13639d915f7a3ce28e1f20d343df6dec514cfe",
+   "고친_이력": []
+  },
+  "plugin/engine/src/dashboard60/views/video.py": {
+   "원본": "engine/src/dashboard60/views/video.py",
+   "원본_sha256": "c206cd68a6643225e862dc34f3a1aa15ce738ffd392a73a7cfbeae7c858d7b1f",
+   "지금_sha256": "edf7a500c4370b2512434426ac0bf6740890b31c5ff1bf7ed7fb463e63b74482",
+   "고친_이력": []
+  },
+  "plugin/engine/src/v5/__init__.py": {
+   "원본": "engine/src/v5/__init__.py",
+   "원본_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "지금_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "고친_이력": []
+  },
+  "plugin/engine/src/v5/common.py": {
+   "원본": "engine/src/v5/common.py",
+   "원본_sha256": "6550b5094f3484c4042ec8cffdf2b2570e4977d85a111e7d244db86319d54402",
+   "지금_sha256": "3a137efbf45f76b4390f358d830dc165e74b10334f60a54cc43d3721b657e8f3",
+   "고친_이력": []
+  },
+  "plugin/engine/src/v5/signal_splitter.py": {
+   "원본": "engine/src/v5/signal_splitter.py",
+   "원본_sha256": "1ac979da9cfdab556e924d2f016382574d4b77c76fee699238025007fae891f8",
+   "지금_sha256": "4e0352ea40100cb89c8f6c92550ce52dec6d5148f2e2a1cedcb6fa0db7f9b15e",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/__init__.py": {
+   "원본": "engine/src/voc_rebuild/__init__.py",
+   "원본_sha256": "ae4106a99de7b08dfa4c96f90be973b8fa071613adabcc8f85ce6c5f6bd9d455",
+   "지금_sha256": "ae04c7d3531ddcbbc8d5c598e3d10e3427f488f434465cf9213fe3e6edc1d6c3",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/config/__init__.py": {
+   "원본": "engine/src/voc_rebuild/config/__init__.py",
+   "원본_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "지금_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/config/scope_request_terms.yaml": {
+   "원본": "engine/src/voc_rebuild/config/scope_request_terms.yaml",
+   "원본_sha256": "6980e26efa8ca69fab0f77c007148dec861adbf6818b07b76ffa104f21fd8174",
+   "지금_sha256": "d536fab7845fcdc65d5699d4f585f769bced4a273af1444c2577029182562110",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/config/topic_evidence_lexicon.yaml": {
+   "원본": "engine/src/voc_rebuild/config/topic_evidence_lexicon.yaml",
+   "원본_sha256": "a6e35885e27af89c83b6adbcd0f7099b0378c5f683fa472ff54601790245d9c7",
+   "지금_sha256": "9dd4c834c0a9c9cca18f4802c1bd48b98d5ebf5c5c3357fca104cb390effc056",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/engine.py": {
+   "원본": "engine/src/voc_rebuild/engine.py",
+   "원본_sha256": "4d052fe06942ad4907b4916ca11e7d867fbc10f8fd9ae25437b2b5737afa4353",
+   "지금_sha256": "492e9cc3b0c6ab33cd85e9839037ca70802cf573c5336f452614bc014500015f",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/lexicon.py": {
+   "원본": "engine/src/voc_rebuild/lexicon.py",
+   "원본_sha256": "a7b47911302e09eb2f3f1d2ed04e52bff7da4bea33b33dc8a38b12c9ffc52e61",
+   "지금_sha256": "9fba9dfd87b48c1446a25c3cfb296b79d057c81fbd1953d41d7f59c60e1e5be0",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/schema.py": {
+   "원본": "engine/src/voc_rebuild/schema.py",
+   "원본_sha256": "51e87c676df350443dad203d72a18599f57f766ed79020e7bacd6299c6dadfae",
+   "지금_sha256": "51e87c676df350443dad203d72a18599f57f766ed79020e7bacd6299c6dadfae",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/scope_config.py": {
+   "원본": "engine/src/voc_rebuild/scope_config.py",
+   "원본_sha256": "a9f768b3505dcab915ed34eac9c55cdf046e4780c1ee6dbca433949893987403",
+   "지금_sha256": "a9f768b3505dcab915ed34eac9c55cdf046e4780c1ee6dbca433949893987403",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_rebuild/text_clean.py": {
+   "원본": "engine/src/voc_rebuild/text_clean.py",
+   "원본_sha256": "0db4cb27bc8ee3efb5e9a9b4be7bddfa9b48435399cb3907c482b62c26a9341b",
+   "지금_sha256": "3513f42def29ba8b768c6928e0c23a594a9ef8a93fa25a168b6aa4425099ec6e",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_secondary/__init__.py": {
+   "원본": "engine/src/voc_secondary/__init__.py",
+   "원본_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "지금_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_secondary/contracts.py": {
+   "원본": "engine/src/voc_secondary/contracts.py",
+   "원본_sha256": "cfd7c58b8b8b9b5165675d583bd3f116ee0cbc2d2ad3e4d05dae30f06a0b3518",
+   "지금_sha256": "cfd7c58b8b8b9b5165675d583bd3f116ee0cbc2d2ad3e4d05dae30f06a0b3518",
+   "고친_이력": []
+  },
+  "plugin/engine/src/voc_secondary/na_rules.py": {
+   "원본": "engine/src/voc_secondary/na_rules.py",
+   "원본_sha256": "4103705a7781ba2a1df94b097694e7ced9072b0c37abcebbca9b94f93e4d70e4",
+   "지금_sha256": "4103705a7781ba2a1df94b097694e7ced9072b0c37abcebbca9b94f93e4d70e4",
+   "고친_이력": []
+  }
+ }
+}
