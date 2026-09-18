@@ -55,12 +55,13 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
         shutil.copyfile(BASELINE / f, 작업 / Path(f).name)
     기록 = 그릇 / "대화.jsonl"
     if 누구.startswith("claude"):
-        명령 = ["claude", "-p", 시험["prompt"], "--output-format", "stream-json", "--verbose",
+        # ★ 프롬프트는 표준입력으로 — 윈도에서 claude 는 .cmd 라 인자로 주면 한글이 깨질 수 있다
+        명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
               "--dangerously-skip-permissions"]
         if 누구 == "claude":
             명령 += ["--plugin-dir", str(PLUGIN)]
-        r = subprocess.run(명령, cwd=작업, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", env=_env(), timeout=3600)
+        r = subprocess.run(명령, input=시험["prompt"], cwd=작업, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", env=_env(), timeout=3600)
     else:
         if 누구 == "codex":
             d = 그릇 / ".agents"
@@ -68,7 +69,7 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
             shutil.copytree(PLUGIN / "shared", d / "shared")
             shutil.copytree(PLUGIN / "engine", d / "engine")
         subprocess.run(["git", "init", "-q"], cwd=그릇)
-        r = subprocess.run(["codex", "exec", "--json", "-s", "workspace-write", "--skip-git-repo-check", "-"],
+        r = subprocess.run([shutil.which("codex"), "exec", "--json", "-s", "workspace-write", "--skip-git-repo-check", "-"],
                            input=시험["prompt"], cwd=작업, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=_env(), timeout=3600)
     기록.write_text(r.stdout, encoding="utf-8")
