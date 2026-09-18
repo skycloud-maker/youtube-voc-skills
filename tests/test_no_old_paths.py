@@ -23,6 +23,12 @@ from paths import REPO, SHARED  # noqa: E402
 
 # 옛 저장소 폴더 — 어떤 파일에도 있으면 안 된다
 옛경로 = re.compile(r"(?i)\b[a-z]:(?:\\\\|\\|/)+codex|codex_live_merge")
+# 옛 경로 검사의 예외 — (파일, 줄 내용) 이 **둘 다** 맞아야 한다. 늘릴 때는 sky 에게 묻고 이유를 적는다.
+옛경로_예외 = {
+    # sky 2026-09-18 「원문 그대로 + 검사 예외」 — 기준서 원문의 금지 문구다. 옛 폴더를 부르지 않는다.
+    ("plugin/shared/standards/9_택소노미_2차확장.md",
+     "하지 않는 것   C:\\codex_live_merge\\src\\voc_rebuild\\schema.py 수정"),
+}
 # 드라이브 글자로 시작하는 절대경로 — 코드에서는 paths.py 에만
 절대경로 = re.compile(r"(?i)(?<![a-z])[a-z]:(?:\\\\|\\|/)[^\s'\"`]")
 
@@ -54,15 +60,21 @@ def test_검사기가_일부러_틀린_것을_잡는다():
 
 
 def test_옛_저장소_경로가_없다():
-    본것, 걸림 = 0, []
+    본것, 걸림, 쓴예외 = 0, [], set()
     for p in _파일들():
         if p == Path(__file__).resolve():   # 일부러 틀린 예시가 이 파일에 있다
             continue
         본것 += 1
+        rel = p.relative_to(REPO).as_posix()
         for i, 줄 in 찾기(p.read_text(encoding="utf-8", errors="replace"), 옛경로):
-            걸림.append("%s:%d: %s" % (p.relative_to(REPO).as_posix(), i, 줄[:120]))
+            if (rel, 줄) in 옛경로_예외:
+                쓴예외.add((rel, 줄))
+                continue
+            걸림.append("%s:%d: %s" % (rel, i, 줄[:120]))
     assert 본것 > 0, "검사할 파일을 하나도 못 찾았다 — 통과가 아니다"
     assert not 걸림, "옛 저장소 경로가 남아 있다:\n" + "\n".join(걸림)
+    # 예외가 가리키는 줄이 사라졌으면 예외도 치운다 — 쓰지 않는 예외는 다른 것을 숨길 수 있다
+    assert 쓴예외 == 옛경로_예외, "쓰이지 않는 예외가 있다: %s" % (옛경로_예외 - 쓴예외)
 
 
 def test_절대경로는_paths_py_에만():
