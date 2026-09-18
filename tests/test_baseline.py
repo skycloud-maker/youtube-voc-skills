@@ -1,0 +1,106 @@
+# -*- coding: utf-8 -*-
+"""기준 정답 맞대기 시험 (섹션 2 · 결정 0002).
+
+기준 정답 = 옛 2판 도구 **사본**을 저장소 밖 기준 자리에서 한 번 돌려 얼린 결과
+(`<BASELINE>/실행/3차준비_1` · `3차마무리_1`). 파일 목록과 해시는 git 안의
+`tests/baseline/얼린기준_목록.json` 에 있다.
+
+★ 기준 자리를 못 찾으면 **실패**한다 — 건너뛰지 않는다. 「못 찾음」 은 통과가 아니다.
+★ 재현 시험은 몇 분 걸린다 (사본을 새로 차려 두 도구를 돌린다). 그래도 기본으로 돈다.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import shutil
+import sys
+from pathlib import Path
+
+import pytest
+
+_여기 = Path(__file__).resolve().parent
+sys.path.insert(0, str(_여기.parent / "plugin" / "shared"))
+sys.path.insert(0, str(_여기 / "baseline"))
+from paths import BASELINE  # noqa: E402
+import 기준_만들기  # noqa: E402
+from 맞대기 import 맞대기  # noqa: E402
+
+목록 = json.loads((_여기 / "baseline" / "얼린기준_목록.json").read_text(encoding="utf-8"))
+
+
+def _sha(p: Path) -> str:
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for 조각 in iter(lambda: f.read(1 << 20), b""):
+            h.update(조각)
+    return h.hexdigest()
+
+
+def test_기준_자리가_있다():
+    assert BASELINE.is_dir(), "기준 자리를 못 찾았다 — %s (VOC_BASELINE 으로 가리킬 것)" % BASELINE
+    for 이름 in 목록:
+        assert (BASELINE / "실행" / 이름).is_dir(), "얼린 기준이 없다 — %s" % 이름
+
+
+@pytest.mark.parametrize("이름", sorted(목록))
+def test_얼린_기준이_그대로다(이름):
+    뿌리 = BASELINE / "실행" / 이름
+    assert 뿌리.is_dir(), "얼린 기준이 없다 — %s" % 뿌리
+    적힌것 = 목록[이름]["파일"]
+    assert len(적힌것) == 목록[이름]["파일수"] > 0
+    있는것 = {p.relative_to(뿌리).as_posix() for p in 뿌리.rglob("*") if p.is_file()}
+    assert 있는것 == set(적힌것), "파일 목록이 달라졌다 — 더 생김 %s · 없어짐 %s" % (
+        sorted(있는것 - set(적힌것))[:5], sorted(set(적힌것) - 있는것)[:5])
+    바뀜 = [r for r, h in 적힌것.items() if _sha(뿌리 / r) != h]
+    assert not 바뀜, "얼린 기준 파일이 바뀌었다 — %s" % 바뀜[:5]
+    기록 = (뿌리 / "실행기록.txt").read_text(encoding="utf-8")
+    assert "종료코드: 0" in 기록
+
+
+def test_맞대기가_다름을_잡는다(tmp_path):
+    # 검사기를 먼저 시험한다 — 헛통과를 막으려고
+    import openpyxl
+    가, 나 = tmp_path / "가", tmp_path / "나"
+    for d in (가, 나):
+        d.mkdir()
+        (d / "a.csv").write_text("x,1\n자리,%s\\s13_judge\n잰_날짜,2026-09-18 18:3%d\n"
+                                 % (d, 3 if d is 가 else 4), encoding="utf-8")
+        wb = openpyxl.Workbook()
+        wb.active.append(["id", "값"])
+        wb.active.append(["r1", "같음"])
+        wb.save(d / "b.xlsx")
+    assert 맞대기(가, 나) == [], "경로와 시각만 다른 것은 같음이어야 한다"
+
+    (나 / "c.md").write_text("더 생김", encoding="utf-8")
+    assert any("한쪽에만" in x for x in 맞대기(가, 나))
+    (나 / "c.md").unlink()
+
+    (나 / "a.csv").write_text("x,2\n", encoding="utf-8")
+    assert any("내용 다름" in x for x in 맞대기(가, 나))
+
+    wb = openpyxl.Workbook()
+    wb.active.append(["id", "값"])
+    wb.active.append(["r1", "다름"])
+    wb.save(나 / "b.xlsx")
+    assert any("칸 값 다름" in x for x in 맞대기(가, 나))
+
+    assert 맞대기(tmp_path / "없음", 가), "없는 폴더는 같음이 아니다"
+    (tmp_path / "빈1").mkdir(), (tmp_path / "빈2").mkdir()
+    assert 맞대기(tmp_path / "빈1", tmp_path / "빈2"), "빈 폴더끼리는 같음이 아니다"
+
+
+@pytest.mark.parametrize("이름", sorted(기준_만들기.실행들))
+def test_기준이_재현된다(이름):
+    """사본을 새 자리에 다시 차려 돌리면 얼린 기준과 같아야 한다.
+
+    ★ 지금은 후보가 옛 도구 사본 자신이다 — 시험 틀과 기준이 맞는지 보는 것.
+      새 도구가 생기면(섹션 4~6) 같은 틀로 새 도구를 돌려 맞댄다.
+    """
+    그릇 = BASELINE / "시험실행" / 이름
+    if 그릇.exists():
+        shutil.rmtree(그릇)
+    그릇.mkdir(parents=True)
+    assert 기준_만들기.차려서_돌리기(이름, 그릇) == 0, (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
+    얼린 = BASELINE / "실행" / ("%s_1" % 이름)
+    다름 = 맞대기(얼린 / "2판", 그릇 / "2판")
+    assert not 다름, "얼린 기준과 다르다:\n" + "\n".join(다름[:20])

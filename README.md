@@ -21,7 +21,7 @@
 | 1차 분석 엔진 (동결본, 고치지 않음) | `plugin/engine/` |
 | 대시보드 | `plugin/dashboard/` |
 | 스킬을 낱개 `.skill` 로 꾸리기 | `tools/` → 결과는 `dist/` (손대지 않음) |
-| 옛 도구와 결과가 같은지 시험 | `tests/` |
+| 옛 도구와 결과가 같은지 시험 | `tests/` — 기준 정답은 댓글 원문이 있어 **저장소 밖**에 둔다. 자리는 `plugin/shared/paths.py` 의 `BASELINE` ([결정 0002](docs/decisions/0002-기준정답은-도구사본을-돌려-만든다.md)) |
 | 무엇을 왜 정했나 · 진행 상황 | `docs/decisions/` · [`docs/progress.md`](docs/progress.md) |
 
 ## 나눠 주는 방식 (둘 다)
