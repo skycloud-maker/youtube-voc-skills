@@ -19,8 +19,8 @@
 | 기준서·어휘·검사 규칙 (원본 한 벌) | `plugin/shared/` |
 | 역할별 스킬 | `plugin/skills/<스킬 이름>/` |
 | 1차 분석 엔진 (동결본, 고치지 않음) | `plugin/engine/` |
-| 대시보드 | `plugin/dashboard/` |
-| 스킬을 낱개 `.skill` 로 꾸리기 | `tools/` → 결과는 `dist/` (손대지 않음) |
+| 대시보드 — 새로 만든다 (아직 없음 · 섹션 7a) | `plugin/dashboard/` |
+| 스킬을 낱개 `.skill` 로 꾸리기 — 조립 도구는 아직 없다 (섹션 6). 지금 `tools/` 에는 한 번 쓴 가져오기 도구만 있다 | `tools/` → 결과는 `dist/` (손대지 않음) |
 | 옛 도구와 결과가 같은지 시험 | `tests/` — 기준 정답은 댓글 원문이 있어 **저장소 밖**에 둔다. 자리는 `plugin/shared/paths.py` 의 `BASELINE` ([결정 0002](docs/decisions/0002-기준정답은-도구사본을-돌려-만든다.md)) |
 | 무엇을 왜 정했나 · 진행 상황 | `docs/decisions/` · [`docs/progress.md`](docs/progress.md) |
 
@@ -36,5 +36,6 @@
   새 문서는 원문을 가리킨다. 줄여야 하면 줄이기 전에 sky 에게 묻는다.
 - 갈라진 판은 **최신판이 정본**. 옛판은 이력으로만 둔다.
 - API 키 등 비밀값은 저장소에 넣지 않는다. 받는 사람 환경에서 읽는다.
-- `plugin/engine/` 은 동결본(원본 커밋 `d78dc8c`)이다. 고치지 않는다.
+- `plugin/engine/` 은 지금 **판독 꾸러미가 지고 다니던 엔진 사본**이다 (출처: 옛 저장소 90078f1 의 `outputs/voc_secondary/engine`).
+  고치지 않는다. 섹션 7 에서 동결본(원본 커밋 `d78dc8c`)과 맞댄 뒤 정리한다.
 - `dist/` 는 생성물이다. 손으로 고치지 않는다.

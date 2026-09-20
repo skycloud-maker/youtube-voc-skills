@@ -107,7 +107,11 @@ def 꾸러미_지문(담긴것):
 
     # ★ 지문검사.py 와 같아야 한다 — 「누구도 바꿀 이유가 없는 것」 만
     #   판독대상·회차배치·대장은 판독 흐름이 정당하게 바꾼다. 빼야 한다
-    볼곳 = ('스크립트/', '판독패키지/', '공통/', '프롬프트/')
+    # ★ 2026-09-21 교차점검에서 고침 — `engine/` 을 더했다.
+    #   지문검사.py 의 지킬곳에는 ("engine", "**/*.py", "1차 분석엔진 (읽기 전용)") 가 있는데
+    #   지문을 뜨는 이 자리에 engine 이 없어서, 엔진을 고쳐도 「새로 생김」 알림만 뜨고
+    #   검사가 통과했다 (실제로 engine.py 에 한 줄을 더해 확인했다). 옛 꾸러미부터 있던 구멍이다.
+    볼곳 = ('스크립트/', '판독패키지/', '공통/', '프롬프트/', 'engine/')
     지문 = {}
     for 원본, 자리 in 담긴것:
         n = 자리.replace(os.sep, '/')
@@ -117,6 +121,8 @@ def 꾸러미_지문(담긴것):
             continue
         if n.startswith('스크립트/') and not n.endswith('.py'):
             continue
+        if n.startswith('engine/') and not n.endswith('.py'):
+            continue                      # 지문검사의 engine 무늬가 **/*.py 다
         try:
             재료 = open(원본, 'rb').read()
         except OSError:

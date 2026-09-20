@@ -67,7 +67,7 @@ def main() -> int:
             "복사한_날": "2026-09-18",
             "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 outputs/voc_secondary "
                      "(갈래 codex/voc-second-stage @ 90078f1, 커밋 안 된 변경 없음)",
-            "고칠_때": "고치면 tests/test_package.py 가 실패한다 — 이유를 `고친_이력` 에 적고 `지금_sha256` 을 갱신한다.",
+            "고칠_때": "고치면 tests/test_package.py 가 실패한다 (2026-09-21 에 그 시험을 만들었다) — 이유를 `고친_이력` 에 적고 `지금_sha256` 을 갱신한다.",
             "파일": {}}
     for 원, 새 in 옮길것 + 엔진:
         src = 옛 / 원

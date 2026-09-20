@@ -2,7 +2,7 @@
  "설명": "옛 판독 꾸러미 재료의 출처. 옛 make_zip.py 의 목록 그대로 최신 원본에서 복사했다. 글 파일은 줄바꿈만 LF 로 맞췄고 글자는 바꾸지 않았다. 엑셀·워드는 바이트 그대로.",
  "복사한_날": "2026-09-18",
  "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 outputs/voc_secondary (갈래 codex/voc-second-stage @ 90078f1, 커밋 안 된 변경 없음)",
- "고칠_때": "고치면 tests/test_package.py 가 실패한다 — 이유를 `고친_이력` 에 적고 `지금_sha256` 을 갱신한다.",
+ "고칠_때": "고치면 tests/test_package.py 가 실패한다 (2026-09-21 에 그 시험을 만들었다) — 이유를 `고친_이력` 에 적고 `지금_sha256` 을 갱신한다.",
  "파일": {
   "plugin/shared/tools/apply_approved.py": {
    "원본": "apply_approved.py",

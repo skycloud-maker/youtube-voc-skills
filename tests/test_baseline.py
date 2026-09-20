@@ -92,6 +92,16 @@ def test_맞대기가_다름을_잡는다(tmp_path):
     (나 / "c.md").write_text("만든 날 2026-09-18 20:34 · 원본 `y.xlsx`\n", encoding="utf-8")
     assert any("c.md" in x for x in 맞대기(가, 나)), "시각 말고 다른 글자가 다르면 다름이어야 한다"
 
+    # 2026-09-21 교차점검에 더한 날짜 규칙 — handoff.py 가 적는 「도는 날」
+    for d, 날 in ((가, "2026-09-18"), (나, "2026-09-21")):
+        (d / "인계서.md").write_text("작성 %s · 자동 생성 (`handoff.py`)\n| **접수** | %s |\n" % (날, 날),
+                                   encoding="utf-8")
+        (d / "보정요청.csv").write_text("번호,접수일,갈래,처리상태\n1,%s,기준서공백,대기\n" % 날, encoding="utf-8")
+    assert not any(("인계서" in x or "보정요청" in x) for x in 맞대기(가, 나)), "날짜만 다르면 같음이어야 한다"
+    (나 / "보정요청.csv").write_text("번호,접수일,갈래,처리상태\n1,2026-09-21,기준서공백,반영\n", encoding="utf-8")
+    assert any("보정요청.csv" in x for x in 맞대기(가, 나)), "다른 칸(처리상태)이 다르면 다름이어야 한다"
+    (나 / "보정요청.csv").write_text("번호,접수일,갈래,처리상태\n1,2026-09-21,기준서공백,대기\n", encoding="utf-8")
+
     assert 맞대기(tmp_path / "없음", 가), "없는 폴더는 같음이 아니다"
     (tmp_path / "빈1").mkdir(), (tmp_path / "빈2").mkdir()
     assert 맞대기(tmp_path / "빈1", tmp_path / "빈2"), "빈 폴더끼리는 같음이 아니다"

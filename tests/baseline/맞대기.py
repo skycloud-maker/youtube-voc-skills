@@ -8,11 +8,18 @@
     (xlsx 안에 저장 시각이 들어 있어 같은 내용도 바이트가 다르다).
   - 그 밖 — 바이트가 같아야 한다.
   - 한쪽에만 있는 파일도 다름이다.
-  - ★ 도는 시각을 적는 칸은 뺀다 — 아래 `시각칸` 에 적힌 것만 (두 번 돌려 확인한 것):
+  - ★ 도는 시각을 적는 **값만** 뺀다 — 아래 `시각칸`·`시각열쇠`·`시각머리` 에 적힌 자리에서,
+    시각 꼴(YYYY-MM-DD HH:MM)인 값만 `<시각>` 으로 바꾼다. 같은 줄·같은 행의 다른 값은 그대로 본다
+    (2026-09-21 교차점검에서 좁혔다 — 전에는 그 행·그 줄을 통째로 지워 다른 값까지 안 보였다):
       편향검사.py 의 `잰_날짜` (csv 한 줄 · xlsx [편향검사] 시트 한 행)
       build_bundle.py 의 summary.json `"생성"` (json 한 줄) — 섹션 4
       데이터_넣기.py 의 판독대상/0_이_폴더는.md `만든 날 YYYY-MM-DD HH:MM` — 섹션 4
         (★ 두 번 돌린 것이 같은 분 안에 끝나 그때는 못 봤다. 스킬 시험에서 드러났다)
+  - ★ 도는 **날짜**(시각 없이)를 적는 자리도 뺀다 — handoff.py 가 쓰는 네 자리 (2026-09-21 교차점검):
+      `작성 YYYY-MM-DD`(인계서 머리) · `| **접수** | YYYY-MM-DD |`(논의본 표) ·
+      보정요청 표의 `접수일` 칸 (csv 와 xlsx 둘 다)
+      ★ 09-18 에는 두 실행이 **같은 날**이라 드러나지 않았다. 사흘 뒤 다시 돌려서야 나왔다.
+      ★ 값이 날짜 꼴일 때만 가린다. 그 칸의 다른 값(처리상태 등)은 그대로 본다.
 
 ★ 「못 찾음」 은 같음이 아니다 — 폴더가 없거나 비었으면 다름으로 돌려준다.
 
@@ -33,7 +40,12 @@ from pathlib import Path
 시각열쇠 = ("생성",)
 # 글 줄 앞머리 + 시각 — 그 시각만 <시각> 으로 바꾼다
 시각머리 = ("만든 날 ",)
-_시각꼴 = __import__("re").compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}")
+# 글 줄 앞머리 + 날짜(시각 없이) — 그 날짜만 <날짜> 로 바꾼다
+날짜머리 = ("작성 ", "| **접수** |")
+# 표에서 도는 날을 적는 칸 이름 — csv 머리줄·xlsx 첫 행에서 찾아 그 칸만 가린다
+날짜칸이름 = ("접수일",)
+_날짜꼴 = __import__("re").compile(r"\d{4}-\d{2}-\d{2}")
+_시각꼴 = __import__("re").compile(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?")
 
 
 def _경로꼴(뿌리: Path) -> list[str]:
@@ -50,14 +62,40 @@ def _글읽기(p: Path, 뿌리: Path) -> str:
     for i, x in enumerate(줄):
         for k in 시각칸:
             if x.startswith(k + ","):
-                줄[i] = k + ",<시각>"
+                줄[i] = _시각꼴.sub("<시각>", x)
         for k in 시각머리:
             if x.startswith(k):
                 줄[i] = _시각꼴.sub("<시각>", x, count=1)
         for k in 시각열쇠:
             if x.strip().startswith('"%s": "' % k):
-                줄[i] = '"%s": "<시각>"' % k
-    return "\n".join(줄)
+                줄[i] = _시각꼴.sub("<시각>", x)
+        for k in 날짜머리:
+            if x.startswith(k):
+                줄[i] = _날짜꼴.sub("<날짜>", 줄[i], count=1)
+    t = "\n".join(줄)
+    if p.suffix.lower() == ".csv":
+        t = _표에서_날짜칸_가리기(t)
+    return t
+
+
+def _표에서_날짜칸_가리기(t: str) -> str:
+    """csv 머리줄에 `날짜칸이름` 이 있으면 그 칸의 날짜 값만 <날짜> 로 바꾼다."""
+    import csv as _csv
+    import io as _io
+    머리 = t.split("\n", 1)[0]
+    if not any(k in 머리 for k in 날짜칸이름):
+        return t
+    행 = list(_csv.reader(_io.StringIO(t)))
+    if not 행:
+        return t
+    자리 = [i for i, c in enumerate(행[0]) if c in 날짜칸이름]
+    for r in 행[1:]:
+        for i in 자리:
+            if i < len(r) and _날짜꼴.fullmatch(r[i].strip()):
+                r[i] = "<날짜>"
+    낼곳 = _io.StringIO()
+    _csv.writer(낼곳, lineterminator="\n").writerows(행)
+    return 낼곳.getvalue()
 
 
 def _엑셀읽기(p: Path, 뿌리: Path):
@@ -68,6 +106,11 @@ def _엑셀읽기(p: Path, 뿌리: Path):
         out = []
         for ws in wb.worksheets:
             rows = []
+            날짜자리 = set()
+            for 번, row in enumerate(ws.iter_rows(values_only=True)):
+                if 번 == 0:
+                    날짜자리 = {i for i, v in enumerate(row) if v in 날짜칸이름}
+                    break
             for row in ws.iter_rows(values_only=True):
                 r = []
                 for v in row:
@@ -77,8 +120,13 @@ def _엑셀읽기(p: Path, 뿌리: Path):
                     r.append(v)
                 while r and r[-1] is None:
                     r.pop()
+                if 날짜자리 and r:
+                    r = [("<날짜>" if (i in 날짜자리 and isinstance(v, str)
+                                     and _날짜꼴.fullmatch(v.strip())) else v)
+                         for i, v in enumerate(r)]
                 if r and r[0] in 시각칸:
-                    r = [r[0], "<시각>"]
+                    r = [r[0]] + [("<시각>" if isinstance(v, str) and _시각꼴.search(v) else v)
+                                  for v in r[1:]]
                 rows.append(tuple(r))
             while rows and not rows[-1]:
                 rows.pop()
