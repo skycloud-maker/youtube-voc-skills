@@ -1,0 +1,11 @@
+{
+ "설명": "옛 저장소 관리 도구 5개의 원문 — 기록이다. 새 저장소에서 돌리지 않는다 (sky 2026-09-21 「새 방식으로 대신한다」).",
+ "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 outputs/voc_secondary (90078f1)",
+ "파일": {
+  "마무리_이력정리.py": "c0e7ad5acd38b3d003a98399808b8629e5b3dbb3247b17c062b1d3e6347a4ee5",
+  "정본_맞추기.py": "2f92646f251f32954b23d2ab94183f07ee20557d43afd6f147628d8e0fff4bb2",
+  "make_zip.py": "27d5071a6e4d541014d76e6e559193f91332b0769c702e6a759f47a27e3e2859",
+  "박힌말_검사.py": "8a80c71fd449a89df52594a12b7fc202d4b6cfb82e3a4c74b2dbd98c1262cc5e",
+  "5차기준_검사.py": "5aeba8bf525dba917d4c85c7faac61b6f66800dbc5cc44fbdaad65c21dd38737"
+ }
+}

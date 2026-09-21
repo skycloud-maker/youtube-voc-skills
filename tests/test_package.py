@@ -32,6 +32,8 @@ sys.path.insert(0, str(스킬 / "scripts"))
 import 판독폴더_차리기 as 차리기  # noqa: E402
 sys.path.insert(0, str(PLUGIN / "skills" / "supervising-voc-disagreements" / "scripts"))
 import 감독폴더_차리기 as 감독차리기  # noqa: E402
+sys.path.insert(0, str(PLUGIN / "skills" / "coordinating-voc-pipeline" / "scripts"))
+import 총괄자리_차리기 as 총괄차리기  # noqa: E402
 
 꾸러미출처 = json.loads((SHARED / "출처_꾸러미.json").read_text(encoding="utf-8"))
 기준서출처 = json.loads((SHARED / "standards" / "출처.json").read_text(encoding="utf-8"))
@@ -43,7 +45,7 @@ def _sha(p: Path) -> str:
 
 def test_출처_기록이_실제_파일과_같다():
     파일 = 꾸러미출처["파일"]
-    assert len(파일) == 73, len(파일)          # 판독 70 (섹션 4) + 감독 3 (섹션 5)
+    assert len(파일) == 92, len(파일)          # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5)
     없음 = [r for r in 파일 if not (REPO / r).is_file()]
     assert not 없음, "출처에 적힌 파일이 없다 — %s" % 없음[:5]
     어긋남 = [r for r, v in 파일.items() if _sha(REPO / r) != v["지금_sha256"]]
@@ -64,7 +66,10 @@ def test_고친_이력이_있는_것만_원본과_다르다():
 
 
 def test_차림표_재료가_모두_있고_출처에_적혀_있다():
-    재료 = [Path(원) for 원, _ in 차리기.전체_차림표() + 감독차리기.전체_차림표()]
+    총괄재료 = 총괄차리기.총괄자리.판재료(총괄차리기.공통, 총괄차리기.엔진, 총괄차리기.판독 / "references",
+                                총괄차리기.감독 / "references")
+    대장 = [(p, "") for p in sorted((SHARED / "registry").glob("*.json"))]
+    재료 = [Path(원) for 원, _ in 차리기.전체_차림표() + 감독차리기.전체_차림표() + 총괄재료 + 대장]
     없음 = [p for p in 재료 if not p.is_file()]
     assert not 없음, "차림표가 가리키는 재료가 없다 — %s" % [str(p) for p in 없음[:5]]
     적힌것 = set(꾸러미출처["파일"]) | {("plugin/shared/standards/" + n) for n in 기준서출처["파일"]}
@@ -158,3 +163,21 @@ def test_감독폴더_지문에_엔진이_들어가고_엔진을_고치면_잡�
     p = 사본 / "engine" / "src" / "voc_rebuild" / "schema.py"
     p.write_bytes(p.read_bytes() + b"\n# TAMPERED\n")
     assert _지문검사(사본) == 1
+
+
+# ── 총괄 자리 (섹션 5) ───────────────────────────────────────────────────────────
+def test_총괄자리는_도구_41개와_감독꾸러미를_갖춘다(tmp_path):
+    셈 = 총괄차리기.차리기(tmp_path / "총괄", "시험판")
+    assert not 셈["못찾음"], 셈["못찾음"]
+    판 = tmp_path / "총괄" / "시험판"
+    도구 = sorted(p.name for p in 판.glob("*.py"))
+    assert len(도구) == 41, len(도구)
+    for 옛관리 in ("마무리_이력정리.py", "정본_맞추기.py", "make_zip.py", "박힌말_검사.py", "5차기준_검사.py"):
+        assert 옛관리 not in 도구, "옛 관리 도구가 들어갔다 — %s (sky: 새 방식으로 대신)" % 옛관리
+    assert (tmp_path / "총괄" / "s9_group" / "topic_group_map.json").is_file(), "대장은 판 폴더의 부모에"
+    assert not (판 / "s9_group").exists(), "판 폴더 안에는 대장이 없다 (2판이 그랬다)"
+    import zipfile
+    with zipfile.ZipFile(판 / "_배포" / "VoC_3_3차감독.zip") as z:
+        이름 = [n for n in z.namelist() if not n.endswith("/")]
+    assert len(이름) == 65 and "스크립트/편향검사.py" not in 이름, "감독 꾸러미는 감독 스킬과 한 벌이어야 한다"
+    assert 셈["차림"] > 0 and 총괄차리기.차리기(tmp_path / "총괄", "시험판")["차림"] == 0, "다시 돌리면 아무것도 덮지 않는다"

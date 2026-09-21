@@ -58,10 +58,16 @@ from paths import REPO, SHARED  # noqa: E402
     ("plugin/shared/standards/출처.json", None),
     ("README.md", None),
     ("tools/옛꾸러미_가져오기.py", None),
+    ("tools/옛꾸러미_가져오기_총괄.py", None),
     ("tests/test_no_old_paths.py", None),
     # sky 2026-09-18 「원문 그대로 + 검사 예외」 — 옛 대시보드 안내서 원문.
     #   ★ 새 안내서(guides/)를 쓸 때 이 자리를 새 저장소·새 사이트로 바꿔야 한다 (섹션 7a·8 에 적었다).
     ("plugin/shared/guides/63_대시보드_사용설명서.md", None),
+}
+# 절대경로 검사의 예외 — (파일, 줄 내용) 이 둘 다 맞아야 한다. 원문 주석 속 경로만 (sky 「원문 그대로 + 검사 예외」)
+절대경로_예외 = {
+    # 섹션 5 (2026-09-21) — build_master.py 원문 주석. 예전에 임시 폴더에서 돌린 흔적을 적은 것이다.
+    ("plugin/shared/tools/build_master.py", r"#     judge_agree(C:\Users\blues\AppData\Local\Temp\...)"),
 }
 # 드라이브 글자로 시작하는 절대경로 — 코드에서는 paths.py 에만
 절대경로 = re.compile(r"(?i)(?<![a-z])[a-z]:(?:\\\\|\\|/)[^\s'\"`]")
@@ -144,7 +150,7 @@ def test_절대경로는_paths_py_에만():
             continue
         본것 += 1
         for i, 줄 in 찾기(p.read_text(encoding="utf-8", errors="replace"), 절대경로):
-            if (p.relative_to(REPO).as_posix(), 줄) in 옛경로_예외:
+            if (p.relative_to(REPO).as_posix(), 줄) in 옛경로_예외 | 절대경로_예외:
                 continue
             걸림.append("%s:%d: %s" % (p.relative_to(REPO).as_posix(), i, 줄[:120]))
     assert 본것 > 0, "검사할 코드 파일을 하나도 못 찾았다 — 통과가 아니다"
