@@ -6,9 +6,9 @@
   70개는 조용히 갈려도 아무도 몰랐다.
 
 보는 것
-  ① 출처 기록의 해시 = 지금 파일 (70개)
+  ① 출처 기록의 해시 = 지금 파일 (판독 70 + 감독 3 = 73개)
   ② 차림표의 재료가 모두 있고, 모두 출처 기록에 적혀 있다 (빠진 재료 · 안 쓰는 기록 0)
-  ③ 폴더를 차리면 옛 꾸러미와 같은 80개가 되고, 지문에 engine 이 들어간다
+  ③ 폴더를 차리면 옛 꾸러미 모양이 된다 — 판독 80개 · 감독 65개(편향검사 뺌) — 지문에 engine 이 들어간다
   ④ ★ 엔진을 한 줄 고치면 지문검사가 실패한다 (전에는 통과했다 — 그래서 여기서 지킨다)
 """
 from __future__ import annotations
@@ -25,11 +25,13 @@ import pytest
 
 _여기 = Path(__file__).resolve().parent
 sys.path.insert(0, str(_여기.parent / "plugin" / "shared"))
-from paths import PLUGIN, REPO, SHARED  # noqa: E402
+from paths import BASELINE, PLUGIN, REPO, SHARED  # noqa: E402
 
 스킬 = PLUGIN / "skills" / "reading-voc-comments"
 sys.path.insert(0, str(스킬 / "scripts"))
 import 판독폴더_차리기 as 차리기  # noqa: E402
+sys.path.insert(0, str(PLUGIN / "skills" / "supervising-voc-disagreements" / "scripts"))
+import 감독폴더_차리기 as 감독차리기  # noqa: E402
 
 꾸러미출처 = json.loads((SHARED / "출처_꾸러미.json").read_text(encoding="utf-8"))
 기준서출처 = json.loads((SHARED / "standards" / "출처.json").read_text(encoding="utf-8"))
@@ -41,7 +43,7 @@ def _sha(p: Path) -> str:
 
 def test_출처_기록이_실제_파일과_같다():
     파일 = 꾸러미출처["파일"]
-    assert len(파일) == 70, len(파일)
+    assert len(파일) == 73, len(파일)          # 판독 70 (섹션 4) + 감독 3 (섹션 5)
     없음 = [r for r in 파일 if not (REPO / r).is_file()]
     assert not 없음, "출처에 적힌 파일이 없다 — %s" % 없음[:5]
     어긋남 = [r for r, v in 파일.items() if _sha(REPO / r) != v["지금_sha256"]]
@@ -62,7 +64,7 @@ def test_고친_이력이_있는_것만_원본과_다르다():
 
 
 def test_차림표_재료가_모두_있고_출처에_적혀_있다():
-    재료 = [Path(원) for 원, _ in 차리기.전체_차림표()]
+    재료 = [Path(원) for 원, _ in 차리기.전체_차림표() + 감독차리기.전체_차림표()]
     없음 = [p for p in 재료 if not p.is_file()]
     assert not 없음, "차림표가 가리키는 재료가 없다 — %s" % [str(p) for p in 없음[:5]]
     적힌것 = set(꾸러미출처["파일"]) | {("plugin/shared/standards/" + n) for n in 기준서출처["파일"]}
@@ -111,4 +113,48 @@ def test_엔진을_고치면_지문검사가_잡는다(차린폴더, tmp_path):
     assert _지문검사(사본) == 1, "엔진을 고쳤는데 지문검사가 통과했다"
     도구 = 사본 / "스크립트" / "성실성검사.py"
     도구.write_bytes(도구.read_bytes() + b"\n# TAMPERED\n")
+    assert _지문검사(사본) == 1
+
+
+# ── 감독 꾸러미 (섹션 5) ────────────────────────────────────────────────────────
+@pytest.fixture(scope="module")
+def 감독폴더(tmp_path_factory):
+    d = tmp_path_factory.mktemp("감독폴더")
+    셈 = 감독차리기.차리기(d)
+    assert not 셈["못찾음"], 셈["못찾음"]
+    return d
+
+
+def test_감독폴더는_65개이고_편향검사가_없다(감독폴더):
+    파일 = [p for p in 감독폴더.rglob("*") if p.is_file()]
+    assert len(파일) == 65, len(파일)          # 옛 감독 꾸러미 66개 − 편향검사.py
+    assert not (감독폴더 / "스크립트" / "편향검사.py").exists(), "감독 폴더에 편향검사가 있다 (98: 아예 없다)"
+    assert (감독폴더 / "프롬프트" / "0_붙여넣을_프롬프트_감독.md").is_file()
+
+
+def test_감독폴더에_정답지와_감독입력을_만들지_않는다(감독폴더):
+    # ★ 익명화 — 감독자가 A·B 가 누구인지 알면 편든다. 입력은 총괄이 넣는다
+    for 금지 in ("s13_judge", "_총괄만", "ab_mapping.json", "스크립트/make_judge_input.py",
+               "스크립트/build_master.py", "스크립트/3차_준비.py", "스크립트/3차_마무리.py"):
+        assert not (감독폴더 / 금지).exists(), 금지
+    assert not list(감독폴더.rglob("ab_mapping*")), "정답지가 들어갔다"
+    assert not list(감독폴더.rglob("*_bundle")), "2차 번들이 들어갔다"
+
+
+def test_감독폴더_안내문은_옛_꾸러미와_편향검사_한_줄만_다르다(감독폴더):
+    옛 = BASELINE / "원본사본" / "꾸러미" / "VoC_3_3차감독" / "0_먼저_읽으십시오.md"
+    assert 옛.is_file(), "옛 감독 꾸러미 사본을 못 찾았다 — %s" % 옛
+    a = 옛.read_text(encoding="utf-8").splitlines()
+    b = (감독폴더 / "0_먼저_읽으십시오.md").read_text(encoding="utf-8").splitlines()
+    assert [x for x in a if "편향검사.py" not in x] == b
+
+
+def test_감독폴더_지문에_엔진이_들어가고_엔진을_고치면_잡는다(감독폴더, tmp_path):
+    지문 = json.loads((감독폴더 / "대장" / "지문.json").read_text(encoding="utf-8"))
+    assert sum(1 for k in 지문["지문"] if k.startswith("engine/")) == 25
+    사본 = tmp_path / "고친감독폴더"
+    shutil.copytree(감독폴더, 사본)
+    assert _지문검사(사본) == 0
+    p = 사본 / "engine" / "src" / "voc_rebuild" / "schema.py"
+    p.write_bytes(p.read_bytes() + b"\n# TAMPERED\n")
     assert _지문검사(사본) == 1

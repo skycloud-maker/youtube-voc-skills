@@ -437,6 +437,27 @@
    "원본_sha256": "4103705a7781ba2a1df94b097694e7ced9072b0c37abcebbca9b94f93e4d70e4",
    "지금_sha256": "4103705a7781ba2a1df94b097694e7ced9072b0c37abcebbca9b94f93e4d70e4",
    "고친_이력": []
+  },
+  "plugin/skills/supervising-voc-disagreements/references/0_붙여넣을_프롬프트_감독.md": {
+   "원본": "_판독패키지/0_붙여넣을_프롬프트_감독.md",
+   "원본_sha256": "ecfdf74b8cf20f308c80402c609f0c6ddff1f86ab47a16e9a37ccc4fa3be461f",
+   "지금_sha256": "f5b7d5129a16f520948d3a1e35d68e2edc46181005b3de57344d86782e29bfb0",
+   "고친_이력": [],
+   "복사한_날": "2026-09-21"
+  },
+  "plugin/shared/tools/rank_two_axis.py": {
+   "원본": "rank_two_axis.py",
+   "원본_sha256": "e187eeaffc51e3bd6cba13c11c94fce100d10007cb73f96bc6674cbc0abe8727",
+   "지금_sha256": "e187eeaffc51e3bd6cba13c11c94fce100d10007cb73f96bc6674cbc0abe8727",
+   "고친_이력": [],
+   "복사한_날": "2026-09-21"
+  },
+  "plugin/shared/tools/make_grading_sheet.py": {
+   "원본": "make_grading_sheet.py",
+   "원본_sha256": "b93030b390af4f54f7501354b79928a4d1967e6df65b3552f5f2ed48d2b96d7c",
+   "지금_sha256": "b93030b390af4f54f7501354b79928a4d1967e6df65b3552f5f2ed48d2b96d7c",
+   "고친_이력": [],
+   "복사한_날": "2026-09-21"
   }
  }
 }
