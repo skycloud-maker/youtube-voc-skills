@@ -127,4 +127,5 @@ def 견주기() -> None:
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")     # 윈도 콘솔(cp949)에서 — 따위 글자로 죽지 않게 (2026-09-21 A 뒤에 멈췄다)
     {"돌리기": 돌리기, "견주기": 견주기}[sys.argv[1]]()
