@@ -102,6 +102,10 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
         subprocess.run(["git", "init", "-q"], cwd=그릇)
         명령 = [shutil.which("codex"), "exec", "--json", "-s", "workspace-write", "--skip-git-repo-check", "-"]
         환경 = 공통._codex_env()
+    # ★ 2026-09-22 (섹션 5b 뒤 재점검) — 이 시험은 결과를 **얼린 3차 기준**과 맞댄다. 섹션 5b 에서 뒤처리 기본 동작을 바꿨으므로
+    #   (N/A 행을 다시 빼지 않음 · 판독자 지적을 자르지 않음 · out_of_scope_product 를 폐기로 보지 않음)
+    #   얼린 기준을 만든 옛 동작으로 돌린다. 새 동작은 tests/test_baseline.py 의 test_가3_… 이 따로 본다
+    환경["VOC_얼린기준_재현"] = "1"
     r = subprocess.run(명령, input=시험["prompt"], cwd=작업, capture_output=True, text=True,
                        encoding="utf-8", errors="replace", env=환경, timeout=5400)
     최종 = 공통.격리_마치기(그릇, 최종, r, {"누구": 누구, "시험": 시험id})

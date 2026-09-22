@@ -9,7 +9,7 @@
 ★ 누구
     claude       claude -p · 이 저장소의 plugin/ 을 --plugin-dir 로 싣는다
     codex        codex exec · 그릇/.agents/skills/ 에 스킬을, 그 옆에 shared · engine 을 둔다
-                 (섹션 6 의 조립 도구가 할 일을 여기서는 손으로 흉내 낸다)
+                 (플러그인 모양 그대로 — 섹션 6 의 dist/codex 는 shared · engine 을 스킬 안에 넣는다. 둘 다 스크립트가 찾는다)
     claude-없이 · codex-없이   스킬 없이 같은 과제 (빈틈 재기)
 ★ 채점은 evals.json 의 expectations 를 기계로 확인한 것이다. 못 본 것은 「못 봄」 이지 통과가 아니다.
 ★ 시험마다 볼 항목을 `기대항목` 에 못박아 둔다 (2026-09-21). 앞 단계가 없어 확인하지 못한 항목은

@@ -104,3 +104,27 @@ def test_라1_제목도_댓글도_다른_영상을_알린다(tmp_path):
 def test_라1_1차를_못_찾으면_통과가_아니다(tmp_path):
     코드, 말 = _돌리기(tmp_path, "영상")
     assert 코드 == 2, 말
+
+
+def test_쓰지_않는_라벨_목록_세_벌이_서로_맞다():
+    """★ 같은 것이 세 벌 (2026-09-22 재점검에서 찾음) — 도구가 나뉘어 실려 한 파일로 합칠 수 없어 여기서 대조한다.
+      check_selfcheck.DEAD_TOPIC (판독 · 감독 폴더) = 폐기라벨_정리.바꿀것 의 옛 이름 (총괄) ⊆ 최신결정_검사.폐기라벨 (판독 폴더)
+      그리고 새 판 §8 표에 폐기라벨이 모두 적혀 있다."""
+    import importlib
+    import os
+    tools = 도구.parent
+    sys.path.insert(0, str(tools))
+    옛 = os.environ.pop("VOC_얼린기준_재현", None)
+    try:
+        cs = importlib.import_module("check_selfcheck")
+        pj = importlib.import_module("폐기라벨_정리")
+        검 = importlib.import_module("최신결정_검사")
+    finally:
+        if 옛 is not None:
+            os.environ["VOC_얼린기준_재현"] = 옛
+    assert set(cs.DEAD_TOPIC) == set(pj.바꿀것), (cs.DEAD_TOPIC, pj.바꿀것)
+    assert set(pj.바꿀것) <= 검.폐기라벨, set(pj.바꿀것) - 검.폐기라벨
+    판 = (도구.parents[1] / "standards" / "0_최신결정_먼저.md").read_text(encoding="utf-8")
+    표줄 = [l for l in 판.splitlines() if l.startswith("| 라7 |")]
+    assert 표줄 and all(x in 표줄[0] for x in 검.폐기라벨), (표줄, 검.폐기라벨)
+    assert not cs.DEAD_REASON, "out_of_scope_product 는 [가1] 로 살아 있는 사유다 (옛 동작은 VOC_얼린기준_재현=1 때만)"

@@ -18,13 +18,13 @@
 | 옛 저장소에서 옮겨 온 원문 (문서·코드·화면 문구 그대로 · 옛 자리가 적혀 있음) | `docs/sources/` |
 | 기준서·어휘·검사 규칙 (원본 한 벌) | `plugin/shared/` |
 | 역할별 스킬 | `plugin/skills/<스킬 이름>/` |
-| 1차 분석 엔진 (동결본, 고치지 않음) | `plugin/engine/` |
+| 1차 분석 엔진 — 지금은 판독 꾸러미가 지고 다니던 엔진 사본 (고치지 않음 · 아래 「지키는 것」) | `plugin/engine/` |
 | 대시보드 — 새로 만든다 (아직 없음 · 섹션 7a) | `plugin/dashboard/` |
 | 스킬을 낱개로 묶기 — `python tools/build_skills.py` 가 묶고 `python tools/check_shared.py` 가 원본과 한 파일씩 대조한다 (섹션 6) | `tools/` → 결과는 `dist/` (생성물 · git 에 넣지 않음) |
 | 옛 도구와 결과가 같은지 시험 | `tests/` — 기준 정답은 댓글 원문이 있어 **저장소 밖**에 둔다. 자리는 `plugin/shared/paths.py` 의 `BASELINE` ([결정 0002](docs/decisions/0002-기준정답은-도구사본을-돌려-만든다.md)) |
 | 무엇을 왜 정했나 · 진행 상황 | `docs/decisions/` · [`docs/progress.md`](docs/progress.md) |
 
-## 나눠 주는 방식 (둘 다)
+## 나눠 주는 방식 (세 가지)
 
 1. **플러그인 하나 (Claude Code)** — 저장소 맨 위 `.claude-plugin/marketplace.json` 이 마켓플레이스다.
    받는 사람이 Claude Code 에서 `/plugin marketplace add skycloud-maker/youtube-voc-skills` →

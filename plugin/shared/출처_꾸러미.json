@@ -29,10 +29,11 @@
   "plugin/shared/tools/check_selfcheck.py": {
    "원본": "check_selfcheck.py",
    "원본_sha256": "ea5f03d4beae4a63bc867146bd254133227d195259a416da809bca1feabc54fe",
-   "지금_sha256": "7334b1043ee3bb3544951d98db30328176eab261ff9944969e45442e658aff0c",
+   "지금_sha256": "fa6ef3fcb4b05265ee497085773594d8db1482d433a201275c6ebca882bb8393",
    "고친_이력": [
     "2026-09-18 섹션 4 — 옛 폴더를 부르는 대비책 경로만 지웠다 (결정 0001: 코드에 옛 경로가 남으면 결함). 옛 폴더가 없는 다른 PC 에서와 똑같이 돈다. 판정 논리는 바꾸지 않았다.",
-    "2026-09-22 섹션 5b — S-4 의 「미판정 … 제외 또는 라벨 둘 중 하나」 경고를 topic 빈칸일 때만 낸다. N/A · 미분류는 정당한 결과로 알린다 (sky 08-26 §17 · 1a §7.9 ②). 판독 폴더에도 들어가는 도구라 판독자를 §17 반대쪽으로 밀고 있었다."
+    "2026-09-22 섹션 5b — S-4 의 「미판정 … 제외 또는 라벨 둘 중 하나」 경고를 topic 빈칸일 때만 낸다. N/A · 미분류는 정당한 결과로 알린다 (sky 08-26 §17 · 1a §7.9 ②). 판독 폴더에도 들어가는 도구라 판독자를 §17 반대쪽으로 밀고 있었다.",
+    "2026-09-22 재점검 — S-8 DEAD_REASON 에서 out_of_scope_product 를 뺐다 ([가1] 가전이 아닌 제품에 쓰는 살아 있는 사유 · 옛 동작은 VOC_얼린기준_재현=1). S-9 DEAD_TOPIC 에 「위생/냄새(곰팡이)」 를 더했다 (폐기라벨_정리.바꿀것 과 짝이 어긋나 있었다)."
    ]
   },
   "plugin/shared/tools/check_submission.py": {
@@ -162,8 +163,10 @@
   "plugin/shared/registry/secondary_enums.json": {
    "원본": "s9_group/secondary_enums.json",
    "원본_sha256": "6fd7f40a49547142b7da8a14f4198de5032e6468f42566d474cc271b9f1218ba",
-   "지금_sha256": "c2a0558abf3be904c61deefd421524088fa0f3f7128dfd2ff23427dd8dea1991",
-   "고친_이력": []
+   "지금_sha256": "9cda5b538b1c7e40ce74da516658ec1c5438ec4e72f697b15d93b1b24808806f",
+   "고친_이력": [
+    "2026-09-22 재점검 — scope_exclusion_reason 에 video_transcript 를 더했다 (08-18 sky 확인요청 ③ · 섹션 5b [가8]). 없으면 check_submission 이 새 판대로 낸 값을 반려했다."
+   ]
   },
   "plugin/shared/registry/topic_registry.json": {
    "원본": "s9_group/topic_registry.json",
