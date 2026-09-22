@@ -12,6 +12,8 @@
 
 쓰기
     python tests/experiments/판독자조합_돌리기.py 돌리기            A · B · C 를 차례로 (없는 것만)
+    python tests/experiments/판독자조합_돌리기.py 돌리기 claudeD:claude codexE:codex
+                                                               섹션 5b 뒤 다시 재기 — 이름:누구 (sky 2026-09-22 「Claude 1 + Codex 1」)
     python tests/experiments/판독자조합_돌리기.py 견주기            ② 와 ③ 의 채점지를 만든다
 """
 from __future__ import annotations
@@ -36,9 +38,9 @@ from paths import BASELINE, PLUGIN  # noqa: E402
 판독자 = {"claudeA": "claude", "claudeB": "claude", "codexC": "codex"}
 
 
-def 돌리기() -> None:
+def 돌리기(누구들: dict[str, str] | None = None) -> None:
     결과자리.mkdir(parents=True, exist_ok=True)
-    for 이름, 누구 in 판독자.items():
+    for 이름, 누구 in (누구들 or 판독자).items():
         최종 = BASELINE / "스킬시험" / ("실험_%s" % 이름)
         if 최종.exists():
             print("  · %s — 이미 있어 건너뜀" % 이름)
@@ -128,4 +130,7 @@ def 견주기() -> None:
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")     # 윈도 콘솔(cp949)에서 — 따위 글자로 죽지 않게 (2026-09-21 A 뒤에 멈췄다)
-    {"돌리기": 돌리기, "견주기": 견주기}[sys.argv[1]]()
+    if sys.argv[1] == "돌리기" and len(sys.argv) > 2:
+        돌리기(dict(x.split(":", 1) for x in sys.argv[2:]))
+    else:
+        {"돌리기": 돌리기, "견주기": 견주기}[sys.argv[1]]()
