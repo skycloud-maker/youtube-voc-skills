@@ -20,15 +20,22 @@
 | 역할별 스킬 | `plugin/skills/<스킬 이름>/` |
 | 1차 분석 엔진 (동결본, 고치지 않음) | `plugin/engine/` |
 | 대시보드 — 새로 만든다 (아직 없음 · 섹션 7a) | `plugin/dashboard/` |
-| 스킬을 낱개 `.skill` 로 꾸리기 — 조립 도구는 아직 없다 (섹션 6). 지금 `tools/` 에는 한 번 쓴 가져오기 도구만 있다 | `tools/` → 결과는 `dist/` (손대지 않음) |
+| 스킬을 낱개로 묶기 — `python tools/build_skills.py` 가 묶고 `python tools/check_shared.py` 가 원본과 한 파일씩 대조한다 (섹션 6) | `tools/` → 결과는 `dist/` (생성물 · git 에 넣지 않음) |
 | 옛 도구와 결과가 같은지 시험 | `tests/` — 기준 정답은 댓글 원문이 있어 **저장소 밖**에 둔다. 자리는 `plugin/shared/paths.py` 의 `BASELINE` ([결정 0002](docs/decisions/0002-기준정답은-도구사본을-돌려-만든다.md)) |
 | 무엇을 왜 정했나 · 진행 상황 | `docs/decisions/` · [`docs/progress.md`](docs/progress.md) |
 
 ## 나눠 주는 방식 (둘 다)
 
-1. **플러그인 하나** — 저장소를 마켓플레이스로 추가하면 스킬 전부와 공통 파일이 함께 온다.
-2. **낱개 `.skill` 파일** — 역할 하나만 넘길 때. 공통 파일은 조립 도구가 복사해 넣고,
-   원본과 다르면 검사가 실패한다.
+1. **플러그인 하나 (Claude Code)** — 저장소 맨 위 `.claude-plugin/marketplace.json` 이 마켓플레이스다.
+   받는 사람이 Claude Code 에서 `/plugin marketplace add skycloud-maker/youtube-voc-skills` →
+   `/plugin install youtube-voc@youtube-voc-skills`. 비공개 저장소라 받는 사람의 git 로그인(`gh auth login` 등)이 필요하다.
+2. **낱개 스킬 (claude.ai · Claude 데스크톱)** — `dist/claude/<스킬>.zip` 을 「Settings > Features」 에 올린다.
+   zip 맨 위에 스킬 폴더 하나 · 공통 파일(`shared/` · `engine/`)은 조립 도구가 스킬 안에 복사해 넣는다.
+   `.skill` 은 확장자만 다른 같은 파일이다.
+3. **Codex** — `dist/codex/.agents/` 를 저장소 맨 위나 `$HOME` 에 통째로 둔다 (Codex 는 `.agents/skills/` 를 읽는다 · 섹션 3a).
+
+낱개 묶음은 원본과 한 글자라도 다르면 `check_shared.py` 가 실패한다. 묶은 뒤 원본을 고쳤으면 다시 묶는다.
+근거: [조사 2026-09-22](docs/research/2026-09-22_스킬_묶음_배포_조사.md).
 
 ## 지키는 것
 

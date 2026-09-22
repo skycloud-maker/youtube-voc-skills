@@ -1,5 +1,11 @@
 # 변경 이력
 
+## 0.5.0 — 2026-09-22
+- 섹션 5b 「판독 올리기」: 새 판 `shared/standards/0_최신결정_먼저.md` (2판 3·4차 결정을 판독 앞으로 · 원래 기준서는 원문 그대로) ·
+  검사 도구 `최신결정_검사.py` (판독 폴더에 들어간다) · 뒤처리가 N/A 행을 다시 빼지 않는다 · 인계 도구가 판독자 지적을 자르지 않는다.
+- 섹션 6: 낱개 스킬 묶기(`tools/build_skills.py` → `dist/claude/*.zip` · `dist/codex/.agents/skills/`) · 원본 대조(`tools/check_shared.py`) ·
+  마켓플레이스(`.claude-plugin/marketplace.json`) · 옛 박힌말 · 5차기준 검사를 시험으로.
+
 ## 0.4.0 — 2026-09-21
 - 세 번째 스킬 `coordinating-voc-pipeline` (총괄): 옛 voc_secondary/<판> 모양으로 총괄 자리를 차리고
   (감독 꾸러미 zip 은 감독 스킬과 한 벌), 원문 98 전체흐름의 총괄 절을 따른다. 총괄 도구 41개.
