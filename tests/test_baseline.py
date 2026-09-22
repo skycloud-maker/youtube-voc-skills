@@ -154,14 +154,14 @@ def test_총괄스킬로_차린_자리가_3차_기준과_같다(이름):
     """★ 새 도구 시험 (섹션 5) — 총괄 스킬의 총괄자리_차리기 로 차린 자리에 같은 입력을 얹어 돌리면
     얼린 3차 기준(옛 2판 사본 전체에서 돌린 것)과 결과가 같아야 한다 → 차린 자리에 모자람이 없다.
 
-    ★ 엔진은 얼린 기준 때와 같은 것(기준 자리 engine/)을 준다. 플러그인 엔진(판독 꾸러미 판)으로 돌리면
-      엑셀 번들 시트 몇 개가 다르다 — 엔진 판 차이다 (2026-09-21 같은 엔진으로 돌려 확인). 섹션 7 에서 정한다.
+    ★ 엔진 — 섹션 7 ① (2026-09-22) 부터 플러그인 엔진이 얼린 기준을 만든 동결본(live_merge a94e731) 그 자체다.
+      그래서 따로 넣지 않고 **차린 자리의 엔진(= 플러그인 엔진)** 으로 돌린다. 전에는 판독 꾸러미 엔진이라 엑셀 번들 시트가 달랐다.
     """
     그릇 = BASELINE / "시험실행" / ("총괄_%s" % 이름)
     if 그릇.exists():
         shutil.rmtree(그릇)
     그릇.mkdir(parents=True)
-    코드 = 총괄후보.차려서_돌리기(이름, 그릇, 엔진=BASELINE / "engine")
+    코드 = 총괄후보.차려서_돌리기(이름, 그릇)
     assert 코드 == 0, (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
     얼린 = BASELINE / "실행" / ("%s_1" % 이름) / "2판"
     판 = 그릇 / "총괄" / "2판"
@@ -169,11 +169,11 @@ def test_총괄스킬로_차린_자리가_3차_기준과_같다(이름):
         다름 = 맞대기(얼린 / 자리, 판 / 자리, 얼린, 판)
         assert not 다름, "%s 가 얼린 기준과 다르다:\n%s" % (자리, "\n".join(다름[:20]))
     if 이름 == "3차준비":
-        # 총괄이 차린 감독 폴더 = 감독 스킬 모양 66개(새 판 0_최신결정_먼저.md 포함) + 감독 입력 + 시작 안내 · 편향검사·정답지 없음
+        # 총괄이 차린 감독 폴더 = 감독 스킬 모양 68개(새 판 · 섹션 7 ① 엔진 포함) + 감독 입력 + 시작 안내 · 편향검사·정답지 없음
         입력수 = len(list((판 / "s13_judge").glob("judge_*")))
         for 감독 in ("3차 감독1", "3차 감독2"):
             d = 판 / "_감독폴더" / 감독
-            assert len([p for p in d.rglob("*") if p.is_file()]) == 66 + 입력수 + 1, 감독
+            assert len([p for p in d.rglob("*") if p.is_file()]) == 68 + 입력수 + 1, 감독
             assert not (d / "스크립트" / "편향검사.py").exists()
             assert not list(d.rglob("ab_mapping*"))
             assert (d / "0_여기서_시작하십시오.md").is_file()
@@ -188,7 +188,7 @@ def test_가3_뒤처리가_N_A행을_다시_빼지_않는다():
     if 그릇.exists():
         shutil.rmtree(그릇)
     그릇.mkdir(parents=True)
-    assert 총괄후보.차려서_돌리기("3차마무리", 그릇, 엔진=BASELINE / "engine", 옛판=False) == 0,         (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
+    assert 총괄후보.차려서_돌리기("3차마무리", 그릇, 옛판=False) == 0,         (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
 
     def 읽기(p):
         return {r["atomic_id"]: r for r in csv.DictReader(io.StringIO(p.read_bytes().decode("utf-8-sig")))}

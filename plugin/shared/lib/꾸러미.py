@@ -85,12 +85,65 @@ def _공통목록(공통: Path) -> list:
             (공통 / "common" / "VoC_데이터_안내.xlsx", "공통/VoC_데이터_안내.xlsx")]
 
 
+# ★ 판독 · 감독 폴더의 engine/ — 폴더의 도구가 **실제로 불러 쓰는 엔진 파일만** 싣는다 (섹션 7 ① · 2026-09-22).
+#   plugin/engine 은 1차 엔진 전체(옛 live_merge 동결본 · 140개)다. 폴더에는 최종 xlsx 번들을 만드는 데 드는 것만 간다.
+#   ★ 목록을 손으로 적지 않는다 — 처음에 옛 꾸러미의 28개 자리를 그대로 적었더니, 동결본 대시보드 파일이 부르는
+#     src.v5.pipeline 이 빠져 2차 번들 xlsx 가 안 만들어졌다. 그래서 도구가 부르는 입구에서 import 를 코드로 따라가 뽑는다.
+엔진입구 = ["src.dashboard60.export_bundle", "src.voc_rebuild", "src.voc_rebuild.schema", "src.voc_secondary",
+          "src.voc_secondary.contracts", "src.voc_secondary.na_rules"]      # shared/tools 가 부르는 것 (grep 으로 확인)
+엔진안내문 = "0_이 폴더는 무엇입니까.md"
+
+
+def _모듈자리(엔진: Path, m: str) -> Path | None:
+    p = 엔진.joinpath(*m.split("."))
+    for c in (p.with_suffix(".py"), p / "__init__.py"):
+        if c.is_file():
+            return c
+    return None
+
+
+def _부르는것(엔진: Path, 파일: Path) -> set:
+    import ast
+    rel = 파일.relative_to(엔진).with_suffix("")
+    패키지 = list(rel.parts[:-1]) if 파일.name != "__init__.py" else list(rel.parts[:-1])
+    out = set()
+    for n in ast.walk(ast.parse(파일.read_text(encoding="utf-8-sig"))):
+        if isinstance(n, ast.Import):
+            out |= {a.name for a in n.names if a.name.startswith("src")}
+        elif isinstance(n, ast.ImportFrom):
+            m = ".".join(패키지[:len(패키지) - n.level + 1] + ([n.module] if n.module else [])) if n.level else (n.module or "")
+            if m.startswith("src"):
+                out.add(m)
+                out |= {m + "." + a.name for a in n.names}
+    return out
+
+
+def 꾸러미엔진(엔진: Path) -> list:
+    """입구에서 import 를 따라가 닿는 .py + 그 패키지 폴더의 설정(yaml · json) + 안내문 — 엔진 안 상대 자리."""
+    본것, 할것 = set(), list(엔진입구)
+    while 할것:
+        m = 할것.pop()
+        p = _모듈자리(엔진, m)
+        if p is None or p in 본것:
+            continue
+        본것.add(p)
+        조각 = m.split(".")
+        할것 += [".".join(조각[:i]) for i in range(1, len(조각))]          # 부모 패키지의 __init__
+        할것 += sorted(_부르는것(엔진, p))
+    자리 = {p.relative_to(엔진).as_posix() for p in 본것}
+    for 폴더 in {p.parent for p in 본것}:
+        for q in 폴더.rglob("*"):
+            if q.is_file() and q.suffix.lower() in (".yaml", ".yml", ".json") and "__pycache__" not in q.parts:
+                자리.add(q.relative_to(엔진).as_posix())
+    if (엔진 / 엔진안내문).is_file():
+        자리.add(엔진안내문)
+    return sorted(자리)
+
+
 def _엔진목록(엔진: Path) -> list:
     if not 엔진.is_dir():
         return [(엔진 / "src", "engine/src")]       # 못 찾은 재료로 드러나게
-    return [(p, "engine/" + p.relative_to(엔진).as_posix())
-            for p in sorted(엔진.rglob("*"))
-            if p.is_file() and "__pycache__" not in p.parts and p.suffix not in (".pyc", ".pyo")]
+    return [(엔진 / n, "engine/" + n) for n in 꾸러미엔진(엔진)]
 
 
 def 전체_차림표(이름: str, 공통: Path, 엔진: Path, 참고: Path, 틀: Path) -> list:

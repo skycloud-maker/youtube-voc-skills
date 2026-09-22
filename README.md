@@ -18,7 +18,7 @@
 | 옛 저장소에서 옮겨 온 원문 (문서·코드·화면 문구 그대로 · 옛 자리가 적혀 있음) | `docs/sources/` |
 | 기준서·어휘·검사 규칙 (원본 한 벌) | `plugin/shared/` |
 | 역할별 스킬 | `plugin/skills/<스킬 이름>/` |
-| 1차 분석 엔진 — 지금은 판독 꾸러미가 지고 다니던 엔진 사본 (고치지 않음 · 아래 「지키는 것」) | `plugin/engine/` |
+| 1차 분석 엔진 + 대시보드 — 옛 live_merge 동결본 (고치지 않음 · 아래 「지키는 것」) | `plugin/engine/` |
 | 대시보드 — 새로 만든다 (아직 없음 · 섹션 7a) | `plugin/dashboard/` |
 | 스킬을 낱개로 묶기 — `python tools/build_skills.py` 가 묶고 `python tools/check_shared.py` 가 원본과 한 파일씩 대조한다 (섹션 6) | `tools/` → 결과는 `dist/` (생성물 · git 에 넣지 않음) |
 | 옛 도구와 결과가 같은지 시험 | `tests/` — 기준 정답은 댓글 원문이 있어 **저장소 밖**에 둔다. 자리는 `plugin/shared/paths.py` 의 `BASELINE` ([결정 0002](docs/decisions/0002-기준정답은-도구사본을-돌려-만든다.md)) |
@@ -43,6 +43,8 @@
   새 문서는 원문을 가리킨다. 줄여야 하면 줄이기 전에 sky 에게 묻는다.
 - 갈라진 판은 **최신판이 정본**. 옛판은 이력으로만 둔다.
 - API 키 등 비밀값은 저장소에 넣지 않는다. 받는 사람 환경에서 읽는다.
-- `plugin/engine/` 은 지금 **판독 꾸러미가 지고 다니던 엔진 사본**이다 (출처: 옛 저장소 90078f1 의 `outputs/voc_secondary/engine`).
-  고치지 않는다. 섹션 7 에서 동결본(원본 커밋 `d78dc8c`)과 맞댄 뒤 정리한다.
+- `plugin/engine/` 은 **1차 분석 엔진 정본**이다 — 옛 live_merge 동결본(커밋 a94e731 · 엔진 코드는 동결 `d78dc8c` 와 같다 · 대시보드 09-07)에서
+  섹션 7 ① (2026-09-22 · sky 결정)에 한 번 들여왔다. 파일마다 출처는 `plugin/engine/출처_엔진.json`. 고치지 않는다.
+  판독 · 감독 폴더에는 이 가운데 옛 꾸러미가 싣던 28개 자리만 간다(`shared/lib/꾸러미.py` 의 `꾸러미엔진`).
+  API 키는 저장소에 넣지 않는다 — sky 결정: **Windows 사용자 환경변수** `YOUTUBE_API_KEY` · `OPENAI_API_KEY`.
 - `dist/` 는 생성물이다. 손으로 고치지 않는다.

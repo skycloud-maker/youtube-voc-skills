@@ -1,0 +1,868 @@
+{
+ "설명": "plugin/engine/ 의 출처 — 1차 분석 엔진 한 벌 (섹션 7 ①). tools/엔진_가져오기.py 가 만들었다.",
+ "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 live_merge 작업 폴더 (갈래 codex/voc-engine-rebuild @ a94e731 — 엔진 코드는 동결 d78dc8c 와 같다 · 대시보드 09-07)",
+ "들여온_날": "2026-09-22",
+ "sky 결정": "2026-09-22 「옛 live_merge 동결본」 을 엔진 정본으로",
+ "뺀_것": {
+  "src/dashboard_app.py": "옛 대시보드 (1만 5천 줄 · 옛 사용자 폴더 경로가 박혀 있다)",
+  "src/dashboard_v2.py": "옛 대시보드 판",
+  "src/dashboard_v3.py": "옛 대시보드 판",
+  "src/dashboard_v5_page.py": "옛 대시보드 판",
+  "src/dashboard_strategy_page.py": "옛 대시보드 판",
+  "src/dashboard_text_mining.py": "옛 대시보드 판",
+  "src/dashboard_text_mining_page.py": "옛 대시보드 판",
+  "src/dashboard_rules.py": "옛 대시보드 판",
+  "src/dashboard_ui_contracts.py": "옛 대시보드 판",
+  "src/text_mining/": "쓰지 않는 텍스트마이닝 (옛 대시보드만 불렀다)"
+ },
+ "고칠_때": "고치면 tests/test_engine.py 가 실패한다 — 이유를 `고친_이력` 에 적고 `지금_sha256` 을 갱신한다.",
+ "파일": {
+  ".env.example": {
+   "원본": "a94e731:.env.example",
+   "원본_sha256": "cdc2a1c992382c85580f9e46ab58643ca83d14dbebae8aca54c4c402e70afa2d",
+   "지금_sha256": "49554f14d8bceeebb003ceb7a11ace4259c649e219ebce6d9328c335c1696d69",
+   "고친_이력": []
+  },
+  "config/dashboard_rules.yaml": {
+   "원본": "a94e731:config/dashboard_rules.yaml",
+   "원본_sha256": "9fdffd5cb506bb94a5d634a16e3af9fde641ea4c9370998f9d0e4e78a86bbf64",
+   "지금_sha256": "fe2b10d30a8cb8d19fdf642122014e51678b2a62cc297a66e9431171f1367e96",
+   "고친_이력": []
+  },
+  "config/settings.example.yaml": {
+   "원본": "a94e731:config/settings.example.yaml",
+   "원본_sha256": "375697484850cf3092448b197588b4ad4d4e7d14ee7c94b6bab707cc11ccb8b9",
+   "지금_sha256": "a44666f7adc2c74e60ab78a6743c8909ee152a173cd42ec88f9ca45a655f2a25",
+   "고친_이력": []
+  },
+  "fonts/1.txt": {
+   "원본": "a94e731:fonts/1.txt",
+   "원본_sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+   "지금_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+   "고친_이력": []
+  },
+  "fonts/NanumGothic.ttf": {
+   "원본": "a94e731:fonts/NanumGothic.ttf",
+   "원본_sha256": "48a28e97b34fc8e5b157657633670cd1b7de126cfc414da65ce9c3d5bc8be733",
+   "지금_sha256": "48a28e97b34fc8e5b157657633670cd1b7de126cfc414da65ce9c3d5bc8be733",
+   "고친_이력": []
+  },
+  "pyproject.toml": {
+   "원본": "a94e731:pyproject.toml",
+   "원본_sha256": "c0732e19067f033d03ed902d592357de5480afe1102521b1587a6f4345a82623",
+   "지금_sha256": "8018926e06f585a1b7b8079fd33b1e439c7c3f15169e6d3b45fdfa9f8c04deb1",
+   "고친_이력": []
+  },
+  "requirements.txt": {
+   "원본": "a94e731:requirements.txt",
+   "원본_sha256": "6faf81f47039fe34abb928fb7b43fb8e3dd31f45653f168431b3cb86365a9d0d",
+   "지금_sha256": "05f5107814bb767da75ea0c90d58ab952f9bf75ac1e1d49c22306979305d27b1",
+   "고친_이력": []
+  },
+  "src/__init__.py": {
+   "원본": "a94e731:src/__init__.py",
+   "원본_sha256": "f281ac4d72a80fa9135b0db7580c9050b222fba96cd013b0100fa78765cea09b",
+   "지금_sha256": "ae4b843ef00b54e05997d494cc3f07fca42a81bd695e7d66444088307fae40f5",
+   "고친_이력": []
+  },
+  "src/analytics/__init__.py": {
+   "원본": "a94e731:src/analytics/__init__.py",
+   "원본_sha256": "d6617549b204dc663183899cf81c5bba79715c96872cd63e0a5164723c390643",
+   "지금_sha256": "63f9a0e15052ddec6aa44cf34b887074e5af9f3ca54e869a418f82ba6d068054",
+   "고친_이력": []
+  },
+  "src/analytics/brands.py": {
+   "원본": "a94e731:src/analytics/brands.py",
+   "원본_sha256": "7e137acd07c671cad3cf2f53942a3d05c49393fa508ee7fd63d342a667dab132",
+   "지금_sha256": "c611b993cb20627fa5cafb32ea3e81b31a88951f97a6ee790cfbc8e20f34f8fb",
+   "고친_이력": []
+  },
+  "src/analytics/clustering.py": {
+   "원본": "a94e731:src/analytics/clustering.py",
+   "원본_sha256": "482467100bb4bd55a38f570818a7f4c04e5dd000f54a432d899a886eea649a1c",
+   "지금_sha256": "c80807ea714a2a8c2e6a02adc7ee9f996c90eb9aa25f846e12cda43ba158a763",
+   "고친_이력": []
+  },
+  "src/analytics/comment_analysis.py": {
+   "원본": "a94e731:src/analytics/comment_analysis.py",
+   "원본_sha256": "9d88d749804d2aa312f8a3e19c74ba0ca2406f77f4d358041e0a0393c6cb8459",
+   "지금_sha256": "b5f3ec0fdd7aeca7135f61bdcfc5e4c6e8e5f188ca4dca5e19f827dc1a985b6e",
+   "고친_이력": []
+  },
+  "src/analytics/comment_truth.py": {
+   "원본": "a94e731:src/analytics/comment_truth.py",
+   "원본_sha256": "7d5ce7a7d88ca3805281d6cf8288e6ab3ed162fa55d34a00928ed0e95dd9afcf",
+   "지금_sha256": "b90445ec823fdb619b944156d9af42d9370d027b1d92e7a9b8b7a1e79399d424",
+   "고친_이력": []
+  },
+  "src/analytics/descriptive.py": {
+   "원본": "a94e731:src/analytics/descriptive.py",
+   "원본_sha256": "209785e2a8c8a1c33207e9d93cd066656244f1b53d892c1a1b27db10ca60adbe",
+   "지금_sha256": "e8a7b91b65d74ac9bc5bfbe0c7e6a8e0e44a9799aa234019330b07c4c98569c6",
+   "고친_이력": []
+  },
+  "src/analytics/insight_engine.py": {
+   "원본": "a94e731:src/analytics/insight_engine.py",
+   "원본_sha256": "dc3e7aae60506a781fc29b6977513516e9d7a38b8d4a24f34f216075b1152600",
+   "지금_sha256": "98edd2db3462f17e7e606dd46a5c55526b1a6bf6f164df294d689d1b7e461b9d",
+   "고친_이력": []
+  },
+  "src/analytics/keywords.py": {
+   "원본": "a94e731:src/analytics/keywords.py",
+   "원본_sha256": "b43ecf59e8df88d5e46c9cddb9c71571a1eb6a35c8ef496aca4f3f85d7c58dc0",
+   "지금_sha256": "20a76783526d00095397020fbf648d11047032c7c9aca322c5b67c3bf990fc94",
+   "고친_이력": []
+  },
+  "src/analytics/opinion_units.py": {
+   "원본": "a94e731:src/analytics/opinion_units.py",
+   "원본_sha256": "abb984eb4ee9b8677d3f2b30b80c028e18ead8c727249b214b6add4516a9823e",
+   "지금_sha256": "532098f9ab32f0a76727455a37b272d1245664591523cbfa3308df69881200b8",
+   "고친_이력": []
+  },
+  "src/analytics/sentiment.py": {
+   "원본": "a94e731:src/analytics/sentiment.py",
+   "원본_sha256": "d2946b4b317e9f798de830871e16ec67b27db979879fa8408b1341df24933ac0",
+   "지금_sha256": "03bba369702f57c7c740b3a50ab4cfe24e9f7588625ca70002d6f94c1957fa36",
+   "고친_이력": []
+  },
+  "src/analytics/strategy_aggregator.py": {
+   "원본": "a94e731:src/analytics/strategy_aggregator.py",
+   "원본_sha256": "c8108e00970080da649a9c5fae6466672cc3e901b0d32d884ee8121f65282bb1",
+   "지금_sha256": "d75ecb5e400261b59f9678b051e9c2869ecda48a39a5a75452515e2abf39f5ff",
+   "고친_이력": []
+  },
+  "src/analytics/text_cleaning.py": {
+   "원본": "a94e731:src/analytics/text_cleaning.py",
+   "원본_sha256": "bb0a27affcad65bcc2dc612e136b38b8bd1d4a68394af8e92aa4e37cec1a6a0b",
+   "지금_sha256": "88335adc369f2b7157824f81ab0e8aafe12669d620e3db39f2209407fd00ad04",
+   "고친_이력": []
+  },
+  "src/analytics/topics.py": {
+   "원본": "a94e731:src/analytics/topics.py",
+   "원본_sha256": "275df9d432ef0d1d011e8e42925ba538346a973d19977f1994e69267edfafdc5",
+   "지금_sha256": "4ae8f69c883cad8743d1a19d367783158f2b929935b1c01a5368f0c932c71bc0",
+   "고친_이력": []
+  },
+  "src/analytics/trends.py": {
+   "원본": "a94e731:src/analytics/trends.py",
+   "원본_sha256": "9e264b60801ba8500395c4d6c6829383eb7a7a5d7bce1c4a927ad95400c43014",
+   "지금_sha256": "78e2f8f9beaa2a2dfb2cce53ceef026d7b72c526fa2f5898d409720cca27aefc",
+   "고친_이력": []
+  },
+  "src/api/__init__.py": {
+   "원본": "a94e731:src/api/__init__.py",
+   "원본_sha256": "1d0e67ed35343cc390cb357b9c57bdc0939d5f32dd39fdf1e1f5424d5e12663b",
+   "지금_sha256": "2489e25293dd5d741b32e944d23a896b731c203b82b879da2525888412534bd7",
+   "고친_이력": []
+  },
+  "src/api/quota.py": {
+   "원본": "a94e731:src/api/quota.py",
+   "원본_sha256": "1d207e19ff893726bdfd89e958ac28a34a924807b431d7991e46a07a6b3c8008",
+   "지금_sha256": "4522199caa8b6bf8fb6d3e31da3a7e863c6661e75532d290310bf1b2a55c07bb",
+   "고친_이력": []
+  },
+  "src/api/youtube_client.py": {
+   "원본": "a94e731:src/api/youtube_client.py",
+   "원본_sha256": "7f74b93f8c9322ae496b1319a4e5aa56a89a1b721589da3fa4a0c886a1133777",
+   "지금_sha256": "8d377d708ecd495c4fb450f569b4c18b02d3a8f36bd9fc0b993e376b9b5bcc64",
+   "고친_이력": []
+  },
+  "src/application/__init__.py": {
+   "원본": "a94e731:src/application/__init__.py",
+   "원본_sha256": "62b80c633de07d769ee7aeba60f9c05015702a31d23a33061bd6cfe5c0c68404",
+   "지금_sha256": "9d5e7fa4c2ad842c0d8179ff6128f261bec7a4163eb5f052aec9894014262aca",
+   "고친_이력": []
+  },
+  "src/application/shadow/__init__.py": {
+   "원본": "a94e731:src/application/shadow/__init__.py",
+   "원본_sha256": "d444075a255a9dea500f7cf9aa7c8f9c9c3f9654de502939b86caf75ece2a9b8",
+   "지금_sha256": "dd93e702fcf34934f455e44453fbd691f84632c77ecf9afc77ceb3367b4c158c",
+   "고친_이력": []
+  },
+  "src/application/shadow/analysis_sidecar.py": {
+   "원본": "a94e731:src/application/shadow/analysis_sidecar.py",
+   "원본_sha256": "aef3d9557189e5e3ba70b0125f356a460991dee1e26977e4788502bbdab54944",
+   "지금_sha256": "5f3d5830131609f99de8d6f23640edef8294491ea4f8f85eb88467549a37fef9",
+   "고친_이력": []
+  },
+  "src/application/shadow/atomic_voc_projection.py": {
+   "원본": "a94e731:src/application/shadow/atomic_voc_projection.py",
+   "원본_sha256": "a1971d5bdd4e4b99e5a997403a76a8c3c8ae5408c4e97a3bffed3fa3f4f31d7a",
+   "지금_sha256": "e1b06a243621bf991855b842a91d6d14f5fc1723861f6d9d6e8d9003f5ad5b8c",
+   "고친_이력": []
+  },
+  "src/application/shadow/collection_run_sidecar.py": {
+   "원본": "a94e731:src/application/shadow/collection_run_sidecar.py",
+   "원본_sha256": "c25e5becd3b82a1642c42b4bce763e27511c8e12d8bf99dce3d6259ba9c86697",
+   "지금_sha256": "32cb02c303596d7fec7a3e81f6fafe2e53761702a2852e0ec511da55a9140032",
+   "고친_이력": []
+  },
+  "src/application/shadow/contracts.py": {
+   "원본": "a94e731:src/application/shadow/contracts.py",
+   "원본_sha256": "e0be68863daa9e9ea2055dfe88e705dbd4a2ac8a4a6ca73f479097f08a4af971",
+   "지금_sha256": "4e626c8248270ad14e400e7d9ec5d9eeffb5867cabc5faced90486c096d36a22",
+   "고친_이력": []
+  },
+  "src/application/shadow/front_stage_dashboard_parity.py": {
+   "원본": "a94e731:src/application/shadow/front_stage_dashboard_parity.py",
+   "원본_sha256": "b9482a0fd960abdd8ef48f8d4626d3dffb1c4e1263231e239f1d297591e6de1c",
+   "지금_sha256": "8489e8736ddccc0f847b8cfbdd96a015265a06f8a8567834398bc3a0167f6dcb",
+   "고친_이력": []
+  },
+  "src/application/shadow/golden120_prompt_builder.py": {
+   "원본": "a94e731:src/application/shadow/golden120_prompt_builder.py",
+   "원본_sha256": "838d4bed0f0917c67495a7b85e58b6450a2da49595ca6356c836575a518327e8",
+   "지금_sha256": "3e2a81746e514345e06d55a7d8ed01b3f1fba99501504d79ee10e964236bc988",
+   "고친_이력": []
+  },
+  "src/application/shadow/golden120_semantic_interpreter.py": {
+   "원본": "a94e731:src/application/shadow/golden120_semantic_interpreter.py",
+   "원본_sha256": "e8e8eee816f1018ba98f22e9185a079509b11ccb0c2d41c8b1a12e35c960136c",
+   "지금_sha256": "eb95993521e36b21a895f111314102c6587566ab0b6d58448a720aa08d77e7ef",
+   "고친_이력": []
+  },
+  "src/application/shadow/golden120_semantic_llm.py": {
+   "원본": "a94e731:src/application/shadow/golden120_semantic_llm.py",
+   "원본_sha256": "76b2ed65d44c14e4d44fb267a1dacf7fa638e38e93a07583130744e4d6b0dfbe",
+   "지금_sha256": "822ec0ec1466d9e9f56a8b4824931fbfd7cc0a398f0b3d7ed3494a6c095d3a9e",
+   "고친_이력": []
+  },
+  "src/application/shadow/graph_validator.py": {
+   "원본": "a94e731:src/application/shadow/graph_validator.py",
+   "원본_sha256": "0f6017c6e54cf28b9691d3996d778c43c7964002a4a6ceed50e3209d623050d4",
+   "지금_sha256": "1617151af432de027e77ca7211050422d2af8af6818dcccc69bc06c6ed336826",
+   "고친_이력": []
+  },
+  "src/application/shadow/legacy_collection_mapper.py": {
+   "원본": "a94e731:src/application/shadow/legacy_collection_mapper.py",
+   "원본_sha256": "1ff3cfe5a67453a9f16c90694c3d6520e308da921c266c47b7246d43f3e769db",
+   "지금_sha256": "38a6f10577f1e761e4f55d5a1826f298e76abc5dbba37f196d9decc8ddeaa876",
+   "고친_이력": []
+  },
+  "src/application/shadow/raw_sidecar.py": {
+   "원본": "a94e731:src/application/shadow/raw_sidecar.py",
+   "원본_sha256": "47f038c53a7be76655b87b3fe923573737322cf8b0a91b5f8acbea91ce4b0c4a",
+   "지금_sha256": "3922f3f1d60cc0a5f02850a873d245628fcc585c35aa09e70a44f6f9f41cdb92",
+   "고친_이력": []
+  },
+  "src/application/shadow/semantic_card_contract.py": {
+   "원본": "a94e731:src/application/shadow/semantic_card_contract.py",
+   "원본_sha256": "ec66539c86d933c61032079b72cc5fada0b5f698dd4305a8655af4578a211add",
+   "지금_sha256": "5723ec7a31364f052796e24d83d491aa80abe6ddf841b5c97fe3ec42bd601971",
+   "고친_이력": []
+  },
+  "src/application/shadow/semantic_sidecar.py": {
+   "원본": "a94e731:src/application/shadow/semantic_sidecar.py",
+   "원본_sha256": "1a03afc4a0bffd82565c5142a76647ee2109cad4aca442d35beedfd613fab2fb",
+   "지금_sha256": "abccb77672fad7be595745a5bd8633b890fec924b57a7d549757b021f3d0a753",
+   "고친_이력": []
+  },
+  "src/batch_runner.py": {
+   "원본": "a94e731:src/batch_runner.py",
+   "원본_sha256": "9b91fff6cf1d5dd4a2bf5850207bd20f43f39cc017d9ac934a8f3d60c1d73ea4",
+   "지금_sha256": "256b9ee6095e77f85e581307c4bda59bcadf5d500448c3a34e8925b50a7de8de",
+   "고친_이력": []
+  },
+  "src/cli.py": {
+   "원본": "a94e731:src/cli.py",
+   "원본_sha256": "f84bb4e511dcc058361143e00d15ee7984cdc7d228a7172dbc93892731c94ab0",
+   "지금_sha256": "6f03a181c83cfbac3ce230aa41ddbdfd8417675520c284db1ca4fe45a9ffb445",
+   "고친_이력": []
+  },
+  "src/collectors/__init__.py": {
+   "원본": "a94e731:src/collectors/__init__.py",
+   "원본_sha256": "68741a6434e61bb677c25b9c267055b9dd4df0ffa5dffac8db25d93b1b0d9bb1",
+   "지금_sha256": "93f3ff274beb9215272174caf50c1922dcf172579b05b0dc34ecb79a25360272",
+   "고친_이력": []
+  },
+  "src/collectors/comments_collector.py": {
+   "원본": "a94e731:src/collectors/comments_collector.py",
+   "원본_sha256": "303ef2543451520e8aae2b0bebed66fa28faa995075495bb242779f8d128aa82",
+   "지금_sha256": "b399b2bda27842cd6bd5df2a7af533b44bf7149404a8a16b41556f575c8318ce",
+   "고친_이력": []
+  },
+  "src/collectors/video_search.py": {
+   "원본": "a94e731:src/collectors/video_search.py",
+   "원본_sha256": "2f1113937f87f159115f5a7523fc2792748fd137fa48a6caded694ea71a8e50f",
+   "지금_sha256": "7879b69553f9532d5c2fe34d3cfd581759a68e19c5f761a4996844455b0f8447",
+   "고친_이력": []
+  },
+  "src/config.py": {
+   "원본": "a94e731:src/config.py",
+   "원본_sha256": "a36aa78f2043d0e90ddbd6cc36c8bda5501e120d73f1f48a1ab6b7f78955e5aa",
+   "지금_sha256": "2a606a91bfacdf8b0f0b882e2219fb9d46ab023430ee64a4d25dbdf4c72572bb",
+   "고친_이력": []
+  },
+  "src/dashboard60/__init__.py": {
+   "원본": "a94e731:src/dashboard60/__init__.py",
+   "원본_sha256": "8d14707aea46998051eb9bb6b5f0634bad32f86f438bd7654e06cd91cd179db4",
+   "지금_sha256": "acc56e048a4d99659757731a17afbb4912af7cb3c420819c30e2cea140b399ce",
+   "고친_이력": []
+  },
+  "src/dashboard60/analysis_runner.py": {
+   "원본": "a94e731:src/dashboard60/analysis_runner.py",
+   "원본_sha256": "79d9cce7306ba005c63636b07ee597d5116509502623a5aec64ec4d18cce4775",
+   "지금_sha256": "a1cc7508336d79f71aab635b921ef269d978b41df88098aaf4ec536359167275",
+   "고친_이력": []
+  },
+  "src/dashboard60/app_operating.py": {
+   "원본": "a94e731:src/dashboard60/app_operating.py",
+   "원본_sha256": "b85f6eae781b1df4b66bc64e1c2982429b93283d7b9ab38b7cef81e3f018f1f2",
+   "지금_sha256": "9206da3295334b4bdb25cc91cb9dafa6e918174e61ab01872132596b810dfb48",
+   "고친_이력": [
+    "2026-09-22 옛 저장소 경로 대비책 한 줄을 지웠다 (결정 0001). 편향검사.csv 를 찾는 다른 후보는 그대로다."
+   ]
+  },
+  "src/dashboard60/charts.py": {
+   "원본": "a94e731:src/dashboard60/charts.py",
+   "원본_sha256": "2e0890a095daa4f11374f3318e41c19260d15673d346781ed3341552fde4c2b0",
+   "지금_sha256": "daa6e99bbe3f7649d0d5eb8524ef85495d07a90e006fd3f88381a28c925f9343",
+   "고친_이력": []
+  },
+  "src/dashboard60/chatbot.py": {
+   "원본": "a94e731:src/dashboard60/chatbot.py",
+   "원본_sha256": "00ba3dc86a5a44ba2a619a554060812d7f8e9fc3cc0b8a802e84bfadb11649b9",
+   "지금_sha256": "b61be1ba1f867240707b264b0e4b058bb023bc5b5b2dc0ed8a21ab31a5193bac",
+   "고친_이력": []
+  },
+  "src/dashboard60/data_contract.py": {
+   "원본": "a94e731:src/dashboard60/data_contract.py",
+   "원본_sha256": "1d7fce9b371630d1baa108fd1ac112b6c322df894e122a8d66bc925fd42d5172",
+   "지금_sha256": "6ff0dd33d315786b18d13d7292f28f5aa6301ebb45c4c1d2833ab3555479d285",
+   "고친_이력": []
+  },
+  "src/dashboard60/dataset_state.py": {
+   "원본": "a94e731:src/dashboard60/dataset_state.py",
+   "원본_sha256": "7afc4e2ce9500f4d966996bcb6161ee8fbe953f92e5ec5c422b7832e5dd28805",
+   "지금_sha256": "68f569db64cb10955f22b645d579e8ce0d1197c7e30449a98ea7b3d18b60f952",
+   "고친_이력": []
+  },
+  "src/dashboard60/export_bundle.py": {
+   "원본": "a94e731:src/dashboard60/export_bundle.py",
+   "원본_sha256": "77a5884bd5b2f8097eb74a770f6a54b14da3143b79d83d06a50d16161a15dfa2",
+   "지금_sha256": "d98c29d9c2fd969df490d649ff7fd004518b985d7fd8abaa7f03c230441fb85d",
+   "고친_이력": []
+  },
+  "src/dashboard60/gating.py": {
+   "원본": "a94e731:src/dashboard60/gating.py",
+   "원본_sha256": "3d4f88cc33f0b6363c2198bbbcc3e6cafbda6b57b799aa0fe5c6accefaa7fd6d",
+   "지금_sha256": "d4b42313f46c95a408389279c50eafed56fe63ee8f81b820f61a8fc9cceb469b",
+   "고친_이력": []
+  },
+  "src/dashboard60/inquiry_labels.py": {
+   "원본": "a94e731:src/dashboard60/inquiry_labels.py",
+   "원본_sha256": "445a399e093100943860d10ad6b1d2d73ade05be72567eaa2af94a8dd032a9c0",
+   "지금_sha256": "f84507aef148a2d5f4aae80547454459b876a9aa0027e124cc0189edff0e4a64",
+   "고친_이력": []
+  },
+  "src/dashboard60/l2_narrative.py": {
+   "원본": "a94e731:src/dashboard60/l2_narrative.py",
+   "원본_sha256": "b2c889f54bcc4679c4925ca5e384152b920cdd7d80f97906a835c6e27bdb7a81",
+   "지금_sha256": "46e4fb4f392313901243865aeab017debebb663fb6e107b44c01584cd63d90d6",
+   "고친_이력": []
+  },
+  "src/dashboard60/privacy.py": {
+   "원본": "a94e731:src/dashboard60/privacy.py",
+   "원본_sha256": "4ccee61c0f7cf95020c2d8f4e71c886d8e152af164a6b92422489a82fdc471b6",
+   "지금_sha256": "59f2a6ef48d7771bcfdf1f220c58c26c051eb65b8c1bae85745bb97995615aba",
+   "고친_이력": []
+  },
+  "src/dashboard60/release_export.py": {
+   "원본": "a94e731:src/dashboard60/release_export.py",
+   "원본_sha256": "c371ea39324b56ddfe678c9f363cfb4c2574c4c1c65af62916d363af1973a1c5",
+   "지금_sha256": "52424c509a6a872f75ee61f43b78906d28af279c7aa30177e20590b8282d80ed",
+   "고친_이력": []
+  },
+  "src/dashboard60/run_history.py": {
+   "원본": "a94e731:src/dashboard60/run_history.py",
+   "원본_sha256": "31ed07ce691542e05d501714ccc0eed80a59e85e7e2af8340095e7d5dc512ec4",
+   "지금_sha256": "8c6b45ebde22202de404f8a270ee5be7e42257ec6108438d958a164c77750bcf",
+   "고친_이력": []
+  },
+  "src/dashboard60/scoring.py": {
+   "원본": "a94e731:src/dashboard60/scoring.py",
+   "원본_sha256": "5aa4b2f4109d13dc9e7313d64f9ecc23e4984c3e34f21cf195aa0346d09b426e",
+   "지금_sha256": "a1bf71f5cf0b3b20fb6e6831b5ee4cb9a9824a7dd71e075ea22a9ebe85b9be0a",
+   "고친_이력": []
+  },
+  "src/dashboard60/ui_cards.py": {
+   "원본": "a94e731:src/dashboard60/ui_cards.py",
+   "원본_sha256": "3a7c9380f7d078087368f5066f12f14ccaf4b60641df8f9e5d493441f61fb95e",
+   "지금_sha256": "3f0997e877e04e1ac9ed504df9d40ae59595c2c792d9b8dac5023542e17f775a",
+   "고친_이력": []
+  },
+  "src/dashboard60/views/__init__.py": {
+   "원본": "a94e731:src/dashboard60/views/__init__.py",
+   "원본_sha256": "5609e44e4ec961729c4b02184e944be6f0bfcf3ee6cc424f2aede5d816913971",
+   "지금_sha256": "0370911fd07e027ef402a17b92e5b4321b16572947e52bc7c77e308294a297a0",
+   "고친_이력": []
+  },
+  "src/dashboard60/views/improvement.py": {
+   "원본": "a94e731:src/dashboard60/views/improvement.py",
+   "원본_sha256": "b22c6629f674a2b4747e8cebb33176c975a3a280dbcb7fcdea0f63c1591d364b",
+   "지금_sha256": "078af28a74ce0ab98eff968fa48e860901490849261e59200bd339aa6e4c8355",
+   "고친_이력": []
+  },
+  "src/dashboard60/views/inquiry.py": {
+   "원본": "a94e731:src/dashboard60/views/inquiry.py",
+   "원본_sha256": "8c9c833b28ea72be75bc78010310caaf9ad72a5bb2da79c204343b40a2b889d9",
+   "지금_sha256": "1a392f3452f9760dc30f383a3e8f48f4afce6987bcd87d4cf5402ed5232b6ec1",
+   "고친_이력": []
+  },
+  "src/dashboard60/views/overview.py": {
+   "원본": "a94e731:src/dashboard60/views/overview.py",
+   "원본_sha256": "ed411ec2e61bb42a079554516a0742920b56a7a3eedb49810ffc5e2d6a3a5adb",
+   "지금_sha256": "bf2389a9b9e3f973bbc8fa711f5f02fe04a8eacb44c8041fff7a8e86575f2ded",
+   "고친_이력": []
+  },
+  "src/dashboard60/views/pl_issue.py": {
+   "원본": "a94e731:src/dashboard60/views/pl_issue.py",
+   "원본_sha256": "f7f38ab0482b69c40e22fabdedff0555be4434067e921a4b9c2f2b182d2bf95a",
+   "지금_sha256": "7f53d4f4e06a3a024604c935103b3c45c5a2165ef156866171623810fb552601",
+   "고친_이력": []
+  },
+  "src/dashboard60/views/video.py": {
+   "원본": "a94e731:src/dashboard60/views/video.py",
+   "원본_sha256": "eaadd3b96bcc09e6c4a9e56f45a7723f6f0261bd8f2f92f8bebf58feda35e6d1",
+   "지금_sha256": "7f7b049f97de8cf8eef55a357fa57fde95f3dc76e9fef23c1f445c6b81df7cfe",
+   "고친_이력": []
+  },
+  "src/domain/__init__.py": {
+   "원본": "a94e731:src/domain/__init__.py",
+   "원본_sha256": "d7e37e91422da540af6315903ba134cefb8f59c3825acd3a570a4fb12d24c764",
+   "지금_sha256": "33eee46d1954fddbd5d5659b432776d2f16ab9c932390d23f0ab17200681c5be",
+   "고친_이력": []
+  },
+  "src/domain/canonical_ids.py": {
+   "원본": "a94e731:src/domain/canonical_ids.py",
+   "원본_sha256": "7f185ab3a4617d75e1dc2a84dbc1f143df26cabb3a335ca211a13186e3ba52f9",
+   "지금_sha256": "edd8c23b7ffd8b4a24af7cc18f5136d1f264eefe1a7e86297d5eeb97f235c449",
+   "고친_이력": []
+  },
+  "src/domain/digests.py": {
+   "원본": "a94e731:src/domain/digests.py",
+   "원본_sha256": "b45dc58125bb83775487d4e89d713d00784cdebe647c05c85e9f7fb1c3c0d4f0",
+   "지금_sha256": "350304f7f16d5f70efd97215304b96197794fbf6545cbde0dad302d65913468b",
+   "고친_이력": []
+  },
+  "src/domain/runs.py": {
+   "원본": "a94e731:src/domain/runs.py",
+   "원본_sha256": "e5a48c412a390675569a4943b0f06b64bb464a61dc62a2e5f8bada8e1511c28b",
+   "지금_sha256": "6bc5109a00f1220dba17e8cfa743e98c11baa1a5dd2c44e143ec476867473406",
+   "고친_이력": []
+  },
+  "src/exporters/__init__.py": {
+   "원본": "a94e731:src/exporters/__init__.py",
+   "원본_sha256": "a15e3f8a7234a7515b52554d67ba367ab2b3cbc1f773a7f32f4011f5799ef16a",
+   "지금_sha256": "c90c37cb1172096d176bd234017cc35cd006056f0524f37d002f4184390d0ef3",
+   "고친_이력": []
+  },
+  "src/exporters/excel_writer.py": {
+   "원본": "a94e731:src/exporters/excel_writer.py",
+   "원본_sha256": "606e8a003efd8e0e1f939bf01f8733784dfd230bd0308203f5abd8c17aa1a885",
+   "지금_sha256": "54c8f0dd935565eeb862e357d033cb75a7a1cfc531cc70e47287a9dc105dc626",
+   "고친_이력": []
+  },
+  "src/exporters/report_writer.py": {
+   "원본": "a94e731:src/exporters/report_writer.py",
+   "원본_sha256": "ce327f5bad9949ab5094232f81a4a0561a95fa7e2ff7963fc0ba0420a51b1190",
+   "지금_sha256": "de3bc56a30ac5b769256dda49354827f3b6d7ba9e58816906e1ee031617a0a94",
+   "고친_이력": []
+  },
+  "src/governance/__init__.py": {
+   "원본": "a94e731:src/governance/__init__.py",
+   "원본_sha256": "92ce00aa6beda50c3a13fb623bc2c63d47ebc0adeed84113772b82ffb3792061",
+   "지금_sha256": "6f07b5cc5443132488e6c19b8b78d1c9c452bc818ff0d8a2db9e0711230cb330",
+   "고친_이력": []
+  },
+  "src/governance/db/__init__.py": {
+   "원본": "a94e731:src/governance/db/__init__.py",
+   "원본_sha256": "c90c14c8c95cd0d871a59912043dada9a65d5a64032aa5900e1820299f95fa5d",
+   "지금_sha256": "2c9d47f8214a794d158da59d1bc3711dc113837251de1a4ed79b922ca4d2fc10",
+   "고친_이력": []
+  },
+  "src/governance/db/contracts.py": {
+   "원본": "a94e731:src/governance/db/contracts.py",
+   "원본_sha256": "2a3a910f9a87c443b500cd1e3bf0638f937a0e5daff2aaa7228177f82cd49f3f",
+   "지금_sha256": "9de8c4a91fca1b24c91078d0240effc00f5e11b6616f97eeffcbe34f023ecdef",
+   "고친_이력": []
+  },
+  "src/governance/db/settings.py": {
+   "원본": "a94e731:src/governance/db/settings.py",
+   "원본_sha256": "a0714a551a0cec33da395f1857bb99fb0bdaa5ef0f24ba805099182a5c960b7d",
+   "지금_sha256": "d9e3589930cac2a379a017f29f6b51c682b9823aae2ec681094d8fe8cff7dee1",
+   "고친_이력": []
+  },
+  "src/governance/memory_repositories.py": {
+   "원본": "a94e731:src/governance/memory_repositories.py",
+   "원본_sha256": "6c4acfefecec4cdca4ae354d3b98f68655e74c24494d21ef8ddc83f2f5c03846",
+   "지금_sha256": "89ad193ad436a669f484059e0a71dcfb6a7cd22ee79b499beba07fc537c59c0e",
+   "고친_이력": []
+  },
+  "src/governance/metadata.py": {
+   "원본": "a94e731:src/governance/metadata.py",
+   "원본_sha256": "eb7e57881ce8187be7b34d18c52c717c56c453e8bbcfca1d2499db5e51c99746",
+   "지금_sha256": "37a2c9287b15b86a8beb1ac555f9a2793c77c437ae561b0e4e6fb2571a171d4b",
+   "고친_이력": []
+  },
+  "src/governance/persistence.py": {
+   "원본": "a94e731:src/governance/persistence.py",
+   "원본_sha256": "2acb1811e37d0f59234098ae6bcb8d071788b1a5574c123b723bb5835077ae78",
+   "지금_sha256": "2b0dcfa1ddf547cbb5481051a35666bb18a346869639cfb7833190a5dfde143f",
+   "고친_이력": []
+  },
+  "src/governance/repositories.py": {
+   "원본": "a94e731:src/governance/repositories.py",
+   "원본_sha256": "21a49a413e4409598591bf42d60f5c63fd89dd7a81a04df2d93f304a4ac3a96f",
+   "지금_sha256": "f9cd2c2ba2204c0c0ae47eec1872ed9ac81865cbad759c732e626fd8676bebda",
+   "고친_이력": []
+  },
+  "src/infrastructure/__init__.py": {
+   "원본": "a94e731:src/infrastructure/__init__.py",
+   "원본_sha256": "5c9c5e78ae9bbb714b7a789ad7565cf7b0951b8622d647348d98d7f82ba1273d",
+   "지금_sha256": "d0afcfec79e753af9dc1807c18ed3bc4b74d4c8f0bfbd9d6c3b709ab3eb3122f",
+   "고친_이력": []
+  },
+  "src/infrastructure/storage/__init__.py": {
+   "원본": "a94e731:src/infrastructure/storage/__init__.py",
+   "원본_sha256": "56f236baa5f691ba4be8bd428c933fae786ed2375ffc6d2269a6712a81e1c4e8",
+   "지금_sha256": "e1d70b07129feb41dd07fcdcc6ed74c4ef1a0940403a8a7a59e872db315df441",
+   "고친_이력": []
+  },
+  "src/infrastructure/storage/filesystem.py": {
+   "원본": "a94e731:src/infrastructure/storage/filesystem.py",
+   "원본_sha256": "5260f729f1469eee734949f81bf7a18818433c73bd5b5581d1b170046441a158",
+   "지금_sha256": "d7984221fe2958092ad8c5a0bf67d98544f563445a9b1362beb9206a0d75a9ab",
+   "고친_이력": []
+  },
+  "src/infrastructure/storage/manifests.py": {
+   "원본": "a94e731:src/infrastructure/storage/manifests.py",
+   "원본_sha256": "46d58cbde27f29842dfcbd67931ddc9d0a44db3d3679d49acb844b906021187c",
+   "지금_sha256": "9c5ee300a8a2853d670cbf1a44fb1eb61411021d9074dabd981f52f7c6c32b14",
+   "고친_이력": []
+  },
+  "src/infrastructure/storage/ports.py": {
+   "원본": "a94e731:src/infrastructure/storage/ports.py",
+   "원본_sha256": "8a09a22b2b2ca253f1b54043502f8aaf4fb5475edfebc9c7f222946cbd32db02",
+   "지금_sha256": "c76b571767ac54a5b4675ff26b66c1943f4798026b8e92cc54aa530a14bd1a09",
+   "고친_이력": []
+  },
+  "src/intelligence/__init__.py": {
+   "원본": "a94e731:src/intelligence/__init__.py",
+   "원본_sha256": "5b830a3abdd2a7a859d235360af0d78254fa0fa57c173f3606c8ea8850d4bcbc",
+   "지금_sha256": "bc918918782740ebd965a2eaad922688921e0ba8a0879acfee0dfdf896d8a27d",
+   "고친_이력": []
+  },
+  "src/intelligence/atomic_voc.py": {
+   "원본": "a94e731:src/intelligence/atomic_voc.py",
+   "원본_sha256": "7b3576c0cf02a734526411d773249206e1be8f4db6226c4d9c926831d6e94dc3",
+   "지금_sha256": "25c1324ae196824362aa8892769f2d609289c9c7ed747998c337424220b26b07",
+   "고친_이력": []
+  },
+  "src/intelligence/cej.py": {
+   "원본": "a94e731:src/intelligence/cej.py",
+   "원본_sha256": "bcaaff64849e6d3ee22a6eddd5b6697b7d596b763a7c3674ace2bb468fd4bc09",
+   "지금_sha256": "e571784d215c5e13c2e1a7a245c6750f483b279ca0f722fd1eda13a828db68c7",
+   "고친_이력": []
+  },
+  "src/intelligence/evidence.py": {
+   "원본": "a94e731:src/intelligence/evidence.py",
+   "원본_sha256": "21e6c37800997a8df0fb25223850312db02aae3cb6cd88b00eedc870e6ddf403",
+   "지금_sha256": "392f24a38dcd1cdaaf18344df7fb9e299c673d7edc81c8d02bbfbd527b0b9c4c",
+   "고친_이력": []
+  },
+  "src/intelligence/improvement_candidate.py": {
+   "원본": "a94e731:src/intelligence/improvement_candidate.py",
+   "원본_sha256": "d343849e09b5032c5de31613a0f8d7e3da6e99ce205a3f78fed999fcc5e64c40",
+   "지금_sha256": "583768587856d0f5a99006495628f05bc2fc948bf64faa15a4b53c69b07fbe04",
+   "고친_이력": []
+  },
+  "src/intelligence/issue_cluster.py": {
+   "원본": "a94e731:src/intelligence/issue_cluster.py",
+   "원본_sha256": "29f3b86747284d8c428c8eca92564d3a7387bb12dc7fdff293f9c722a1ef5927",
+   "지금_sha256": "a464387a53029f380b8ce15d60175a4c22b26dfa981dd4c791633d86ffded7f6",
+   "고친_이력": []
+  },
+  "src/intelligence/practitioner_action.py": {
+   "원본": "a94e731:src/intelligence/practitioner_action.py",
+   "원본_sha256": "bc0c00843d742a416b77a0467ad31b1700475183cfef7ca563eeda871d3bbf6e",
+   "지금_sha256": "566dbd93aef9926db4d9239c8f13305a12005e67e3b195683dbe2e5dd7b64306",
+   "고친_이력": []
+  },
+  "src/intelligence/root_cause.py": {
+   "원본": "a94e731:src/intelligence/root_cause.py",
+   "원본_sha256": "d876ff6a408fa4a92021b1ad26dd4b8b0802e4bc2a814246b154a05b2cc1aef5",
+   "지금_sha256": "3bb4f5a2e92d640b6a2b62b9b50c6857a843030512a0813d5b49cac58940f1fb",
+   "고친_이력": []
+  },
+  "src/intelligence/tees.py": {
+   "원본": "a94e731:src/intelligence/tees.py",
+   "원본_sha256": "e0d35042bd0f35f118b15bb3a29896e8a4a07f42e38a527873187c2704d183a7",
+   "지금_sha256": "1043b648051fef9d4c40bb89208c612890c60212d4b0d7c111d53b593b8ece76",
+   "고친_이력": []
+  },
+  "src/logger.py": {
+   "원본": "a94e731:src/logger.py",
+   "원본_sha256": "efd807827467ec19e4337950c61e093886926d3c3052294b0395bfce336bf387",
+   "지금_sha256": "b47150735be876b3c5b729fb5976589707ed66b1cc39c4f850a89632ccb94c4e",
+   "고친_이력": []
+  },
+  "src/main.py": {
+   "원본": "a94e731:src/main.py",
+   "원본_sha256": "26ee351a0ea81bd165c4a6a89c0e78d5c41746ec573b4bc2a82a208b7427f670",
+   "지금_sha256": "cd2b3a2797ff437090a6b07076d95383ca7daa40bf0c2cb1b76fe4b57812140e",
+   "고친_이력": []
+  },
+  "src/models/__init__.py": {
+   "원본": "a94e731:src/models/__init__.py",
+   "원본_sha256": "3f0a92360c6151a9de74f572ef339d3343aa55d21f869b46ed91ed795edce7fd",
+   "지금_sha256": "97546b8c20a47f6dbed05a501c5165ea22fb860bae7c2c0fe327ca1cfa64180a",
+   "고친_이력": []
+  },
+  "src/models/schemas.py": {
+   "원본": "a94e731:src/models/schemas.py",
+   "원본_sha256": "d6ded0b8511e1aae89d60ae49f1386f3ac96dbec6b193b101ac52ce4f95fb586",
+   "지금_sha256": "33077a113cb15fd361373e3fa72fa5024800ae5aecab744a8a33661fe70ce961",
+   "고친_이력": []
+  },
+  "src/pipelines/__init__.py": {
+   "원본": "a94e731:src/pipelines/__init__.py",
+   "원본_sha256": "602a71d60cd958100c9f774c15ecea5b62990aada058fec7354243c58f3ef0fe",
+   "지금_sha256": "8284f131cfdf5da4b8a15deec13f9ebaa3bfac4567348768875e2ef1f516ee73",
+   "고친_이력": []
+  },
+  "src/pipelines/analytics_pipeline.py": {
+   "원본": "a94e731:src/pipelines/analytics_pipeline.py",
+   "원본_sha256": "b125bdaef890cf320150715baf639f6bce5a1d9fad57216e9e0101d183eaa126",
+   "지금_sha256": "2147a0b4583cf6e4eb043768616c0a1a6322ea513bbe08236eca7c354b0c97ea",
+   "고친_이력": []
+  },
+  "src/pipelines/export_pipeline.py": {
+   "원본": "a94e731:src/pipelines/export_pipeline.py",
+   "원본_sha256": "387219cad700e35fdcbf81b2f6d7d6893e6784f97ca8cb8c59d34f80b13dfb39",
+   "지금_sha256": "87a8965770a91d63dc4afcc766a5ff4fa5d97624db2935fb2e103e09bbaea04d",
+   "고친_이력": []
+  },
+  "src/pipelines/ingest_pipeline.py": {
+   "원본": "a94e731:src/pipelines/ingest_pipeline.py",
+   "원본_sha256": "ad42d6523423360de8ecfe61a0cd2e0a82b37635a952285ee807252032093b48",
+   "지금_sha256": "ce60bab2321c601f43a817f30578a627660d59708adc31ad0fd33cf98e67b26c",
+   "고친_이력": []
+  },
+  "src/pipelines/normalize_pipeline.py": {
+   "원본": "a94e731:src/pipelines/normalize_pipeline.py",
+   "원본_sha256": "256c1932e7fbe7cb2dcb6ce358872c8142a30849ee209a9412523700534df167",
+   "지금_sha256": "4a023c9e580029105829c00c056553d371ce6b900a9e3726d94942a25c9e7bd0",
+   "고친_이력": []
+  },
+  "src/utils/__init__.py": {
+   "원본": "a94e731:src/utils/__init__.py",
+   "원본_sha256": "55d05e02a4a0c610e41f1f83e0591bada303f8237aa9dc411d06885f5a857ea3",
+   "지금_sha256": "fec3321b298399bea5d44eeb7274e6691d4b6dfeb91c709021b26122e4715feb",
+   "고친_이력": []
+  },
+  "src/utils/dates.py": {
+   "원본": "a94e731:src/utils/dates.py",
+   "원본_sha256": "c91c1d34d9ce641509d5cd0f37b1e02b8e30f756548e3d5bfd27ea656195fe57",
+   "지금_sha256": "95bb96bc829a7acbb1410c7b5dabb78e7e6aed4e8191794f4ad9df32fa6061b3",
+   "고친_이력": []
+  },
+  "src/utils/io.py": {
+   "원본": "a94e731:src/utils/io.py",
+   "원본_sha256": "7bab8ca7d3f852ad3fbdcf03d4175a3053da16d4eae7b32318d060e3a68c1fee",
+   "지금_sha256": "ae14b11e1c8dc65639aa910e9086ada264c8242f6fe03e225a649ce6a63f0f94",
+   "고친_이력": []
+  },
+  "src/utils/privacy.py": {
+   "원본": "a94e731:src/utils/privacy.py",
+   "원본_sha256": "e9f287191010379fb604bec0173fa641dbca1002280bafd8fc3c9108d723558f",
+   "지금_sha256": "9e46287ed4836def870a8128148af778c6506ea2efaddb37df3b236645eabba7",
+   "고친_이력": []
+  },
+  "src/utils/retry.py": {
+   "원본": "a94e731:src/utils/retry.py",
+   "원본_sha256": "21acca1adc1a09068665fbd6b4c0436eb6ad47c04d1025c0972bd63cbf759345",
+   "지금_sha256": "85c15b32f698d1c702c2942fc065e13aaa9208c811b28e43b92fca3ccf379eb9",
+   "고친_이력": []
+  },
+  "src/utils/secret_filter.py": {
+   "원본": "a94e731:src/utils/secret_filter.py",
+   "원본_sha256": "76735cc9b176084eee1e53c26811820f71c35a88c191e3dbb6179e5f6c81a27c",
+   "지금_sha256": "a5ea9063da6b52d58dbb2439e62c81fe8a2dbf1f3ca828ac6cfa24c2558d4348",
+   "고친_이력": []
+  },
+  "src/utils/translation.py": {
+   "원본": "a94e731:src/utils/translation.py",
+   "원본_sha256": "32babf61fe1edb50e1729194dfb9252bf0da5b499b1ce77f06c193392c26d49b",
+   "지금_sha256": "5125aa01a5cc9bae14b3e432c0a08c8cdea838ae0b21e12b447948f36bae1d4b",
+   "고친_이력": []
+  },
+  "src/v5/__init__.py": {
+   "원본": "a94e731:src/v5/__init__.py",
+   "원본_sha256": "ac14c101605389a853db587500c58f626c6771b383ea475de41d23a4a661d9f2",
+   "지금_sha256": "64e990db9cbd0d1544b7aab6db80d6e3d6da4c4dbeac034fae670e460e18f2d3",
+   "고친_이력": []
+  },
+  "src/v5/common.py": {
+   "원본": "a94e731:src/v5/common.py",
+   "원본_sha256": "6550b5094f3484c4042ec8cffdf2b2570e4977d85a111e7d244db86319d54402",
+   "지금_sha256": "3a137efbf45f76b4390f358d830dc165e74b10334f60a54cc43d3721b657e8f3",
+   "고친_이력": []
+  },
+  "src/v5/export_topic_pack.py": {
+   "원본": "a94e731:src/v5/export_topic_pack.py",
+   "원본_sha256": "52b209d760218e696dbf1afb2bade7992de1875a74baa742149e5433606aa912",
+   "지금_sha256": "5743ed2cae7cd1d0aa9fff1024ea64cc62122dfdd9f7c6f77083beb3241273e0",
+   "고친_이력": []
+  },
+  "src/v5/ingest_context.py": {
+   "원본": "a94e731:src/v5/ingest_context.py",
+   "원본_sha256": "416824e13fefb707ef22a905395c68d353defc59616968a793b45304a207e664",
+   "지금_sha256": "093eb0dc95e8b8eee51b64cc984f4bd48028e7a106228c0892942216982ca189",
+   "고친_이력": []
+  },
+  "src/v5/insight_action_generator.py": {
+   "원본": "a94e731:src/v5/insight_action_generator.py",
+   "원본_sha256": "beb809b5de1e8b8b5de20b333e63dfd849dc0ddbd0d5a5059551bf69da840729",
+   "지금_sha256": "57513c8036f08cc2fd38f05dc766c1ab1f254d3155b9f451a50750babb79912e",
+   "고친_이력": []
+  },
+  "src/v5/pipeline.py": {
+   "원본": "a94e731:src/v5/pipeline.py",
+   "원본_sha256": "996dcb65b42bc3118ca6418cf7999d80ccec3c083c1fb94509c0143b129cce4c",
+   "지금_sha256": "f8a24611f835990300e4f282c23a3bd38d815622c1a27a7a11a1ea7408c3c9d8",
+   "고친_이력": []
+  },
+  "src/v5/product_normalizer.py": {
+   "원본": "a94e731:src/v5/product_normalizer.py",
+   "원본_sha256": "60fa814f47c8b3bc4296380890c890b964cafc2e996281918041f7d49348b0ef",
+   "지금_sha256": "7c0598180874244764517ab8c0882eb74905ff27f73ac8925764f6de96729fb8",
+   "고친_이력": []
+  },
+  "src/v5/representative_selector.py": {
+   "원본": "a94e731:src/v5/representative_selector.py",
+   "원본_sha256": "4f7b2788550ad2b828ea42a84bd999c89a01171d9367b77c89596fc5c05719cd",
+   "지금_sha256": "3579748ded6186f09490ceab7ff53e5aba3dbb94fc61153575f2cb25b1e8f492",
+   "고친_이력": []
+  },
+  "src/v5/signal_splitter.py": {
+   "원본": "a94e731:src/v5/signal_splitter.py",
+   "원본_sha256": "1ac979da9cfdab556e924d2f016382574d4b77c76fee699238025007fae891f8",
+   "지금_sha256": "4e0352ea40100cb89c8f6c92550ce52dec6d5148f2e2a1cedcb6fa0db7f9b15e",
+   "고친_이력": []
+  },
+  "src/v5/topic_builder.py": {
+   "원본": "a94e731:src/v5/topic_builder.py",
+   "원본_sha256": "cf5fc419b01709e5b753bb3351b8f07392d604d8f0f472d40315f3bc71c91435",
+   "지금_sha256": "f80e7a82b72bfb25f8d739b1b434d3a87c60d1e5deed638301e4521d6c3b1254",
+   "고친_이력": []
+  },
+  "src/v5/topic_first_artifacts.py": {
+   "원본": "a94e731:src/v5/topic_first_artifacts.py",
+   "원본_sha256": "c1231d2e8d08244c81f90a07c2996f970d9de47baf6d40edb591f09db64b9034",
+   "지금_sha256": "8ec27931e8db3429349ba5c50e853e4f4cdbeb2199db3f4ae5eef0dadf9165da",
+   "고친_이력": []
+  },
+  "src/v5/topic_ranker.py": {
+   "원본": "a94e731:src/v5/topic_ranker.py",
+   "원본_sha256": "44780fb3c8302250037ce1f55acdbb68dfacb4c0ed3b615f9341f37c950ea6f0",
+   "지금_sha256": "3d6f1a49d40355e16f95eda49dba459ce1466085e2f9a7e89d1b18b737d2de79",
+   "고친_이력": []
+  },
+  "src/voc_rebuild/__init__.py": {
+   "원본": "a94e731:src/voc_rebuild/__init__.py",
+   "원본_sha256": "03701c928eb5598e85209285ead21592ce63f720bd8fde5a523efe41957a3bbf",
+   "지금_sha256": "ae04c7d3531ddcbbc8d5c598e3d10e3427f488f434465cf9213fe3e6edc1d6c3",
+   "고친_이력": []
+  },
+  "src/voc_rebuild/config/scope_request_terms.yaml": {
+   "원본": "a94e731:src/voc_rebuild/config/scope_request_terms.yaml",
+   "원본_sha256": "6980e26efa8ca69fab0f77c007148dec861adbf6818b07b76ffa104f21fd8174",
+   "지금_sha256": "d536fab7845fcdc65d5699d4f585f769bced4a273af1444c2577029182562110",
+   "고친_이력": []
+  },
+  "src/voc_rebuild/config/topic_evidence_lexicon.yaml": {
+   "원본": "a94e731:src/voc_rebuild/config/topic_evidence_lexicon.yaml",
+   "원본_sha256": "a6e35885e27af89c83b6adbcd0f7099b0378c5f683fa472ff54601790245d9c7",
+   "지금_sha256": "9dd4c834c0a9c9cca18f4802c1bd48b98d5ebf5c5c3357fca104cb390effc056",
+   "고친_이력": []
+  },
+  "src/voc_rebuild/engine.py": {
+   "원본": "a94e731:src/voc_rebuild/engine.py",
+   "원본_sha256": "4d052fe06942ad4907b4916ca11e7d867fbc10f8fd9ae25437b2b5737afa4353",
+   "지금_sha256": "492e9cc3b0c6ab33cd85e9839037ca70802cf573c5336f452614bc014500015f",
+   "고친_이력": []
+  },
+  "src/voc_rebuild/lexicon.py": {
+   "원본": "a94e731:src/voc_rebuild/lexicon.py",
+   "원본_sha256": "baedb85e2880174db1f02778b543e904c9041b33d6f1c2c7515b894aea0ab674",
+   "지금_sha256": "9fba9dfd87b48c1446a25c3cfb296b79d057c81fbd1953d41d7f59c60e1e5be0",
+   "고친_이력": []
+  },
+  "src/voc_rebuild/schema.py": {
+   "원본": "a94e731:src/voc_rebuild/schema.py",
+   "원본_sha256": "9a46c450f56605b9fa08a8417851fbb0b0d72263057379c97f2a075c106f7ff2",
+   "지금_sha256": "51e87c676df350443dad203d72a18599f57f766ed79020e7bacd6299c6dadfae",
+   "고친_이력": []
+  },
+  "src/voc_rebuild/scope_config.py": {
+   "원본": "a94e731:src/voc_rebuild/scope_config.py",
+   "원본_sha256": "7562ce58a3cdd3752746a151766bce197b755623d72ed5b906d19548bf4042eb",
+   "지금_sha256": "a9f768b3505dcab915ed34eac9c55cdf046e4780c1ee6dbca433949893987403",
+   "고친_이력": []
+  },
+  "src/voc_rebuild/text_clean.py": {
+   "원본": "a94e731:src/voc_rebuild/text_clean.py",
+   "원본_sha256": "eaff0d1e351120e869b305cdb1b05fe7f02d13ac12f67f8944ce78f4dc338bb0",
+   "지금_sha256": "3513f42def29ba8b768c6928e0c23a594a9ef8a93fa25a168b6aa4425099ec6e",
+   "고친_이력": []
+  },
+  "streamlit_app.py": {
+   "원본": "a94e731:streamlit_app.py",
+   "원본_sha256": "6e2daddacb69aba3bd1a4fef4be6afc57e67b8fc9c2b65e78e64063c79207f45",
+   "지금_sha256": "6d26e0330ad3896e57ef6e9771c0f444cd0c4cd2a37e6853985e161e8e5e4d07",
+   "고친_이력": []
+  },
+  "voc-classifier/src/classifier.py": {
+   "원본": "a94e731:voc-classifier/src/classifier.py",
+   "원본_sha256": "0fd506b7da9d03ee82fd61a1a6aae301a6ddcc9ac4e8f61ac5415247f654d5b8",
+   "지금_sha256": "aa83e2b0ed6e2106546ccf1e73612d90ec582d071b78717602ac70c28227efbc",
+   "고친_이력": []
+  },
+  "0_이 폴더는 무엇입니까.md": {
+   "원본": "90078f1:outputs/voc_secondary/engine/0_이 폴더는 무엇입니까.md",
+   "원본_sha256": null,
+   "지금_sha256": "f43a98bc10d4f66a2977bd8be3395b790f7e67035ad6b652500000fdcf2e2aef",
+   "고친_이력": [],
+   "까닭": "옛 판독 꾸러미 엔진에만 있던 것 — 2차 도구가 부른다 (live_merge 에는 없다)"
+  },
+  "src/voc_secondary/__init__.py": {
+   "원본": "90078f1:outputs/voc_secondary/engine/src/voc_secondary/__init__.py",
+   "원본_sha256": null,
+   "지금_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "고친_이력": [],
+   "까닭": "옛 판독 꾸러미 엔진에만 있던 것 — 2차 도구가 부른다 (live_merge 에는 없다)"
+  },
+  "src/voc_secondary/contracts.py": {
+   "원본": "90078f1:outputs/voc_secondary/engine/src/voc_secondary/contracts.py",
+   "원본_sha256": null,
+   "지금_sha256": "cfd7c58b8b8b9b5165675d583bd3f116ee0cbc2d2ad3e4d05dae30f06a0b3518",
+   "고친_이력": [],
+   "까닭": "옛 판독 꾸러미 엔진에만 있던 것 — 2차 도구가 부른다 (live_merge 에는 없다)"
+  },
+  "src/voc_secondary/na_rules.py": {
+   "원본": "90078f1:outputs/voc_secondary/engine/src/voc_secondary/na_rules.py",
+   "원본_sha256": null,
+   "지금_sha256": "4103705a7781ba2a1df94b097694e7ced9072b0c37abcebbca9b94f93e4d70e4",
+   "고친_이력": [],
+   "까닭": "옛 판독 꾸러미 엔진에만 있던 것 — 2차 도구가 부른다 (live_merge 에는 없다)"
+  },
+  "src/voc_rebuild/config/__init__.py": {
+   "원본": "90078f1:outputs/voc_secondary/engine/src/voc_rebuild/config/__init__.py",
+   "원본_sha256": null,
+   "지금_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "고친_이력": [],
+   "까닭": "옛 판독 꾸러미 엔진에만 있던 것 — 2차 도구가 부른다 (live_merge 에는 없다)"
+  }
+ }
+}

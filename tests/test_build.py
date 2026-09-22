@@ -112,8 +112,8 @@ def _돌리기(스크립트: Path, *인자) -> subprocess.CompletedProcess:
 
 
 @pytest.mark.parametrize("스킬, 스크립트, 개수", [
-    ("reading-voc-comments", "판독폴더_차리기.py", 82),
-    ("supervising-voc-disagreements", "감독폴더_차리기.py", 66),
+    ("reading-voc-comments", "판독폴더_차리기.py", 84),
+    ("supervising-voc-disagreements", "감독폴더_차리기.py", 68),
 ])
 def test_낱개_스킬이_떨어진_자리에서_폴더를_차린다(묶음, tmp_path, 스킬, 스크립트, 개수):
     s = _풀기(묶음, 스킬, tmp_path / "풀린곳")
@@ -132,4 +132,4 @@ def test_총괄_스킬이_떨어진_자리에서_총괄_자리를_차린다(묶�
     판 = tmp_path / "총괄" / "시험판"
     assert len(list(판.glob("*.py"))) == 42
     with zipfile.ZipFile(판 / "_배포" / "VoC_3_3차감독.zip") as zf:
-        assert len([n for n in zf.namelist() if not n.endswith("/")]) == 66
+        assert len([n for n in zf.namelist() if not n.endswith("/")]) == 68

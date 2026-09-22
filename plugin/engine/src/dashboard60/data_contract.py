@@ -183,6 +183,58 @@ def _normalize_brand_display(value: object) -> str:
     return normalized_space
 
 
+
+
+
+# ``entity_role`` 이 담는 값. 브랜드 이름이 아니라 **역할** 이름이다.
+ENTITY_ROLE_VALUES = frozenset(
+    {"product_brand", "competitor_brand", "creator_channel", "unknown"}
+)
+
+
+def _brand_display(row: object) -> str:
+    """브랜드 필터가 쓸 「이 말이 자사 얘기인가」.
+
+    왜 이렇게 하나
+    --------------
+    ``brand`` 칸의 사전 정의는 「원문 표기 브랜드」 인데, 실제로는
+    ``reference_brand`` (자사 = LG) 를 그대로 받는다. 6,846행 중 6,387행이 LG 다.
+    그대로 필터에 쓰면 **LG 를 고를 때 전체의 93% 가 딸려 온다** —
+    「중국산 청소기 카메라 조심」 처럼 LG 가 한 글자도 안 나오는 말까지.
+    LG 하나가 다른 브랜드를 전부 먹어서 필터가 사실상 안 걸렸다.
+
+    ``entity_role`` 이 「누구 얘기인가」 를 이미 담고 있다 (데이터사전 34번 —
+    「주체 구분(자사/경쟁/채널/불명). 개선 우선순위 집계 라우팅 축」).
+    그 축을 그대로 쓴다.
+
+        product_brand      자사 얘기        → brand 를 쓴다
+        competitor_brand   경쟁사 얘기      → 빈칸. 경쟁사 태그 칸이 따로 잡는다
+        creator_channel    채널·리뷰어 얘기  → 빈칸. 브랜드 얘기가 아니다
+        unknown            불명            → 빈칸. 모르면 아무 브랜드도 아니다
+
+    ★ ``entity_role`` 이 아예 없거나 비어 있으면 **옛 동작 그대로** ``brand`` 를 쓴다.
+      그 축이 없는 데이터셋에서까지 값을 지우면 안 된다.
+
+    ★ ``brand`` 에 역할 이름이 새어 들어간 275행(`unknown` 200 · `creator_channel` 75)
+      은 어느 경우든 빈칸으로 만든다. 브랜드 이름 칸에 역할 이름이 들어가면
+      사이드바 목록에 「creator_channel 브랜드」 가 뜬다 (E-2).
+
+    남는 값
+    -------
+    LG 필터가 6,392행 → 3,160행이 된다. 빠지는 3,232행 중 **96% 는 원문에
+    LG 표기가 아예 없다.** 나머지 4%(115행)는 LG 를 말하지만 역할이
+    채널·불명인 행이라 같이 빠진다 — 그 값은 감수한다.
+    원본 ``brand`` 칸은 건드리지 않는다. 여기서 만드는 것은 화면용 파생 칸이다.
+    """
+    brand = _normalize_brand_display(row.get("brand"))
+    if brand in ENTITY_ROLE_VALUES:
+        brand = ""
+    role = _safe_text(row.get("entity_role"))
+    if not role:
+        return brand
+    return brand if role == "product_brand" else ""
+
+
 def _normalize_brand_tags_display(value: object) -> str:
     values = [_normalize_brand_display(item) for item in _split_tag_values(value)]
     deduped = []
@@ -295,7 +347,7 @@ def materialize_dashboard_columns(frame: pd.DataFrame | None) -> pd.DataFrame:
 
     frame["sentiment_dir"] = frame.apply(_sentiment_dir, axis=1)
     frame["market_display"] = frame["market"].map(_market_display)
-    frame["brand_display"] = frame["brand"].map(_normalize_brand_display)
+    frame["brand_display"] = frame.apply(_brand_display, axis=1)
     frame["competitor_brand_display_tags"] = frame["competitor_brand_tags"].map(_normalize_brand_tags_display)
     frame["cej_group"] = frame["cej"].map(lambda value: CEJ_GROUP_MAP.get(_safe_text(value), "해당없음"))
     frame["validity"] = frame.apply(_validity, axis=1)

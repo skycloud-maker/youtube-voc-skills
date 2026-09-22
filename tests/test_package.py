@@ -8,7 +8,7 @@
 보는 것
   ① 출처 기록의 해시 = 지금 파일 (판독 70 + 감독 3 = 73개)
   ② 차림표의 재료가 모두 있고, 모두 출처 기록에 적혀 있다 (빠진 재료 · 안 쓰는 기록 0)
-  ③ 폴더를 차리면 옛 꾸러미 모양이 된다 — 판독 82개 · 감독 66개(편향검사 뺌 · 섹션 5b 의 새 판 0_최신결정_먼저.md 더함 · 판독에는 최신결정_검사.py 도) — 지문에 engine 이 들어간다
+  ③ 폴더를 차리면 옛 꾸러미 모양이 된다 — 판독 84개 · 감독 68개(편향검사 뺌 · 섹션 5b 의 새 판 0_최신결정_먼저.md 더함 · 판독에는 최신결정_검사.py 도 · 섹션 7 ① 엔진은 도구가 부르는 것을 코드로 따라가 뽑는다) — 지문에 engine 이 들어간다
   ④ ★ 엔진을 한 줄 고치면 지문검사가 실패한다 (전에는 통과했다 — 그래서 여기서 지킨다)
 """
 from __future__ import annotations
@@ -34,6 +34,7 @@ sys.path.insert(0, str(PLUGIN / "skills" / "supervising-voc-disagreements" / "sc
 import 감독폴더_차리기 as 감독차리기  # noqa: E402
 sys.path.insert(0, str(PLUGIN / "skills" / "coordinating-voc-pipeline" / "scripts"))
 import 총괄자리_차리기 as 총괄차리기  # noqa: E402
+import 꾸러미  # noqa: E402  (차리기 스크립트가 shared/lib 를 path 에 넣었다)
 
 꾸러미출처 = json.loads((SHARED / "출처_꾸러미.json").read_text(encoding="utf-8"))
 기준서출처 = json.loads((SHARED / "standards" / "출처.json").read_text(encoding="utf-8"))
@@ -45,7 +46,7 @@ def _sha(p: Path) -> str:
 
 def test_출처_기록이_실제_파일과_같다():
     파일 = 꾸러미출처["파일"]
-    assert len(파일) == 93, len(파일)          # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5) + 최신결정_검사 (섹션 5b)
+    assert len(파일) == 65, len(파일)          # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5) + 최신결정_검사 (섹션 5b) − 엔진 28 (섹션 7 ① 출처_엔진.json 으로)
     없음 = [r for r in 파일 if not (REPO / r).is_file()]
     assert not 없음, "출처에 적힌 파일이 없다 — %s" % 없음[:5]
     어긋남 = [r for r, v in 파일.items() if _sha(REPO / r) != v["지금_sha256"]]
@@ -72,10 +73,14 @@ def test_차림표_재료가_모두_있고_출처에_적혀_있다():
     재료 = [Path(원) for 원, _ in 차리기.전체_차림표() + 감독차리기.전체_차림표() + 총괄재료 + 대장]
     없음 = [p for p in 재료 if not p.is_file()]
     assert not 없음, "차림표가 가리키는 재료가 없다 — %s" % [str(p) for p in 없음[:5]]
-    적힌것 = set(꾸러미출처["파일"]) | {("plugin/shared/standards/" + n) for n in 기준서출처["파일"]}
+    엔진출처 = json.loads((REPO / "plugin" / "engine" / "출처_엔진.json").read_text(encoding="utf-8"))["파일"]
+    적힌것 = (set(꾸러미출처["파일"]) | {("plugin/shared/standards/" + n) for n in 기준서출처["파일"]}
+            | {("plugin/engine/" + n) for n in 엔진출처} | {"plugin/engine/출처_엔진.json"})   # 기록 파일 자신
+    # 엔진 정본 전체(1차 실행 · 대시보드)는 폴더에 다 실리지 않는다 — 판독 · 감독 폴더는 꾸러미엔진 28개, 총괄 판 폴더는 전부
+    쓰는것_엔진 = {"plugin/engine/" + n for n in 엔진출처}
     쓰는것 = {p.resolve().relative_to(REPO).as_posix() for p in 재료}
     assert not (쓰는것 - 적힌것), "출처 기록에 없는 재료를 쓴다 — %s" % sorted(쓰는것 - 적힌것)[:5]
-    assert not (적힌것 - 쓰는것), "기록만 있고 아무도 안 쓰는 파일 — %s" % sorted(적힌것 - 쓰는것)[:5]
+    assert not (적힌것 - 쓰는것 - 쓰는것_엔진), "기록만 있고 아무도 안 쓰는 파일 — %s" % sorted(적힌것 - 쓰는것)[:5]
 
 
 @pytest.fixture(scope="module")
@@ -86,9 +91,9 @@ def 차린폴더(tmp_path_factory):
     return d
 
 
-def test_차리면_꾸러미와_같은_82개가_된다(차린폴더):
+def test_차리면_꾸러미와_같은_84개가_된다(차린폴더):
     파일 = [p for p in 차린폴더.rglob("*") if p.is_file()]
-    assert len(파일) == 82, len(파일)          # 옛 꾸러미 80 + 새 판 0_최신결정_먼저.md + 스크립트/최신결정_검사.py
+    assert len(파일) == 84, len(파일)          # 옛 꾸러미 80 + 새 판 + 최신결정_검사.py + 엔진 +2 (섹션 7 ① — 옛 28개 자리 → 도구가 부르는 30개)
     for 자리 in ("스크립트/자가점검.py", "판독패키지/1a_기준문서_정본_1부.md", "프롬프트/0_붙여넣을_프롬프트_도구형.md",
                 "대장/지문.json", "0_먼저_읽으십시오.md", "engine/src/voc_rebuild/engine.py"):
         assert (차린폴더 / 자리).is_file(), 자리
@@ -97,8 +102,8 @@ def test_차리면_꾸러미와_같은_82개가_된다(차린폴더):
 def test_지문에_엔진이_들어간다(차린폴더):
     지문 = json.loads((차린폴더 / "대장" / "지문.json").read_text(encoding="utf-8"))
     엔진 = [k for k in 지문["지문"] if k.startswith("engine/")]
-    assert len(엔진) == 25, len(엔진)
-    assert 지문["파일수"] == len(지문["지문"]) == 65, 지문["파일수"]
+    assert len(엔진) == 27, len(엔진)          # 엔진 .py — 섹션 7 ① 전 25 (도구가 부르는 것을 따라가 뽑는다)
+    assert 지문["파일수"] == len(지문["지문"]) == 67, 지문["파일수"]
 
 
 def _지문검사(폴더: Path) -> int:
@@ -130,9 +135,9 @@ def 감독폴더(tmp_path_factory):
     return d
 
 
-def test_감독폴더는_66개이고_편향검사가_없다(감독폴더):
+def test_감독폴더는_68개이고_편향검사가_없다(감독폴더):
     파일 = [p for p in 감독폴더.rglob("*") if p.is_file()]
-    assert len(파일) == 66, len(파일)          # 옛 감독 꾸러미 66개 − 편향검사.py + 새 판 0_최신결정_먼저.md
+    assert len(파일) == 68, len(파일)          # 옛 감독 꾸러미 66개 − 편향검사.py + 새 판 + 엔진 +2 (섹션 7 ①)
     assert not (감독폴더 / "스크립트" / "편향검사.py").exists(), "감독 폴더에 편향검사가 있다 (98: 아예 없다)"
     assert (감독폴더 / "프롬프트" / "0_붙여넣을_프롬프트_감독.md").is_file()
 
@@ -153,12 +158,16 @@ def test_감독폴더_안내문은_옛_꾸러미와_편향검사_한_줄과_새_
     b = (감독폴더 / "0_먼저_읽으십시오.md").read_text(encoding="utf-8").splitlines()
     새판 = [x for x in b if "0_최신결정_먼저.md" in x]
     assert len(새판) == 1, 새판          # 섹션 5b 의 새 판 — 옛 꾸러미에 없던 한 줄
-    assert [x for x in a if "편향검사.py" not in x] == [x for x in b if x not in 새판]
+    # 섹션 7 ① — engine/ 줄은 이제 도구가 부르는 엔진 파일을 코드로 따라가 뽑은 목록이다 (옛 꾸러미와 다르다 · 그 목록과 같아야 한다)
+    엔진줄 = [x.strip() for x in b if x.strip().startswith("engine/")]
+    assert 엔진줄 == ["engine/" + n for n in 꾸러미.꾸러미엔진(PLUGIN / "engine")], 엔진줄[:5]
+    옛것 = [x for x in a if "편향검사.py" not in x and not x.strip().startswith("engine/")]
+    assert 옛것 == [x for x in b if x not in 새판 and not x.strip().startswith("engine/")]
 
 
 def test_감독폴더_지문에_엔진이_들어가고_엔진을_고치면_잡는다(감독폴더, tmp_path):
     지문 = json.loads((감독폴더 / "대장" / "지문.json").read_text(encoding="utf-8"))
-    assert sum(1 for k in 지문["지문"] if k.startswith("engine/")) == 25
+    assert sum(1 for k in 지문["지문"] if k.startswith("engine/")) == 27      # 엔진 .py — 섹션 7 ① 전 25
     사본 = tmp_path / "고친감독폴더"
     shutil.copytree(감독폴더, 사본)
     assert _지문검사(사본) == 0
@@ -181,5 +190,5 @@ def test_총괄자리는_도구_42개와_감독꾸러미를_갖춘다(tmp_path):
     import zipfile
     with zipfile.ZipFile(판 / "_배포" / "VoC_3_3차감독.zip") as z:
         이름 = [n for n in z.namelist() if not n.endswith("/")]
-    assert len(이름) == 66 and "스크립트/편향검사.py" not in 이름, "감독 꾸러미는 감독 스킬과 한 벌이어야 한다"
+    assert len(이름) == 68 and "스크립트/편향검사.py" not in 이름, "감독 꾸러미는 감독 스킬과 한 벌이어야 한다"
     assert 셈["차림"] > 0 and 총괄차리기.차리기(tmp_path / "총괄", "시험판")["차림"] == 0, "다시 돌리면 아무것도 덮지 않는다"

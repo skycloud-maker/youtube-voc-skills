@@ -59,6 +59,8 @@ from paths import REPO, SHARED  # noqa: E402
     ("README.md", None),
     ("tools/옛꾸러미_가져오기.py", None),
     ("tools/옛꾸러미_가져오기_총괄.py", None),
+    ("tools/엔진_가져오기.py", None),                 # 섹션 7 ① — 엔진을 어디서 들여왔나 (옛 자리는 명령 인자로 받는다)
+    ("plugin/engine/출처_엔진.json", None),
     ("tests/test_no_old_paths.py", None),
     # sky 2026-09-18 「원문 그대로 + 검사 예외」 — 옛 대시보드 안내서 원문.
     #   ★ 새 안내서(guides/)를 쓸 때 이 자리를 새 저장소·새 사이트로 바꿔야 한다 (섹션 7a·8 에 적었다).
@@ -68,6 +70,12 @@ from paths import REPO, SHARED  # noqa: E402
 절대경로_예외 = {
     # 섹션 5 (2026-09-21) — build_master.py 원문 주석. 예전에 임시 폴더에서 돌린 흔적을 적은 것이다.
     ("plugin/shared/tools/build_master.py", r"#     judge_agree(C:\Users\blues\AppData\Local\Temp\...)"),
+    # 섹션 7 ① (2026-09-22) — 엔진 원문(live_merge a94e731). Windows 기본 글꼴 자리 — 시스템 폴더라 사람 · 컴퓨터마다 같다.
+    #   엔진이 그래프 글꼴을 찾는 후보 목록이다 (없으면 다음 후보로 · fonts/NanumGothic.ttf 가 먼저).
+    ("plugin/engine/config/settings.example.yaml", "- C:/Windows/Fonts/malgun.ttf"),
+    ("plugin/engine/config/settings.example.yaml", "- C:/Windows/Fonts/NanumGothic.ttf"),
+    ("plugin/engine/src/config.py", 'Path("C:/Windows/Fonts/malgun.ttf"),'),
+    ("plugin/engine/src/config.py", 'Path("C:/Windows/Fonts/NanumGothic.ttf"),'),
 }
 # 드라이브 글자로 시작하는 절대경로 — 코드에서는 paths.py 에만
 절대경로 = re.compile(r"(?i)(?<![a-z])[a-z]:(?:\\\\|\\|/)[^\s'\"`]")

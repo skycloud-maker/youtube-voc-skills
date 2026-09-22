@@ -8,7 +8,7 @@ import streamlit as st
 from src.dashboard60.l2_narrative import api_key_available, summarize_task
 from src.dashboard60.data_contract import ensure_dashboard_columns
 from src.dashboard60.scoring import score_improvement_tasks, top_negative_vocs
-from src.dashboard60.ui_cards import badge, persistent_expander, render_selectable_dataframe, section_title, task_card_html
+from src.dashboard60.ui_cards import badge, persistent_expander, section_title, task_card_html
 
 
 DISPLAY_COLUMNS = {
@@ -20,7 +20,40 @@ DISPLAY_COLUMNS = {
     "mean_neg": "평균 부정강도",
     "rc_coverage": "Root Cause 커버리지",
     "priority_score": "우선순위 점수",
+    # D-6 두 축 (sky 2026-08-16)
+    "volume_rank": "건수축 순위",
+    "severity_score": "심각도(화난 사람 평균)",
+    "severity_rank": "심각도축 순위",
+    "combined_rank": "종합 순위합",
+    "watch_axis": "봐야 하는 축",
 }
+
+# D-6 — 카드를 어느 축으로 줄 세울지 (sky 2026-08-19)
+#   ★ 기본값은 기존 「우선순위 점수」 그대로다. 1차 동결 화면을 바꾸지 않는다.
+SORT_AXES: dict[str, tuple[list[str], list[bool], str]] = {
+    "우선순위 점수 (기존)": (
+        ["priority_score", "rc_coverage", "n"],
+        [False, False, False],
+        "|평균 부정강도| x 부정 건수 → RC커버리지 → 볼륨",
+    ),
+    "종합 (두 축 순위합)": (
+        ["combined_rank", "priority_score"],
+        [True, False],
+        "건수축 순위 + 심각도축 순위가 작은 것부터. 두 축 모두에서 위쪽인 것이 앞에 온다",
+    ),
+    "건수축": (
+        ["volume_rank"],
+        [True],
+        "부정 건수가 많은 것부터. 넓게 퍼진 문제",
+    ),
+    "심각도축": (
+        ["severity_rank"],
+        [True],
+        "화난 사람의 평균 강도가 큰 것부터. 건수를 보지 않는다 — 깊게 아픈 문제",
+    ),
+}
+SORT_AXIS_STATE_KEY = "dashboard60_improvement_sort_axis"
+SORT_AXIS_WIDGET_KEY = "_dashboard60_improvement_sort_axis"
 
 AI_NARRATIVE_STATE_KEY = "dashboard60_improvement_ai_narrative_enabled"
 AI_NARRATIVE_WIDGET_KEY = "_dashboard60_improvement_ai_narrative_enabled"
@@ -40,13 +73,6 @@ def _store_persistent_widget(widget_key: str, state_key: str) -> None:
     st.session_state[state_key] = st.session_state.get(widget_key)
 
 
-def _format_task(row: pd.Series) -> str:
-    return (
-        f"{row['product_category']} × {row['topic']} "
-        f"(볼륨 {int(row['n'])}, 부정 {int(row['neg_count'])}, 점수 {row['priority_score']:.2f})"
-    )
-
-
 def _score_badges(row: pd.Series) -> list[str]:
     neg_count = int(row["neg_count"])
     neg_ratio = float(row["neg_ratio"])
@@ -58,6 +84,12 @@ def _score_badges(row: pd.Series) -> list[str]:
         badge(f"평균 부정강도 {mean_neg:.2f}", tone="negative" if mean_neg < 0 else "neutral"),
         badge(f"RC 커버리지 {float(row['rc_coverage']) * 100:.1f}%"),
         badge(f"우선점수 {float(row['priority_score']):.2f}", tone="warning"),
+        # D-6 — 두 축을 카드에서도 보이게 한다
+        badge(
+            f"건수축 {int(row['volume_rank'])}위 · 심각도축 {int(row['severity_rank'])}위"
+            f" · 종합 {int(row['combined_rank'])}",
+            tone="neutral",
+        ),
     ]
 
 
@@ -67,12 +99,69 @@ def _display_score_table(scored: pd.DataFrame) -> pd.DataFrame:
     display["mean_neg"] = display["mean_neg"].round(2)
     display["rc_coverage"] = (display["rc_coverage"] * 100).round(1).astype(str) + "%"
     display["priority_score"] = display["priority_score"].round(2)
+    if "severity_score" in display.columns:
+        display["severity_score"] = display["severity_score"].round(2)
     return display.rename(columns=DISPLAY_COLUMNS)
+
+
+# 화면 카드로 보여 주는 개수. 내려받는 파일의 「구분」 칸도 이 값을 쓴다
+CARD_TOP_N = 10
+
+
+def _safe_axis_name(axis: str) -> str:
+    """정렬축 이름을 파일 이름에 쓸 수 있게 다듬는다."""
+
+    keep = [c for c in axis if c.isalnum() or c in "()_-"]
+    return ("".join(keep) or "정렬").strip("_")
+
+
+def _download_score_table(scored: pd.DataFrame, sort_axis: str) -> pd.DataFrame:
+    """내려받을 전체 후보 표.
+
+    ★ 화면 표와 다른 점 (sky 2026-08-20)
+      ① 순위와 「구분」(Top N / 그 밖) 칸을 앞에 붙인다.
+         받는 사람이 무엇이 카드에 떴고 무엇이 안 떴는지 알아야 한다.
+      ② 어느 정렬축으로 뽑았는지 칸에 적는다.
+         축을 바꾸면 Top 도 바뀌므로, 나중에 파일만 보고도 알 수 있어야 한다.
+    """
+
+    table = _display_score_table(scored).copy()
+    table.insert(0, "구분", [
+        f"Top {CARD_TOP_N}" if index < CARD_TOP_N else "그 밖"
+        for index in range(len(table))
+    ])
+    table.insert(0, "순위", range(1, len(table) + 1))
+    table["정렬축"] = sort_axis
+    return table
+
+
+def _rootcause_block(example: dict) -> None:
+    """대표 VoC 하나를 읽을 수 있게 편다 (D-4).
+
+    ★ 표로 두면 못 읽는다. RC 서술은 한 문장이 길다.
+    """
+
+    original = str(example.get("original_voc") or "").strip()
+    if original:
+        st.markdown(f"> {original}")
+    problem = str(example.get("rootcause_problem") or "").strip()
+    target = str(example.get("rootcause_target") or "").strip()
+    cause = str(example.get("rootcause_cause") or "").strip()
+    if not (problem or target or cause):
+        st.caption("이 VoC 에는 RootCause 가 채워져 있지 않습니다.")
+        return
+    columns = st.columns(3)
+    for column, (label, value) in zip(
+        columns, (("문제 현상", problem), ("개선 대상", target), ("근본 원인", cause))
+    ):
+        with column:
+            st.markdown(f"**{label}**")
+            st.write(value or "—")
 
 
 def render(frame: pd.DataFrame) -> None:
     frame = ensure_dashboard_columns(frame)
-    st.subheader("개선과제 우선순위")
+    st.subheader("개선 방향성")
     st.caption(
         "L1 결정론 스코어링입니다. 군집은 product_category × topic, "
         "우선순위는 |평균 부정강도| × 부정 건수이며 LLM 호출 없이 계산됩니다."
@@ -114,7 +203,28 @@ def render(frame: pd.DataFrame) -> None:
             )
         )
 
-    section_title("먼저 볼 것 Top 3", "우선순위 점수 → RC커버리지 → 볼륨")
+    _restore_persistent_widget(
+        SORT_AXIS_WIDGET_KEY, SORT_AXIS_STATE_KEY, next(iter(SORT_AXES))
+    )
+    sort_axis = st.radio(
+        "정렬 축",
+        list(SORT_AXES),
+        horizontal=True,
+        key=SORT_AXIS_WIDGET_KEY,
+        on_change=_store_persistent_widget,
+        args=(SORT_AXIS_WIDGET_KEY, SORT_AXIS_STATE_KEY),
+        help=(
+            "건수축은 넓게 퍼진 문제, 심각도축은 깊게 아픈 문제를 앞에 세웁니다. "
+            "★ 건수가 적다는 이유로 목록에서 빠지는 군집은 없습니다. 순서만 달라집니다."
+        ),
+    )
+    sort_columns, sort_ascending, sort_note = SORT_AXES[sort_axis]
+    scored = scored.sort_values(
+        sort_columns, ascending=sort_ascending, kind="mergesort"
+    ).reset_index(drop=True)
+    st.caption(f"정렬: {sort_axis} — {sort_note}")
+
+    section_title("먼저 볼 것 Top 3", sort_note)
     top_cols = st.columns(3)
     for idx, (_, row) in enumerate(scored.head(3).iterrows()):
         examples = top_negative_vocs(frame, str(row["product_category"]), str(row["topic"]), k=1)
@@ -145,59 +255,49 @@ def render(frame: pd.DataFrame) -> None:
                 ),
                 unsafe_allow_html=True,
             )
+            # D-4 — 카드 겉면에 「무엇을 고칠까」 를 한 줄 띄운다.
+            #   라벨과 건수만 보이면 현업이 움직일 수 없다 (sky)
+            headline = str((examples[0] if examples else {}).get("rootcause_problem") or "").strip()
+            if headline:
+                st.markdown(f"**고칠 것** &nbsp; {headline}", unsafe_allow_html=True)
+            else:
+                st.caption("이 묶음의 대표 VoC 에는 RootCause 가 없습니다.")
             with persistent_expander(
-                "대표 부정 VoC / Root Cause 근거",
+                f"대표 부정 VoC {len(examples)}건 · 문제·대상·원인",
                 key=f"improvement_evidence_{rank}",
                 expanded=False,
             ):
                 if examples:
-                    evidence = pd.DataFrame(examples).rename(
-                        columns={
-                            "original_voc": "원문",
-                            "rootcause_problem": "Root Cause 문제",
-                            "rootcause_summary": "Root Cause 요약",
-                            "negative_intensity": "부정강도",
-                        }
-                    )
-                    render_selectable_dataframe(
-                        evidence,
-                        key=f"improvement_card_evidence_{rank}",
-                    )
+                    for order, example in enumerate(examples, start=1):
+                        if order > 1:
+                            st.divider()
+                        st.caption(f"대표 VoC {order} · 부정강도 {example.get('negative_intensity', 0):.1f}")
+                        _rootcause_block(example)
                 else:
                     st.caption("대표 부정 VoC가 없습니다.")
 
-    section_title("전체 개선과제 후보 테이블", "정렬과 수치 검증용")
-    with persistent_expander("전체 표 보기", key="improvement_full_table", expanded=False):
-        render_selectable_dataframe(
-            _display_score_table(scored),
-            key="improvement_score_table",
-        )
-
-    section_title("대표 부정 VoC / Root Cause 드릴다운")
-    options = [_format_task(row) for _, row in scored.iterrows()]
-    selected = st.selectbox("드릴다운할 개선과제 후보", options)
-    selected_index = options.index(selected)
-    selected_row = scored.iloc[selected_index]
-    examples = top_negative_vocs(
-        frame,
-        str(selected_row["product_category"]),
-        str(selected_row["topic"]),
-        k=3,
+    # ★ 119행 표를 화면에서 뺐다 (sky 2026-08-20).
+    #   상위 10개는 이미 위에서 카드로 보고 있고, 나머지는 「있다」 는 것만
+    #   알면 되지 화면에서 훑을 일이 아니었다. 화면만 길어졌다.
+    #   → 내려받아 엑셀에서 본다. Top 에 들었는지도 칸으로 붙인다.
+    #
+    #   번들(improvement_priority 시트)에도 같은 표가 있지만,
+    #   ① Top 구분이 없고 ② 지금 걸린 필터·정렬축이 반영되지 않는다.
+    section_title(
+        "전체 개선과제 후보",
+        f"{len(scored)}개 · 내려받아서 봅니다 (화면 카드는 상위 {CARD_TOP_N}개)",
     )
-    if not examples:
-        st.info("대표 부정 VoC가 없습니다.")
-    else:
-        render_selectable_dataframe(
-            pd.DataFrame(examples).rename(
-                columns={
-                    "original_voc": "원문",
-                    "rootcause_problem": "Root Cause 문제",
-                    "rootcause_summary": "Root Cause 요약",
-                    "negative_intensity": "부정강도",
-                }
-            ),
-            key="improvement_negative_drilldown",
-        )
+    st.caption(
+        f"지금 정렬축 「{sort_axis}」 기준입니다. **정렬축을 바꾸면 Top {CARD_TOP_N} 도 바뀝니다.** "
+        "사이드바 필터도 그대로 반영됩니다."
+    )
+    st.download_button(
+        f"⬇  전체 개선과제 후보 {len(scored)}개 내려받기 (CSV)",
+        data=_download_score_table(scored, sort_axis).to_csv(index=False).encode("utf-8-sig"),
+        file_name=f"개선과제후보_{_safe_axis_name(sort_axis)}_{len(scored)}개.csv",
+        mime="text/csv",
+        width="stretch",
+    )
 
     if not ai_narrative_enabled:
         return
