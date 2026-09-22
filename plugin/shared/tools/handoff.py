@@ -186,9 +186,15 @@ def merge(new):
                       if (x.get('판독자_제안') or '').strip()]
         if _쓴것:
             detail = ' / '.join(dict.fromkeys(_쓴것))[:1600]
-        else:
+        elif os.environ.get('VOC_얼린기준_재현') == '1':
             detail = ' / '.join(dict.fromkeys(
                 x['무엇이_문제인가'].split('.')[0].strip()[:88] for x in items))[:900]
+        else:
+            # ★ 2026-09-22 고침 (섹션 5b) — 첫 문장 88자만 남기니 판독자가 적은 영상 목록([가2])이
+            #   첫 영상 설명 중간에서 잘렸다 (5개 중 1개만 남음). 판독자가 쓴 글은 자르지 않는다.
+            #   옛 동작은 얼린 3차 기준 재현 시험만 쓴다 — VOC_얼린기준_재현=1
+            detail = ' / '.join(dict.fromkeys(
+                x['무엇이_문제인가'].strip() for x in items))[:1600]
         old.append({
             '번호': n, '접수일': today, '나온_회차': g['나온_회차'],
             '갈래': g['갈래'], '무엇이_문제인가': kk,

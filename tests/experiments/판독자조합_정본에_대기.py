@@ -7,7 +7,11 @@
   그래서 8월 쌍의 「같이 틀림」 은 언제나 0 이고, 정본은 8월 Codex 쪽 제외 사유를 물려받았다.
 
 쓰기
-    python tests/experiments/판독자조합_정본에_대기.py
+    python tests/experiments/판독자조합_정본에_대기.py                          A · B · C (섹션 5b 전)
+    python tests/experiments/판독자조합_정본에_대기.py claudeA codexC claudeD codexE   이름을 주면 그들끼리
+
+★ 섹션 5b 뒤 (sky 2026-09-22 [가1] 가전이면 살린다) — 정본은 「대상 제품군 밖 가전」 을 뺐으므로
+  제품군이 어긋난 영상(최신결정_검사 라1)의 행은 정본이 더는 답이 아니다. 그 행은 따로 센다.
 """
 from __future__ import annotations
 
@@ -25,6 +29,25 @@ from paths import BASELINE  # noqa: E402
 정본자리 = BASELINE / "원본사본" / "2판" / "s15_master"
 결과자리 = BASELINE / "실험" / "판독자조합"
 지금 = ["claudeA", "claudeB", "codexC"]
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "plugin" / "shared" / "tools"))
+import 최신결정_검사 as 검사  # noqa: E402
+
+
+def _어긋난영상(정: dict) -> set[str]:
+    """라1 과 같은 기준 — 정본 전체에서 제품군이 어긋나 보이는 영상"""
+    import re as _re
+    from collections import defaultdict as _dd
+    묶음 = _dd(list)
+    for r in 정.values():
+        묶음[(r.get("video_id", ""), r.get("video_title", ""), r.get("product_category", ""))].append(r)
+    out = set()
+    for (vid, 제목, 군), xs in 묶음.items():
+        pat = 검사.어휘.get(군)
+        if not pat or len(xs) < 검사.최소행 or _re.search(pat, 제목, _re.I):
+            continue
+        if sum(bool(_re.search(pat, x.get("original_voc", ""), _re.I)) for x in xs) / len(xs) < 검사.댓글비율:
+            out.add(vid)
+    return out
 
 
 def _읽기(p: Path) -> dict:
@@ -59,7 +82,8 @@ def _종류(x: str, v: dict) -> str:
     return "5 라벨이 다름"
 
 
-def main() -> None:
+def main(이름들: list[str] | None = None) -> None:
+    지금 = 이름들 or globals()["지금"]
     정 = _읽기(정본자리 / "raw_voc.csv")
     스냅 = sorted(정본자리.glob("raw_voc_*.csv"), key=lambda p: re.search(r"(\d{8}_\d{4})", p.name).group(1))
     if not 스냅:
@@ -91,7 +115,18 @@ def main() -> None:
         print("  %-9s %s" % (n, dict(sorted(Counter(_종류(v[n], v) for v in 표.values()).items()))))
     안바뀐 = [k for k in ks if not 표[k]["바뀜"]]
     print("\n② 쌍마다 — 3차 뒤 안 바뀐 %d행 · 제외 사유는 무시(넣고 빼기 + 라벨)" % len(안바뀐))
-    for x, y in [("claudeA", "claudeB"), ("claudeA", "codexC"), ("claudeB", "codexC"), ("8월claude", "8월codex")]:
+    import itertools
+    어긋 = _어긋난영상(정)
+    print("  (제품군이 어긋난 영상 %d개 — %s)" % (len(어긋), sorted(어긋)))
+    for 이름, 볼행 in (("전체", 안바뀐), ("어긋난 영상 뺌", [k for k in 안바뀐 if 정[k].get("video_id") not in 어긋])):
+      print("  ── %s %d행" % (이름, len(볼행)))
+      for n in 지금 + list(옛):
+          print("     %-9s 정본과 같음 %d" % (n, sum(_넣고빼기(표[k][n]) == _넣고빼기(표[k]["정본"]) for k in 볼행)))
+      for x, y in list(itertools.combinations(지금, 2)) + [("8월claude", "8월codex")]:
+        합 = [k for k in 볼행 if _넣고빼기(표[k][x]) == _넣고빼기(표[k][y])]
+        틀 = [k for k in 합 if _넣고빼기(표[k][x]) != _넣고빼기(표[k]["정본"])]
+        print("     %s·%s  같은 답 %d · 같이 틀림 %d · 감독에게 갈 행 %d" % (x, y, len(합), len(틀), len(볼행) - len(합)))
+    for x, y in []:
         합 = [k for k in 안바뀐 if _넣고빼기(표[k][x]) == _넣고빼기(표[k][y])]
         틀 = [k for k in 합 if _넣고빼기(표[k][x]) != _넣고빼기(표[k]["정본"])]
         oos = sum(표[k]["정본"] == "제외:out_of_scope_product" for k in 틀)
@@ -103,4 +138,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    main()
+    main(sys.argv[1:] or None)
