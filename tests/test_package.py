@@ -8,7 +8,7 @@
 보는 것
   ① 출처 기록의 해시 = 지금 파일 (판독 70 + 감독 3 = 73개)
   ② 차림표의 재료가 모두 있고, 모두 출처 기록에 적혀 있다 (빠진 재료 · 안 쓰는 기록 0)
-  ③ 폴더를 차리면 옛 꾸러미 모양이 된다 — 판독 80개 · 감독 65개(편향검사 뺌) — 지문에 engine 이 들어간다
+  ③ 폴더를 차리면 옛 꾸러미 모양이 된다 — 판독 81개 · 감독 66개(편향검사 뺌 · 섹션 5b 의 새 판 0_최신결정_먼저.md 더함) — 지문에 engine 이 들어간다
   ④ ★ 엔진을 한 줄 고치면 지문검사가 실패한다 (전에는 통과했다 — 그래서 여기서 지킨다)
 """
 from __future__ import annotations
@@ -86,9 +86,9 @@ def 차린폴더(tmp_path_factory):
     return d
 
 
-def test_차리면_꾸러미와_같은_80개가_된다(차린폴더):
+def test_차리면_꾸러미와_같은_81개가_된다(차린폴더):
     파일 = [p for p in 차린폴더.rglob("*") if p.is_file()]
-    assert len(파일) == 80, len(파일)
+    assert len(파일) == 81, len(파일)          # 옛 꾸러미 80 + 새 판 0_최신결정_먼저.md
     for 자리 in ("스크립트/자가점검.py", "판독패키지/1a_기준문서_정본_1부.md", "프롬프트/0_붙여넣을_프롬프트_도구형.md",
                 "대장/지문.json", "0_먼저_읽으십시오.md", "engine/src/voc_rebuild/engine.py"):
         assert (차린폴더 / 자리).is_file(), 자리
@@ -98,7 +98,7 @@ def test_지문에_엔진이_들어간다(차린폴더):
     지문 = json.loads((차린폴더 / "대장" / "지문.json").read_text(encoding="utf-8"))
     엔진 = [k for k in 지문["지문"] if k.startswith("engine/")]
     assert len(엔진) == 25, len(엔진)
-    assert 지문["파일수"] == len(지문["지문"]) == 63, 지문["파일수"]
+    assert 지문["파일수"] == len(지문["지문"]) == 64, 지문["파일수"]
 
 
 def _지문검사(폴더: Path) -> int:
@@ -130,9 +130,9 @@ def 감독폴더(tmp_path_factory):
     return d
 
 
-def test_감독폴더는_65개이고_편향검사가_없다(감독폴더):
+def test_감독폴더는_66개이고_편향검사가_없다(감독폴더):
     파일 = [p for p in 감독폴더.rglob("*") if p.is_file()]
-    assert len(파일) == 65, len(파일)          # 옛 감독 꾸러미 66개 − 편향검사.py
+    assert len(파일) == 66, len(파일)          # 옛 감독 꾸러미 66개 − 편향검사.py + 새 판 0_최신결정_먼저.md
     assert not (감독폴더 / "스크립트" / "편향검사.py").exists(), "감독 폴더에 편향검사가 있다 (98: 아예 없다)"
     assert (감독폴더 / "프롬프트" / "0_붙여넣을_프롬프트_감독.md").is_file()
 
@@ -146,12 +146,14 @@ def test_감독폴더에_정답지와_감독입력을_만들지_않는다(감독
     assert not list(감독폴더.rglob("*_bundle")), "2차 번들이 들어갔다"
 
 
-def test_감독폴더_안내문은_옛_꾸러미와_편향검사_한_줄만_다르다(감독폴더):
+def test_감독폴더_안내문은_옛_꾸러미와_편향검사_한_줄과_새_판_한_줄만_다르다(감독폴더):
     옛 = BASELINE / "원본사본" / "꾸러미" / "VoC_3_3차감독" / "0_먼저_읽으십시오.md"
     assert 옛.is_file(), "옛 감독 꾸러미 사본을 못 찾았다 — %s" % 옛
     a = 옛.read_text(encoding="utf-8").splitlines()
     b = (감독폴더 / "0_먼저_읽으십시오.md").read_text(encoding="utf-8").splitlines()
-    assert [x for x in a if "편향검사.py" not in x] == b
+    새판 = [x for x in b if "0_최신결정_먼저.md" in x]
+    assert len(새판) == 1, 새판          # 섹션 5b 의 새 판 — 옛 꾸러미에 없던 한 줄
+    assert [x for x in a if "편향검사.py" not in x] == [x for x in b if x not in 새판]
 
 
 def test_감독폴더_지문에_엔진이_들어가고_엔진을_고치면_잡는다(감독폴더, tmp_path):
@@ -179,5 +181,5 @@ def test_총괄자리는_도구_41개와_감독꾸러미를_갖춘다(tmp_path):
     import zipfile
     with zipfile.ZipFile(판 / "_배포" / "VoC_3_3차감독.zip") as z:
         이름 = [n for n in z.namelist() if not n.endswith("/")]
-    assert len(이름) == 65 and "스크립트/편향검사.py" not in 이름, "감독 꾸러미는 감독 스킬과 한 벌이어야 한다"
+    assert len(이름) == 66 and "스크립트/편향검사.py" not in 이름, "감독 꾸러미는 감독 스킬과 한 벌이어야 한다"
     assert 셈["차림"] > 0 and 총괄차리기.차리기(tmp_path / "총괄", "시험판")["차림"] == 0, "다시 돌리면 아무것도 덮지 않는다"

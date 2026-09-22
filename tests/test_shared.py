@@ -46,7 +46,8 @@ def _sha(b: bytes) -> str:
 
 
 def test_기준서가_있다():
-    assert len(_문서들()) == len(출처["파일"]) == 8, [p.name for p in _문서들()]
+    # 원래 8 + 새 판 0_최신결정_먼저.md (섹션 5b)
+    assert len(_문서들()) == len(출처["파일"]) == 9, [p.name for p in _문서들()]
 
 
 @pytest.mark.parametrize("이름", sorted(출처["파일"]))
@@ -58,6 +59,13 @@ def test_기록과_같다(이름):
     assert _sha(b) == 출처["파일"][이름]["지금_sha256"], (
         "%s 가 기록과 다르다. 일부러 고쳤다면 출처.json 의 `고친_이력` 에 이유를 적고 "
         "`지금_sha256` 을 갱신하라." % 이름)
+
+
+def test_옛_기준서는_8개_새_판은_하나():
+    옛것 = [n for n, v in 출처["파일"].items() if v["원본_sha256"]]
+    새것 = [n for n, v in 출처["파일"].items() if not v["원본_sha256"]]
+    assert len(옛것) == 8 and 새것 == ["0_최신결정_먼저.md"], (옛것, 새것)
+    assert 출처["파일"]["0_최신결정_먼저.md"].get("새로_씀"), "새 판은 왜 새로 썼는지 적는다"
 
 
 def test_이름이_다른_쌍둥이를_알아본다():
@@ -85,7 +93,8 @@ def test_저장소에_한_벌만_있다():
     assert not 걸림, "기준서 사본이 저장소에 또 있다 — plugin/shared/standards/ 를 가리킬 것:\n" + "\n".join(걸림)
 
 
-@pytest.mark.parametrize("이름", sorted(출처["파일"]))
+# 옛 저장소에서 온 기준서만 — 새 판(원본_sha256 이 없는 것)은 기준 정답을 만들 때 없었다
+@pytest.mark.parametrize("이름", sorted(n for n, v in 출처["파일"].items() if v["원본_sha256"]))
 def test_기준_정답이_이_기준서로_만들어졌다(이름):
     사본 = BASELINE / "원본사본" / "2판" / "_판독패키지" / 이름
     assert 사본.is_file(), "기준 자리의 기준서를 못 찾았다 — %s" % 사본

@@ -169,11 +169,11 @@ def test_총괄스킬로_차린_자리가_3차_기준과_같다(이름):
         다름 = 맞대기(얼린 / 자리, 판 / 자리, 얼린, 판)
         assert not 다름, "%s 가 얼린 기준과 다르다:\n%s" % (자리, "\n".join(다름[:20]))
     if 이름 == "3차준비":
-        # 총괄이 차린 감독 폴더 = 감독 스킬 모양 65개 + 감독 입력 + 시작 안내 · 편향검사·정답지 없음
+        # 총괄이 차린 감독 폴더 = 감독 스킬 모양 66개(새 판 0_최신결정_먼저.md 포함) + 감독 입력 + 시작 안내 · 편향검사·정답지 없음
         입력수 = len(list((판 / "s13_judge").glob("judge_*")))
         for 감독 in ("3차 감독1", "3차 감독2"):
             d = 판 / "_감독폴더" / 감독
-            assert len([p for p in d.rglob("*") if p.is_file()]) == 65 + 입력수 + 1, 감독
+            assert len([p for p in d.rglob("*") if p.is_file()]) == 66 + 입력수 + 1, 감독
             assert not (d / "스크립트" / "편향검사.py").exists()
             assert not list(d.rglob("ab_mapping*"))
             assert (d / "0_여기서_시작하십시오.md").is_file()
