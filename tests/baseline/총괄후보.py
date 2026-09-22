@@ -34,7 +34,7 @@ from paths import BASELINE, PLUGIN  # noqa: E402
 }
 
 
-def 차려서_돌리기(이름: str, 그릇: Path, 엔진: Path | None = None) -> int:
+def 차려서_돌리기(이름: str, 그릇: Path, 엔진: Path | None = None, 옛판: bool = True) -> int:
     """엔진 — 주지 않으면 차린 자리의 engine/ (플러그인 엔진). 얼린 기준과 맞댈 때는 기준 자리의 엔진 사본을 준다:
     엑셀 번들 시트는 엔진이 만드는데, 얼린 기준은 섹션 2 엔진 사본(옛 live_merge)으로 만들었다 (2026-09-21 확인)."""
     총괄 = 그릇 / "총괄"
@@ -54,8 +54,12 @@ def 차려서_돌리기(이름: str, 그릇: Path, 엔진: Path | None = None) -
         p, q = 원본 / 자리, 판 / 자리
         q.parent.mkdir(parents=True, exist_ok=True)
         (shutil.copytree if p.is_dir() else shutil.copyfile)(p, q)
+    # VOC_옛판_미판정제외 — 얼린 3차 기준(08-18 동작)을 재현한다. 섹션 5b 에서 기본 동작을 §17 로 바꿨다
     env = dict(os.environ, VOC_ENGINE=str(엔진 or (판 / "engine")), PYTHONDONTWRITEBYTECODE="1",
                PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    env.pop("VOC_옛판_미판정제외", None)
+    if 옛판:
+        env["VOC_옛판_미판정제외"] = "1"
     r = subprocess.run([sys.executable, "-B", str(판 / 도구[이름])], cwd=str(판), env=env,
                        text=True, encoding="utf-8", errors="replace", capture_output=True)
     (그릇 / "실행기록.txt").write_text("도구: %s\n종료코드: %d\n\n--- stdout ---\n%s\n--- stderr ---\n%s\n"

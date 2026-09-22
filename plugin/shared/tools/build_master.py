@@ -542,7 +542,12 @@ def main():
             stats['topic_provisional 비움'] += 1
 
         # ★ sky 결정 — 모든 행은 제외 아니면 라벨이다. 미판정을 남기지 않는다
-        if kind(base) == '미판정':
+        # ★ 2026-09-22 고침 (섹션 5b · sky 「§17 대로 남긴다」) — 08-26 sky 결정 §17 이 더 늦다:
+        #   감성·니즈 신호만 있는 N/A 행은 모수에 남기고 topic 집계에서만 뺀다. 미분류도 제품 VoC 라 남긴다.
+        #   그래서 topic 이 **빈칸**인 행(판정이 아예 없는 행)만 뺀다.
+        #   옛 동작(N/A · 미분류까지 빼기)은 얼린 3차 기준을 재현하는 시험만 쓴다 — VOC_옛판_미판정제외=1
+        _빈칸 = not str(base.get('topic') or '').strip()
+        if kind(base) == '미판정' and (_빈칸 or os.environ.get('VOC_옛판_미판정제외') == '1'):
             base['status'] = 'scope_excluded'
             if not str(base.get('scope_exclusion_reason') or '').strip():
                 base['scope_exclusion_reason'] = 'no_analytic_value'

@@ -177,3 +177,30 @@ def test_총괄스킬로_차린_자리가_3차_기준과_같다(이름):
             assert not (d / "스크립트" / "편향검사.py").exists()
             assert not list(d.rglob("ab_mapping*"))
             assert (d / "0_여기서_시작하십시오.md").is_file()
+
+
+def test_가3_뒤처리가_N_A행을_다시_빼지_않는다():
+    """★ 섹션 5b (sky 2026-09-22 「§17 대로 남긴다」) — 새 동작으로 3차 마무리를 돌리면
+    얼린 기준에서 「+미판정→제외」 로 빠졌던 N/A 행만 normal 로 남고, 나머지 행은 그대로여야 한다.
+    (얼린 기준 재현 시험은 옛 동작 스위치로 돈다 — 둘이 같이 있어야 바꾼 것이 정확히 그것뿐임을 안다)"""
+    import csv, io
+    그릇 = BASELINE / "시험실행" / "총괄_3차마무리_새동작"
+    if 그릇.exists():
+        shutil.rmtree(그릇)
+    그릇.mkdir(parents=True)
+    assert 총괄후보.차려서_돌리기("3차마무리", 그릇, 엔진=BASELINE / "engine", 옛판=False) == 0,         (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
+
+    def 읽기(p):
+        return {r["atomic_id"]: r for r in csv.DictReader(io.StringIO(p.read_bytes().decode("utf-8-sig")))}
+    얼린 = 읽기(BASELINE / "실행" / "3차마무리_1" / "2판" / "s15_master" / "raw_voc.csv")
+    새것 = 읽기(그릇 / "총괄" / "2판" / "s15_master" / "raw_voc.csv")
+    뺐던 = {k for k, r in 얼린.items() if "+미판정→제외" in (r.get("decided_by") or "")}
+    assert 뺐던, "얼린 기준에 옛 규칙으로 뺀 행이 없다 — 시험 대상을 못 찾았다 (통과가 아니다)"
+    assert set(얼린) == set(새것), "행이 늘거나 줄었다"
+    for k in 뺐던:
+        # 옛 규칙은 topic 도 N/A 로 덮었다 — 원래 값(N/A 또는 미분류)이 남아야 한다
+        assert 새것[k]["status"] == "normal" and 새것[k]["topic"] in ("N/A", "미분류"), (k, 새것[k]["status"], 새것[k]["topic"])
+        assert "+미판정→제외" not in (새것[k].get("decided_by") or "")
+    바뀐 = [k for k in 얼린 if k not in 뺐던 and
+           any(얼린[k].get(c) != 새것[k].get(c) for c in ("status", "topic", "scope_exclusion_reason", "decided_by"))]
+    assert not 바뀐, "옛 규칙과 상관없는 행이 바뀌었다: %s" % 바뀐[:5]

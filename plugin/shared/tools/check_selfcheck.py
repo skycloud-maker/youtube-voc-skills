@@ -175,8 +175,13 @@ def check_metrics(rows):
     room = sum(1 for r in rows if kind(r) != '제외'
                and str(r.get('rootcause_problem') or '').strip() not in NOT)
     ok('해석 여지 있음 %d  (%.1f%%)' % (room, 100 * room / n))
+    # ★ 2026-09-22 고침 (섹션 5b) — N/A · 미분류는 정당한 결과다 (sky 08-26 §17 · 1a §7.9 ②).
+    #   08-18 「제외 또는 라벨 둘 중 하나」 경고가 판독자를 §17 반대쪽으로 밀었다. 빈칸만 경고한다
+    빈칸 = sum(1 for r in rows if kind(r) == '미판정' and not str(r.get('topic') or '').strip())
     if c['미판정']:
-        warn('미판정 %d행 — sky 결정(2026-08-18)은 「제외 또는 라벨 둘 중 하나」 다' % c['미판정'])
+        ok('N/A · 미분류 %d행 — 모수에 남고 topic 집계에서만 빠진다 (0_최신결정_먼저 [가3])' % (c['미판정'] - 빈칸))
+    if 빈칸:
+        warn('topic 빈칸 %d행 — 라벨 · N/A · 미분류 · 제외 중 하나를 적는다' % 빈칸)
 
 
 # ─────────────────────────────────────────────────────────────────────
