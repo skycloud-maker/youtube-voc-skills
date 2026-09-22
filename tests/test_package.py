@@ -8,7 +8,7 @@
 보는 것
   ① 출처 기록의 해시 = 지금 파일 (판독 70 + 감독 3 = 73개)
   ② 차림표의 재료가 모두 있고, 모두 출처 기록에 적혀 있다 (빠진 재료 · 안 쓰는 기록 0)
-  ③ 폴더를 차리면 옛 꾸러미 모양이 된다 — 판독 81개 · 감독 66개(편향검사 뺌 · 섹션 5b 의 새 판 0_최신결정_먼저.md 더함) — 지문에 engine 이 들어간다
+  ③ 폴더를 차리면 옛 꾸러미 모양이 된다 — 판독 82개 · 감독 66개(편향검사 뺌 · 섹션 5b 의 새 판 0_최신결정_먼저.md 더함 · 판독에는 최신결정_검사.py 도) — 지문에 engine 이 들어간다
   ④ ★ 엔진을 한 줄 고치면 지문검사가 실패한다 (전에는 통과했다 — 그래서 여기서 지킨다)
 """
 from __future__ import annotations
@@ -45,7 +45,7 @@ def _sha(p: Path) -> str:
 
 def test_출처_기록이_실제_파일과_같다():
     파일 = 꾸러미출처["파일"]
-    assert len(파일) == 92, len(파일)          # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5)
+    assert len(파일) == 93, len(파일)          # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5) + 최신결정_검사 (섹션 5b)
     없음 = [r for r in 파일 if not (REPO / r).is_file()]
     assert not 없음, "출처에 적힌 파일이 없다 — %s" % 없음[:5]
     어긋남 = [r for r, v in 파일.items() if _sha(REPO / r) != v["지금_sha256"]]
@@ -86,9 +86,9 @@ def 차린폴더(tmp_path_factory):
     return d
 
 
-def test_차리면_꾸러미와_같은_81개가_된다(차린폴더):
+def test_차리면_꾸러미와_같은_82개가_된다(차린폴더):
     파일 = [p for p in 차린폴더.rglob("*") if p.is_file()]
-    assert len(파일) == 81, len(파일)          # 옛 꾸러미 80 + 새 판 0_최신결정_먼저.md
+    assert len(파일) == 82, len(파일)          # 옛 꾸러미 80 + 새 판 0_최신결정_먼저.md + 스크립트/최신결정_검사.py
     for 자리 in ("스크립트/자가점검.py", "판독패키지/1a_기준문서_정본_1부.md", "프롬프트/0_붙여넣을_프롬프트_도구형.md",
                 "대장/지문.json", "0_먼저_읽으십시오.md", "engine/src/voc_rebuild/engine.py"):
         assert (차린폴더 / 자리).is_file(), 자리
@@ -98,7 +98,7 @@ def test_지문에_엔진이_들어간다(차린폴더):
     지문 = json.loads((차린폴더 / "대장" / "지문.json").read_text(encoding="utf-8"))
     엔진 = [k for k in 지문["지문"] if k.startswith("engine/")]
     assert len(엔진) == 25, len(엔진)
-    assert 지문["파일수"] == len(지문["지문"]) == 64, 지문["파일수"]
+    assert 지문["파일수"] == len(지문["지문"]) == 65, 지문["파일수"]
 
 
 def _지문검사(폴더: Path) -> int:
@@ -168,12 +168,12 @@ def test_감독폴더_지문에_엔진이_들어가고_엔진을_고치면_잡�
 
 
 # ── 총괄 자리 (섹션 5) ───────────────────────────────────────────────────────────
-def test_총괄자리는_도구_41개와_감독꾸러미를_갖춘다(tmp_path):
+def test_총괄자리는_도구_42개와_감독꾸러미를_갖춘다(tmp_path):
     셈 = 총괄차리기.차리기(tmp_path / "총괄", "시험판")
     assert not 셈["못찾음"], 셈["못찾음"]
     판 = tmp_path / "총괄" / "시험판"
     도구 = sorted(p.name for p in 판.glob("*.py"))
-    assert len(도구) == 41, len(도구)
+    assert len(도구) == 42, len(도구)          # 41 + 최신결정_검사.py (섹션 5b)
     for 옛관리 in ("마무리_이력정리.py", "정본_맞추기.py", "make_zip.py", "박힌말_검사.py", "5차기준_검사.py"):
         assert 옛관리 not in 도구, "옛 관리 도구가 들어갔다 — %s (sky: 새 방식으로 대신)" % 옛관리
     assert (tmp_path / "총괄" / "s9_group" / "topic_group_map.json").is_file(), "대장은 판 폴더의 부모에"

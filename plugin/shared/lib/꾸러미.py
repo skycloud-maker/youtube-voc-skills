@@ -31,7 +31,8 @@ _판독도구 = ["build_bundle.py", "check_selfcheck.py", "check_submission.py",
            "topic_registry.py", "run_status.py", "감독_읽기.py", "handoff.py", "엔진자리.py",
            "넘어가도_되나.py", "보정요청_논의본.py", "시트_붙이기.py", "편향검사.py",
            "apply_approved.py", "verify_quotes.py", "자가점검.py", "성실성검사.py",
-           "조각덮개검사.py", "원문대조검사.py", "지문검사.py", "데이터_넣기.py"]
+           "조각덮개검사.py", "원문대조검사.py", "지문검사.py", "데이터_넣기.py",
+           "최신결정_검사.py"]           # ★ 섹션 5b 새 도구 — 옛 꾸러미에 없다 (0_최신결정_먼저.md 의 라1~라8)
 # 감독 꾸러미 도구 — make_zip 차례 그대로에서 편향검사.py 만 뺐다 (위 ②)
 _감독도구 = ["감독_읽기.py", "build_bundle.py", "check_selfcheck.py", "rank_two_axis.py",
            "topic_registry.py", "make_grading_sheet.py", "handoff.py", "엔진자리.py",
