@@ -23,6 +23,7 @@ sys.path.insert(0, str(_여기.parent / "plugin" / "shared"))
 sys.path.insert(0, str(_여기 / "baseline"))
 from paths import BASELINE  # noqa: E402
 import 기준_만들기  # noqa: E402
+import 맞대기 as 맞대기_mod  # noqa: E402
 from 맞대기 import 맞대기  # noqa: E402
 
 목록 = json.loads((_여기 / "baseline" / "얼린기준_목록.json").read_text(encoding="utf-8"))
@@ -126,6 +127,22 @@ def test_기준이_재현된다(이름):
 
 import 기준_만들기_2차  # noqa: E402
 
+# ★ 2차 기준(8월 · 옛 판독 꾸러미 엔진)과 지금 엔진(09-07 동결본) 사이에 **일부러 다른** 파생 칸 (sky 2026-10-07 「1번」)
+#   엔진 09-07 판이 `brand_display` 를 「그 댓글이 자사 얘기(entity_role=product_brand)일 때만」 채운다
+#   (대시보드 LG 필터가 전체의 93% 를 끌어오던 것을 sky 가 고치게 했다 — engine/src/dashboard60/data_contract.py `_brand_display`).
+#   영상 요약의 브랜드 칸은 그 칸으로 계산한다. 그 밖의 칸이 하나라도 다르면 시험은 실패한다.
+허용칸_2차 = {"raw_voc": {"brand_display"}, "inquiry_rows": {"brand_display"},
+            "video_summary": {"main_brand", "main_brand_note", "main_brand_breakdown"}}
+# 지금 실제로 다른 칸 수 — 또 달라지면 드러나게 못박는다 (2026-09-22 들여온 엔진으로 센 것)
+허용칸_2차_칸수 = {
+    "2차번들A": {("raw_voc", "brand_display"): 3500, ("inquiry_rows", "brand_display"): 146,
+               ("video_summary", "main_brand"): 2, ("video_summary", "main_brand_note"): 33,
+               ("video_summary", "main_brand_breakdown"): 33},
+    "2차번들B": {("raw_voc", "brand_display"): 3483, ("inquiry_rows", "brand_display"): 389,
+               ("video_summary", "main_brand"): 3, ("video_summary", "main_brand_note"): 37,
+               ("video_summary", "main_brand_breakdown"): 37},
+}
+
 
 @pytest.mark.parametrize("이름", 기준_만들기_2차.실행들)
 def test_판독스킬이_2차_기준과_같다(이름):
@@ -141,9 +158,15 @@ def test_판독스킬이_2차_기준과_같다(이름):
     코드 = 기준_만들기_2차.차려서_돌리기(이름, 그릇, 기준_만들기_2차.스킬로_차리기)
     assert 코드 == 0, (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
     얼린 = BASELINE / "실행" / ("%s_1" % 이름) / "판독"
+    센것: dict = {}
     for 자리 in 기준_만들기_2차.볼자리[이름]:
-        다름 = 맞대기(얼린 / 자리, 그릇 / "판독" / 자리)
+        다름 = 맞대기(얼린 / 자리, 그릇 / "판독" / 자리, 허용칸=허용칸_2차, 허용센것=센것)
         assert not 다름, "%s 가 얼린 기준과 다르다:\n%s" % (자리, "\n".join(다름[:20]))
+    # 허용한 칸은 **몇 칸이 다른지까지** 못박는다 (sky 2026-10-07 「1번」) — 엔진이 또 바뀌면 여기서 드러난다
+    본것 = {(t, c): n for (_, t, c), n in 센것.items()}
+    기대 = 허용칸_2차_칸수.get(이름)
+    if 기대 is not None:
+        assert 본것 == 기대, "허용한 칸의 다른 칸 수가 바뀌었다 — 엔진이 또 바뀌었나:\n  지금 %s\n  적어 둔 것 %s" % (본것, 기대)
 
 
 import 총괄후보  # noqa: E402
@@ -204,3 +227,25 @@ def test_가3_뒤처리가_N_A행을_다시_빼지_않는다():
     바뀐 = [k for k in 얼린 if k not in 뺐던 and
            any(얼린[k].get(c) != 새것[k].get(c) for c in ("status", "topic", "scope_exclusion_reason", "decided_by"))]
     assert not 바뀐, "옛 규칙과 상관없는 행이 바뀌었다: %s" % 바뀐[:5]
+
+
+def test_허용한_칸만_빼고_나머지는_잡는다():
+    """★ 일부러 틀리게 — 허용칸은 다름에서 빼고 센다. 허용하지 않은 칸은 잡는다 (sky 2026-10-07 「1번」)."""
+    머리 = ("atomic_id", "topic", "brand_display")
+    가 = [머리, ("a-01", "흡입력", "LG"), ("a-02", "소음/진동", "LG")]
+    나 = [머리, ("a-01", "흡입력", None), ("a-02", "소음/진동", None)]
+    센것: dict = {}
+    assert 맞대기_mod._칸다름("x.xlsx", "raw_voc", 가, 나, {"brand_display"}, 센것) == []
+    assert 센것 == {("x.xlsx", "raw_voc", "brand_display"): 2}, 센것
+
+    다른칸 = [머리, ("a-01", "청소/관리", None), ("a-02", "소음/진동", None)]
+    센것 = {}
+    걸림 = 맞대기_mod._칸다름("x.xlsx", "raw_voc", 가, 다른칸, {"brand_display"}, 센것)
+    assert len(걸림) == 1 and "topic" in 걸림[0], 걸림
+    assert 센것 == {("x.xlsx", "raw_voc", "brand_display"): 2}, 센것
+
+    # 머리줄이 다르면 그것부터 다름이다
+    assert 맞대기_mod._칸다름("x.xlsx", "raw_voc", 가, [("atomic_id", "topic", "brand")] + 나[1:],
+                          {"brand_display"}, {})
+    # 행 수가 다르면 다름이다
+    assert 맞대기_mod._칸다름("x.xlsx", "raw_voc", 가, 나[:2], {"brand_display"}, {})

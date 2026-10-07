@@ -10,6 +10,9 @@
     claude       claude -p · 이 저장소의 plugin/ 을 --plugin-dir 로 싣는다
     codex        codex exec · 그릇/.agents/skills/ 에 스킬을, 그 옆에 shared · engine 을 둔다
                  (플러그인 모양 그대로 — 섹션 6 의 dist/codex 는 shared · engine 을 스킬 안에 넣는다. 둘 다 스크립트가 찾는다)
+    claude-낱개 · codex-낱개   ★ **낱개 스킬 폴더 하나만** 준다 (sky 2026-10-07 염려) — `tools/build_skills.py` 로 묶은
+                 그 폴더(공통 파일 · 엔진이 스킬 안에 들어 있다)를 claude 는 `작업/.claude/skills/<스킬>/` 에,
+                 codex 는 `그릇/.agents/skills/<스킬>/` 에 둔다. 플러그인은 주지 않는다.
     claude-없이 · codex-없이   스킬 없이 같은 과제 (빈틈 재기)
 ★ 채점은 evals.json 의 expectations 를 기계로 확인한 것이다. 못 본 것은 「못 봄」 이지 통과가 아니다.
 ★ 시험마다 볼 항목을 `기대항목` 에 못박아 둔다 (2026-09-21). 앞 단계가 없어 확인하지 못한 항목은
@@ -166,6 +169,21 @@ def _codex_env() -> dict:
     return e
 
 
+def _낱개폴더(스킬이름: str) -> Path:
+    """`tools/build_skills.py` 로 낱개 스킬을 묶어 그 폴더를 돌려준다 (저장소 밖 임시 자리에).
+
+    ★ 왜 — AI 에게 **스킬 폴더 하나만** 줘도 되는지 보려면, 플러그인이 보이지 않는 자리에서 돌려야 한다.
+    """
+    import tempfile
+    sys.path.insert(0, str(REPO / "tools"))
+    import build_skills                                  # noqa: PLC0415
+    d = Path(tempfile.mkdtemp(prefix="voc_낱개_"))
+    코드 = build_skills.만들기(d)
+    if 코드:
+        raise RuntimeError("낱개 묶기 실패 — build_skills.py")
+    return d / "codex" / ".agents" / "skills" / 스킬이름
+
+
 def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
     시험 = 시험들[시험id]
     그릇, 최종 = 격리_준비("%s_%s_%d" % (누구, 시험id, 번))
@@ -178,9 +196,14 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
               "--dangerously-skip-permissions"]
         if 누구 == "claude":
             명령 += ["--plugin-dir", str(PLUGIN)]
+        elif 누구 == "claude-낱개":
+            # ★ 낱개 스킬 폴더 하나만 — Claude Code 는 작업 폴더의 .claude/skills/ 를 읽는다
+            shutil.copytree(_낱개폴더(스킬.name), 작업 / ".claude" / "skills" / 스킬.name)
         r = subprocess.run(명령, input=시험["prompt"], cwd=작업, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=_env(), timeout=3600)
     else:
+        if 누구 == "codex-낱개":
+            shutil.copytree(_낱개폴더(스킬.name), 그릇 / ".agents" / "skills" / 스킬.name)
         if 누구 == "codex":
             d = 그릇 / ".agents"
             shutil.copytree(스킬, d / "skills" / 스킬.name)

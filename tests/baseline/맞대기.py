@@ -21,6 +21,12 @@
       ★ 09-18 에는 두 실행이 **같은 날**이라 드러나지 않았다. 사흘 뒤 다시 돌려서야 나왔다.
       ★ 값이 날짜 꼴일 때만 가린다. 그 칸의 다른 값(처리상태 등)은 그대로 본다.
 
+★ 허용한 칸 (`허용칸` · 2026-10-07 sky 「1번」) — 엑셀에서 **일부러 바뀐 파생 칸**만 다름에서 뺀다.
+  2차 기준은 옛 엔진으로 얼렸는데, 엔진 09-07 판이 `brand_display` 를 「자사 얘기일 때만」 채우도록 바꿨다
+  (대시보드 LG 필터 과대 포섭 수정 · sky). 그 칸과 그것으로 계산되는 영상 요약 칸만 허용하고,
+  **그 밖의 칸이 하나라도 다르면 다름**이다. 몇 칸이 허용에 걸렸는지는 `허용센것` 에 담아 돌려준다 —
+  시험이 그 수까지 못박아, 다음에 또 달라지면 드러난다.
+
 ★ 「못 찾음」 은 같음이 아니다 — 폴더가 없거나 비었으면 다름으로 돌려준다.
 
 쓰기
@@ -143,8 +149,38 @@ def _첫다름(a: list, b: list) -> str:
     return "길이가 다름 %d / %d" % (len(a), len(b))
 
 
+def _칸다름(파일: str, 시트: str, a: list, b: list, 허용: set, 센것: dict) -> list[str]:
+    """행·칸을 하나씩 대고, 허용한 칸은 센것에 담는다. 머리줄(첫 행)이 다르면 그것부터 다름이다."""
+    out = []
+    if len(a) != len(b):
+        out.append("칸 값 다름: %s [%s]  (행 수 %d / %d)" % (파일, 시트, len(a), len(b)))
+        return out
+    if not a:
+        return out
+    머리 = list(a[0])
+    if 머리 != list(b[0]):
+        out.append("칸 값 다름: %s [%s]  (머리줄이 다름)" % (파일, 시트))
+        return out
+    for 번, (x, y) in enumerate(zip(a, b), 1):
+        if x == y:
+            continue
+        for j in range(max(len(x), len(y))):
+            값가 = x[j] if j < len(x) else None
+            값나 = y[j] if j < len(y) else None
+            if 값가 == 값나:
+                continue
+            이름 = 머리[j] if j < len(머리) else "(%d번째 칸)" % (j + 1)
+            if 이름 in 허용:
+                센것[(파일, 시트, 이름)] = 센것.get((파일, 시트, 이름), 0) + 1
+                continue
+            out.append("칸 값 다름: %s [%s] %s  (%d번째 행)" % (파일, 시트, 이름, 번))
+            if len(out) >= 20:
+                return out
+    return out
+
+
 def 맞대기(가: Path, 나: Path, 뿌리가: Path | None = None, 뿌리나: Path | None = None,
-           뺄것: tuple[str, ...] = ()) -> list[str]:
+           뺄것: tuple[str, ...] = (), 허용칸: dict | None = None, 허용센것: dict | None = None) -> list[str]:
     가, 나 = Path(가), Path(나)
     뿌리가, 뿌리나 = Path(뿌리가 or 가), Path(뿌리나 or 나)
     다름: list[str] = []
@@ -173,10 +209,15 @@ def 맞대기(가: Path, 나: Path, 뿌리가: Path | None = None, 뿌리나: Pa
                 x, y = _엑셀읽기(p, 뿌리가), _엑셀읽기(q, 뿌리나)
                 if [t for t, _ in x] != [t for t, _ in y]:
                     다름.append("시트 다름: %s  %s / %s" % (r, [t for t, _ in x], [t for t, _ in y]))
-                else:
+                elif 허용칸 is None:
                     for (t, a), (_, b) in zip(x, y):
                         if a != b:
                             다름.append("칸 값 다름: %s [%s]  (%s)" % (r, t, _첫다름(a, b)))
+                else:
+                    센것 = 허용센것 if 허용센것 is not None else {}
+                    for (t, a), (_, b) in zip(x, y):
+                        if a != b:
+                            다름 += _칸다름(r, t, a, b, set(허용칸.get(t, ())), 센것)
             elif p.read_bytes() != q.read_bytes():
                 다름.append("바이트 다름: %s" % r)
         except Exception as e:                      # 못 읽은 것은 같음이 아니다
