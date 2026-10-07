@@ -26,7 +26,8 @@ def _파일들() -> set[str]:
 
 
 def test_출처_기록과_파일이_하나씩_맞다():
-    assert len(출처["파일"]) == 142, len(출처["파일"])   # 140 + scripts 2개 (2026-10-07 · 1차 실행 경로)
+    # 140 + scripts 2개(1차 실행 경로) + nlp_analyzer 10개 — 둘 다 2026-10-07
+    assert len(출처["파일"]) == 152, len(출처["파일"])
     assert _파일들() == set(출처["파일"]), (sorted(_파일들() - set(출처["파일"]))[:5], sorted(set(출처["파일"]) - _파일들())[:5])
     어긋남 = [n for n, v in 출처["파일"].items() if hashlib.sha256((엔진 / n).read_bytes()).hexdigest() != v["지금_sha256"]]
     assert not 어긋남, "출처 기록과 다른 엔진 파일 — 고쳤다면 고친_이력과 지금_sha256 을 — %s" % 어긋남[:5]
@@ -84,6 +85,28 @@ def test_도구가_부르는_엔진_입구가_목록과_맞다():
     for p in (REPO / "plugin" / "shared" / "tools").glob("*.py"):
         부름 |= set(re.findall(r"(?:from|import) (src\.[\w.]+)", p.read_text(encoding="utf-8")))
     assert 부름 <= set(꾸러미.엔진입구), "도구가 새 엔진 입구를 부른다 — 꾸러미.엔진입구 에 더한다: %s" % (부름 - set(꾸러미.엔진입구))
+
+
+def test_nlp_analyzer_는_엔진_안_사본이_잡힌다():
+    """★ 2026-10-07 sky 결정 — 1차가 쓰는 `nlp_analyzer` 를 엔진 안에 들여왔다 (다른 저장소에 있던 것).
+
+    두 가지를 본다 — ① 엔진 자리에서 `import nlp_analyzer` 가 **엔진 안 사본**으로 잡히나
+    (이 컴퓨터에는 같은 이름이 site-packages 에도 깔려 있다. 다른 PC 에는 없다) ·
+    ② 1차가 쓰는 입구 네 개가 실제로 불러지나 (`src/analytics/sentiment.py:18~21`).
+    없으면 1차는 조용히 enrichment 칸을 비운 채 돈다 — 그래서 「못 찾음」 을 통과로 두지 않는다.
+    """
+    코드 = ("import nlp_analyzer, pathlib;"
+          " from nlp_analyzer import analyze_comment, analyze_batch, AnalysisResult, is_valid;"
+          " from nlp_analyzer.router import LLMRouter;"
+          " from nlp_analyzer.providers.claude import ClaudeProvider;"
+          " from nlp_analyzer.providers.openai import OpenAIProvider;"
+          " print(pathlib.Path(nlp_analyzer.__file__).resolve())")
+    r = subprocess.run([sys.executable, "-B", "-c", 코드], cwd=엔진, capture_output=True, text=True,
+                       encoding="utf-8", errors="replace",
+                       env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONIOENCODING="utf-8"))
+    assert r.returncode == 0, r.stdout + r.stderr[-2000:]
+    잡힌자리 = Path(r.stdout.strip().splitlines()[-1])
+    assert 잡힌자리 == (엔진 / "nlp_analyzer" / "__init__.py").resolve(), 잡힌자리
 
 
 def test_1차_입구와_대시보드_입구를_불러진다():

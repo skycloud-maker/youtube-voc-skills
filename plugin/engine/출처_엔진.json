@@ -3,6 +3,7 @@
  "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 live_merge 작업 폴더 (갈래 codex/voc-engine-rebuild @ a94e731 — 엔진 코드는 동결 d78dc8c 와 같다 · 대시보드 09-07)",
  "들여온_날": "2026-09-22",
  "sky 결정": "2026-09-22 「옛 live_merge 동결본」 을 엔진 정본으로",
+ "두_번째_원본": "nlp_analyzer (github.com/skycloud-maker 의 별도 저장소 @ ab8ea8c) → nlp_analyzer/ · 1차가 import 로 닿는 파일만. sky 2026-10-07 「엔진처럼 동결 사본으로 들여온다」",
  "뺀_것": {
   "src/dashboard_app.py": "옛 대시보드 (1만 5천 줄 · 옛 사용자 폴더 경로가 박혀 있다)",
   "src/dashboard_v2.py": "옛 대시보드 판",
@@ -13,7 +14,16 @@
   "src/dashboard_text_mining_page.py": "옛 대시보드 판",
   "src/dashboard_rules.py": "옛 대시보드 판",
   "src/dashboard_ui_contracts.py": "옛 대시보드 판",
-  "src/text_mining/": "쓰지 않는 텍스트마이닝 (옛 대시보드만 불렀다)"
+  "src/text_mining/": "쓰지 않는 텍스트마이닝 (옛 대시보드만 불렀다)",
+  "nlp_analyzer/app.py": "streamlit 데모 — 1차가 부르지 않는다",
+  "nlp_analyzer/debug_api.py": "손시험용",
+  "nlp_analyzer/run_golden.py": "그 저장소의 시험 돌리개",
+  "nlp_analyzer/run_test.py": "그 저장소의 시험 돌리개",
+  "nlp_analyzer/tests/": "그 저장소의 시험",
+  "nlp_analyzer/.env": "★ 키가 든 파일 — 저장소에 넣지 않는다 (게다가 ANTHROPIC_API_KEY 값이 한글 자리표시자다)",
+  "nlp_analyzer/env.example": "키 보기 — 이 저장소는 Windows 사용자 환경변수를 쓴다",
+  "nlp_analyzer/pyproject.toml": "그 저장소의 꾸러미 설정",
+  "nlp_analyzer/README.md": "그 저장소의 안내"
  },
  "고칠_때": "고치면 tests/test_engine.py 가 실패한다 — 이유를 `고친_이력` 에 적고 `지금_sha256` 을 갱신한다.",
  "파일": {
@@ -840,6 +850,76 @@
    "원본_sha256": "0fd506b7da9d03ee82fd61a1a6aae301a6ddcc9ac4e8f61ac5415247f654d5b8",
    "지금_sha256": "aa83e2b0ed6e2106546ccf1e73612d90ec582d071b78717602ac70c28227efbc",
    "고친_이력": []
+  },
+  "nlp_analyzer/__init__.py": {
+   "원본": "nlp_analyzer ab8ea8c:__init__.py",
+   "원본_sha256": "a6b9f752e2fce380d58f4f9c8017299d6e3aa31559af71b7d74a2fcb629c162c",
+   "지금_sha256": "7bbb361513293d667bacce3707528f2413332484d54fbc966e30a5b31325197a",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/analyzer.py": {
+   "원본": "nlp_analyzer ab8ea8c:analyzer.py",
+   "원본_sha256": "8f2aa6714d3e9d02c34d374b450dc6aea1d195f8050167003e8b77f75ac46044",
+   "지금_sha256": "61d6aaea0de567853b676a87adaad5cf3a95e27a01346fcbad3048787d392392",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/models.py": {
+   "원본": "nlp_analyzer ab8ea8c:models.py",
+   "원본_sha256": "879ea3b91bace667a7e434e472aa35d04083437420ad954d160433fe618cbf09",
+   "지금_sha256": "9f134a4409414d61573b851934dc5c3487fc005c89993613a0aaa3126b90e8c7",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/prompts.py": {
+   "원본": "nlp_analyzer ab8ea8c:prompts.py",
+   "원본_sha256": "ed51be301e83063f2dfb685a58a312d338d206511c000678aed56190adeea6ca",
+   "지금_sha256": "970821676276b290169f33394756742c64f5fbcf27553dcf7f396c2fc15f7bd3",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/providers/__init__.py": {
+   "원본": "nlp_analyzer ab8ea8c:providers/__init__.py",
+   "원본_sha256": "d87fe375935096858f4d3f5212da816643c4e130641be9490f0876344819c79c",
+   "지금_sha256": "fc3d377af84b73394a78bea5ac0d57441b746e790a37391194f0b8a2a85ba3c2",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/providers/base.py": {
+   "원본": "nlp_analyzer ab8ea8c:providers/base.py",
+   "원본_sha256": "7d2eb456e58cc8a496b841e774ea3aa86ef855b0c7d3afc905eb7b26e09a3ce3",
+   "지금_sha256": "0a084ca17acbc4094021d9450b61120fc96cf9e04d5f3811adf60e391e661010",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/providers/claude.py": {
+   "원본": "nlp_analyzer ab8ea8c:providers/claude.py",
+   "원본_sha256": "b2110261bb82fb48f5bb7403ef3d112c118c9d1f55a1e0ba715b262716615aaf",
+   "지금_sha256": "873b7bb5700615150face6008c4a8ecb94448a0dbb3a49de762e2bf95916060d",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/providers/mock.py": {
+   "원본": "nlp_analyzer ab8ea8c:providers/mock.py",
+   "원본_sha256": "83f843635bebac461e7deee689b56c9a9e1346a579348a54edea14484c3cf34b",
+   "지금_sha256": "920a86d40abfbd4dc77fd2858b93f0bcfdf6d94f12bd559864793276f5de0b24",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/providers/openai.py": {
+   "원본": "nlp_analyzer ab8ea8c:providers/openai.py",
+   "원본_sha256": "ef780030b3b466fb8dae4bbd6ed99d081171211c45da43e5b837cf29963ac405",
+   "지금_sha256": "6f875db48d3f3377b79d19b7bace6a0b0259b6ea3be5f85736e2e8c9ff4dd0c1",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
+  },
+  "nlp_analyzer/router.py": {
+   "원본": "nlp_analyzer ab8ea8c:router.py",
+   "원본_sha256": "073f0d9f8f7530c01ab0871737472d51578c581778cb76d845db9fbc6362f8b5",
+   "지금_sha256": "73fea88b6e2c3e279b15d1f7cc83ecdaf301f613a5e715d024373872f16b6472",
+   "고친_이력": [],
+   "까닭": "1차가 import 로 쓴다 (src/analytics/sentiment.py) — 다른 저장소에 있던 것을 들여왔다"
   },
   "0_이 폴더는 무엇입니까.md": {
    "원본": "90078f1:outputs/voc_secondary/engine/0_이 폴더는 무엇입니까.md",
