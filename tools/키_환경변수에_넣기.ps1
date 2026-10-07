@@ -10,7 +10,8 @@
 #   한글 변수명이 깨진다. 이 파일은 UTF-8 BOM 으로 저장한다.
 #
 # 쓰기
-#     powershell -ExecutionPolicy Bypass -File "C:\...\tools\키_환경변수에_넣기.ps1"
+#     powershell -ExecutionPolicy Bypass -File "<저장소 자리>\tools\키_환경변수에_넣기.ps1"
+#     (옛 .env 가 다른 자리면 -EnvFile "<그 자리>\.env")
 #
 # 넣은 뒤 — **새 터미널**(또는 Claude Code 를 다시 시작)에서야 보인다. 지금 창에는 안 보인다.
 

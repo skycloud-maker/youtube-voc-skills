@@ -26,7 +26,7 @@ def _파일들() -> set[str]:
 
 
 def test_출처_기록과_파일이_하나씩_맞다():
-    assert len(출처["파일"]) == 140, len(출처["파일"])
+    assert len(출처["파일"]) == 142, len(출처["파일"])   # 140 + scripts 2개 (2026-10-07 · 1차 실행 경로)
     assert _파일들() == set(출처["파일"]), (sorted(_파일들() - set(출처["파일"]))[:5], sorted(set(출처["파일"]) - _파일들())[:5])
     어긋남 = [n for n, v in 출처["파일"].items() if hashlib.sha256((엔진 / n).read_bytes()).hexdigest() != v["지금_sha256"]]
     assert not 어긋남, "출처 기록과 다른 엔진 파일 — 고쳤다면 고친_이력과 지금_sha256 을 — %s" % 어긋남[:5]
@@ -56,6 +56,26 @@ def test_판독_감독_폴더의_엔진은_도구가_부르는_것을_다_싣는
     # ★ 2026-09-22 에 빠져서 2차 번들 xlsx 가 안 만들어졌던 자리
     assert "src/v5/pipeline.py" in 목록
     assert "0_이 폴더는 무엇입니까.md" in 목록 and "src/voc_rebuild/config/topic_evidence_lexicon.yaml" in 목록
+
+
+def test_글자경로로_부르는_파일이_다_있다():
+    """★ 2026-10-07 — import 가 아니라 **글자 경로로 subprocess** 로 부르는 파일은 import 추적에 안 잡힌다.
+
+    그래서 1차 실행 경로(`scripts/run_dashboard60_youtube_collect_and_analyze.py`)가 빠진 채 ① 이 「통과」 였다.
+    엔진 전체에서 `ROOT / "<폴더>" / "<파일>.py"` 꼴을 찾아 그 파일이 실제로 있는지 본다.
+    """
+    import re
+    찾음, 없음 = 0, []
+    무늬 = re.compile(r'ROOT\s*/\s*"([A-Za-z_0-9]+)"\s*/\s*"([A-Za-z_0-9.\-]+\.py)"')
+    for p in 엔진.rglob("*.py"):
+        if "__pycache__" in p.parts:
+            continue
+        for 폴더, 이름 in 무늬.findall(p.read_text(encoding="utf-8", errors="ignore")):
+            찾음 += 1
+            if not (엔진 / 폴더 / 이름).is_file():
+                없음.append("%s → %s/%s" % (p.relative_to(엔진).as_posix(), 폴더, 이름))
+    assert 찾음 >= 2, "글자 경로로 부르는 자리를 못 찾았다 — 무늬가 안 맞는다 (못 찾음 ≠ 없음)"
+    assert not 없음, "엔진이 글자 경로로 부르는데 파일이 없다 — 가져올것 에 더한다: %s" % 없음
 
 
 def test_도구가_부르는_엔진_입구가_목록과_맞다():

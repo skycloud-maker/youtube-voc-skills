@@ -14,6 +14,9 @@
         (src.dashboard60.app_operating)에서 실제로 불러 쓰는 파일을 코드로 따라가 확인했다 — 빼는 것은 어느 입구에서도 안 닿는다.
     voc-classifier/src/classifier.py — comment_truth 가 파일 이름으로 불러 쓴다 (없으면 건너뛰어 결과가 달라진다)
     config/ · fonts/ · requirements.txt · pyproject.toml · .env.example · streamlit_app.py
+    scripts/ 두 개 (2026-10-07 더함) — run_dashboard60_youtube_collect_and_analyze.py(1차 수집·분석) ·
+        run_voc_rebuild_dashboard.py. 이 둘은 import 가 아니라 글자 경로로 subprocess 로 불려(analysis_runner.py:683 · 727)
+        import 를 따라가는 방식으로는 안 잡혔다. 옛 scripts/ 의 나머지 79개는 아무도 부르지 않아 가져오지 않는다.
 
 남기는 것 (옛 판독 꾸러미 엔진에만 있던 것 — 옛 저장소 90078f1 의 outputs/voc_secondary/engine)
     src/voc_secondary/ (2차 계약 · N/A 규칙 — 번들 · 3차 도구가 부른다) · src/voc_rebuild/config/__init__.py ·
@@ -41,7 +44,14 @@ REPO = Path(__file__).resolve().parents[1]
 엔진 = REPO / "plugin" / "engine"
 커밋 = "a94e731"
 가져올것 = ["src", "voc-classifier/src/classifier.py", "config", "fonts", "requirements.txt", "pyproject.toml",
-         ".env.example", "streamlit_app.py"]
+         ".env.example", "streamlit_app.py",
+         # ★ 2026-10-07 더함 — 이 둘은 import 가 아니라 **글자 경로로 subprocess** 로 불린다
+         #   (src/dashboard60/analysis_runner.py:683 · 727 의 `ROOT / "scripts" / ...`).
+         #   그래서 import 를 따라가는 방식으로는 안 잡혀 1차 실행 경로가 빠져 있었다.
+         #   둘이 부르는 src.* 는 모두 이미 들어와 있다 (src.api.quota · src.cli · src.voc_rebuild.engine ·
+         #   src.dashboard60.export_bundle). 시험 `test_글자경로로_부르는_파일이_다_있다` 가 다시 빠지면 잡는다.
+         "scripts/run_dashboard60_youtube_collect_and_analyze.py",   # 1차 — 유튜브 수집 + 분석
+         "scripts/run_voc_rebuild_dashboard.py"]                     # 이미 모은 자료로 다시 분석
 뺀다 = {  # 어느 입구에서도 안 닿는다 (2026-09-22 정적 추적) — 옛 대시보드 판 · 텍스트마이닝
     "src/dashboard_app.py": "옛 대시보드 (1만 5천 줄 · 옛 사용자 폴더 경로가 박혀 있다)",
     "src/dashboard_v2.py": "옛 대시보드 판", "src/dashboard_v3.py": "옛 대시보드 판",

@@ -49,6 +49,10 @@ from paths import REPO, SHARED  # noqa: E402
     ('plugin/shared/tools/자가점검.py', 'if any(x in 줄내용 for x in ("C:/codex", "C:\\\\codex", "C:\\\\Users", "C:/Users")):'),
     ('plugin/skills/reading-voc-comments/references/0_붙여넣을_프롬프트_도구형.md', '(시스템 담당자 컴퓨터에서는 C:\\codex_live_merge\\src\\voc_rebuild\\schema.py)'),
     ('plugin/skills/reading-voc-comments/references/0_붙여넣을_프롬프트_도구형.md', '· C:\\codex 루트에서 엔진 실행 · 대상 목록에 없는 행을 판정'),
+    # 2026-10-07 — sky 가 직접 한 번 돌리는 도우미다. **읽기만** 하고 옛 저장소를 고치지 않으며,
+    #   저장소의 코드·스킬·엔진은 이 파일을 부르지 않는다 (가져오기 도구와 같은 자리).
+    #   옛 .env 가 다른 자리에 있으면 `-EnvFile` 로 받는다 — 박힌 값이 아니라 기본값이다.
+    ('tools/키_환경변수에_넣기.ps1', '[string]$EnvFile = "C:\\codex\\.env",'),
 }
 # 옛 저장소 이름 — 새 코드·스킬이 옛것을 가리키면 안 된다 (기록으로 적은 자리만 예외)
 옛저장소 = re.compile(r"(?i)youtube-comment-analyzer")

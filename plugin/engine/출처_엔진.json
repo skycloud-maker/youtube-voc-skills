@@ -59,6 +59,18 @@
    "지금_sha256": "05f5107814bb767da75ea0c90d58ab952f9bf75ac1e1d49c22306979305d27b1",
    "고친_이력": []
   },
+  "scripts/run_dashboard60_youtube_collect_and_analyze.py": {
+   "원본": "a94e731:scripts/run_dashboard60_youtube_collect_and_analyze.py",
+   "원본_sha256": "7b01313ecf20faa427fd7a0ffb8de8e1d04dc7047b075700b60fcaff0c2224f6",
+   "지금_sha256": "379c59339dfd0c2bd6b3886ca81ff7e50276acec26a5923de2a130b420b00e8c",
+   "고친_이력": []
+  },
+  "scripts/run_voc_rebuild_dashboard.py": {
+   "원본": "a94e731:scripts/run_voc_rebuild_dashboard.py",
+   "원본_sha256": "93b9013a3f981dcfa18126736ef1add0830b6ac193af4da43f7b4871ecc4a48f",
+   "지금_sha256": "c0383d5bb5b7917c933559c0ed075ae763951da60a0732976289c28b5226a868",
+   "고친_이력": []
+  },
   "src/__init__.py": {
    "원본": "a94e731:src/__init__.py",
    "원본_sha256": "f281ac4d72a80fa9135b0db7580c9050b222fba96cd013b0100fa78765cea09b",
