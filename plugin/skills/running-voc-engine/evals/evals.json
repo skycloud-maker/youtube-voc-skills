@@ -5,7 +5,10 @@
  "evals": [
   {
    "id": "키없음_멈춤",
-   "환경": {"YOUTUBE_API_KEY": null, "OPENAI_API_KEY": null},
+   "환경": {
+    "YOUTUBE_API_KEY": null,
+    "OPENAI_API_KEY": null
+   },
    "prompt": "1차 분석 돌려 주세요. 검색어는 LG 로봇청소기, 영상 2개, 영상당 댓글 10개면 됩니다.",
    "expected_output": "키가 없음을 보고, 아무것도 돌리지 않고 사람에게 키를 넣어야 한다고 알린다. 환경변수는 새로 켠 창에만 들어온다는 것도 말한다.",
    "expectations": [
@@ -41,7 +44,7 @@
    "expectations": [
     "결과/<이름>/voc_dashboard_dataset.csv 가 있다",
     "그 csv 의 칸이 엔진의 TARGET_COLUMNS 66개와 정확히 같다 (빠짐·덧붙임 없음)",
-    "전부 빈 칸이 하나도 없다",
+    "전부 빈 칸이 하나도 없다 (드물게 차는 칸 scope_exclusion_reason · voc_residual 은 뺀다 — 504행 실행에서도 3~4% 만 찼다)",
     "결과/<이름>/voc_dashboard_export_bundle.xlsx 가 있다",
     "행 수가 1 이상이고, 마지막 답에 그 행 수가 들어 있다",
     "settings.yaml 을 썼다 — 실행 기록에 Primary(claude) 실패 경고가 없다",

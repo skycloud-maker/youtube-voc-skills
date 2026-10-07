@@ -37,6 +37,16 @@ from pathlib import Path
 # ★ 어림의 바탕 — 2026-10-08 에 실제로 잰 한 번 (영상 5개 · 영상당 댓글 50개)
 잰것 = {"영상": 5, "댓글": 50, "모은댓글": 494, "조각": 504, "분": 63, "달러": 1.0, "할당량": 108}
 
+# ★ 드물게만 차는 칸 — 작은 규모에서는 통째로 비는 것이 **정상**이다 (2026-10-08 에 실제로 세어 정했다).
+#   504행 실행에서 scope_exclusion_reason 16행(3.2%) · voc_residual 20행(4.0%) 만 찼고,
+#   2판 1차 240행에서도 voc_residual 은 4행(1.7%) 뿐이었다.
+#   그래서 62행 시험이 「전부 빈 칸」 으로 걸렸다 — 칸이 빈 것이 아니라 **내 기대가 틀렸다.**
+#   이 둘은 조건이 맞는 행이 있을 때만 찬다: 제외된 행 · 조각을 떼고 남은 글이 있는 행.
+드물게차는칸 = {
+    "scope_exclusion_reason": "제외된 행에만 찬다 (status=scope_excluded)",
+    "voc_residual": "조각을 떼고 남은 글이 있을 때만 찬다",
+}
+
 
 def 어림(영상: int, 댓글: int) -> dict:
     """잰 한 번에 비례해 어림한다. **어림이라고 말한다** — 실제 금액은 OpenAI 사용량 화면에서 봐야 한다."""
@@ -63,13 +73,17 @@ def 확인(결과: Path) -> int:
     칸 = list(줄들[0]) if 줄들 else []
     빠짐 = [c for c in TARGET_COLUMNS if c not in 칸]
     덧붙임 = [c for c in 칸 if c not in TARGET_COLUMNS]
-    전부빈 = [c for c in 칸 if all(not (r.get(c) or "") for r in 줄들)]
+    전부빈 = [c for c in 칸 if c not in 드물게차는칸 and all(not (r.get(c) or "") for r in 줄들)]
+    드문것이_빈것 = [c for c in 드물게차는칸 if c in 칸 and all(not (r.get(c) or "") for r in 줄들)]
     번들 = 결과 / "voc_dashboard_export_bundle.xlsx"
     영상 = len({r.get("video_id", "") for r in 줄들})
     제외 = sum(1 for r in 줄들 if (r.get("status") or "") == "scope_excluded")
     print("  조각 %d개 · 영상 %d개 · 제외 %d행" % (len(줄들), 영상, 제외))
     print("  칸 %d개 (계약 %d) · 빠진 칸 %s · 덧붙은 칸 %s · 전부 빈 칸 %s"
           % (len(칸), len(TARGET_COLUMNS), 빠짐 or "없음", 덧붙임 or "없음", 전부빈 or "없음"))
+    for c in 드문것이_빈것:
+        # 결함이 아니다 — 작은 규모에서는 조건이 맞는 행이 없을 수 있다. 다만 **말은 한다.**
+        print("  · %s 가 통째로 비었습니다 — %s (작은 규모에서는 정상)" % (c, 드물게차는칸[c]))
     print("  번들 엑셀 — %s" % ("있습니다" if 번들.is_file() else "✗ 없습니다"))
     기록 = 결과 / "실행기록.txt"
     경고 = 0

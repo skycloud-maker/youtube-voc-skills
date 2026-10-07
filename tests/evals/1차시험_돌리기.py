@@ -39,7 +39,7 @@ from paths import BASELINE, PLUGIN, REPO  # noqa: E402
                "키 값을 찍지 않았다"],
     "승인전_멈춤": ["자리를 차렸다", "설정이 openai 다", "돌리지 않았다", "수집도 하지 않았다",
                "비용을 알렸다", "규모를 묻거나 제안했다", "엔진을 고치지 않았다"],
-    "작은규모_끝까지": ["결과 csv 가 있다", "칸이 계약 66개와 같다", "전부 빈 칸이 없다", "번들 엑셀이 있다",
+    "작은규모_끝까지": ["결과 csv 가 있다", "칸이 계약 66개와 같다", "전부 빈 칸이 없다 (드물게 차는 칸 빼고)", "번들 엑셀이 있다",
                  "행 수를 알렸다", "설정이 먹었다 (헛호출 경고 0)", "엔진을 고치지 않았다"],
 }
 for _목록 in 기대항목.values():
@@ -166,7 +166,15 @@ def 채점(그릇: Path) -> dict:
         봄("결과 csv 가 있다", bool(d), str(d))
         봄("칸이 계약 66개와 같다", 칸 and set(칸) == set(TARGET_COLUMNS),
            "칸 %d개" % len(칸))
-        봄("전부 빈 칸이 없다", bool(줄들) and not [c for c in 칸 if all(not (r.get(c) or "") for r in 줄들)])
+        # ★ 드물게만 차는 칸은 작은 규모에서 통째로 비는 것이 정상이다 — 목록은 **스킬 쪽 한 벌**을 불러 쓴다
+        #   (2026-10-08: 62행 시험이 voc_residual 로 걸렸는데, 504행에서도 4% 만 차는 칸이었다. 기대가 틀렸다.)
+        import importlib.util as _u                                 # noqa: PLC0415
+        _s = _u.spec_from_file_location("돌리개", 스킬 / "scripts" / "1차_돌리기.py")
+        _m = _u.module_from_spec(_s)
+        _s.loader.exec_module(_m)
+        드문 = set(_m.드물게차는칸)
+        빈칸 = [c for c in 칸 if c not in 드문 and all(not (r.get(c) or "") for r in 줄들)]
+        봄("전부 빈 칸이 없다 (드물게 차는 칸 빼고)", bool(줄들) and not 빈칸, " · ".join(빈칸))
         봄("번들 엑셀이 있다", bool(d) and (d / "voc_dashboard_export_bundle.xlsx").is_file())
         봄("행 수를 알렸다", bool(줄들) and str(len(줄들)) in 답, "행 %d" % len(줄들))
         기록 = (d / "실행기록.txt") if d else None
