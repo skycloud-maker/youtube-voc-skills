@@ -46,7 +46,9 @@ def _sha(p: Path) -> str:
 
 def test_출처_기록이_실제_파일과_같다():
     파일 = 꾸러미출처["파일"]
-    assert len(파일) == 65, len(파일)          # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5) + 최신결정_검사 (섹션 5b) − 엔진 28 (섹션 7 ① 출처_엔진.json 으로)
+    # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5) + 최신결정_검사 (섹션 5b) − 엔진 28 (섹션 7 ① 출처_엔진.json 으로)
+    # + 99_1차_실행조건_원문 (섹션 7 ③ · docs/sources 에서 옮겨 왔다 — 1차 작업 폴더에 들어가므로 한 벌)
+    assert len(파일) == 66, len(파일)
     없음 = [r for r in 파일 if not (REPO / r).is_file()]
     assert not 없음, "출처에 적힌 파일이 없다 — %s" % 없음[:5]
     어긋남 = [r for r, v in 파일.items() if _sha(REPO / r) != v["지금_sha256"]]
@@ -70,7 +72,13 @@ def test_차림표_재료가_모두_있고_출처에_적혀_있다():
     총괄재료 = 총괄차리기.총괄자리.판재료(총괄차리기.공통, 총괄차리기.엔진, 총괄차리기.판독 / "references",
                                 총괄차리기.감독 / "references")
     대장 = [(p, "") for p in sorted((SHARED / "registry").glob("*.json"))]
-    재료 = [Path(원) for 원, _ in 차리기.전체_차림표() + 감독차리기.전체_차림표() + 총괄재료 + 대장]
+    # ★ 1차 자리(섹션 7 ③)는 **공통 재료만** 넣는다 — 스킬 자신의 `1차_돌리기.py` 는 우리가 쓴 코드라
+    #   공통 출처 기록에 없다(옛 저장소에서 온 것이 아니다). 그 파일이 실제로 복사되고 도는지는
+    #   tests/test_build.py 의 `test_1차_스킬이_떨어진_자리에서_실행_자리를_차린다` 가 본다.
+    sys.path.insert(0, str(SHARED / "lib"))
+    import 일차자리                                        # noqa: E402,PLC0415
+    일차재료 = 일차자리.재료(SHARED, REPO / "plugin" / "engine")
+    재료 = [Path(원) for 원, _ in 차리기.전체_차림표() + 감독차리기.전체_차림표() + 총괄재료 + 대장 + 일차재료]
     없음 = [p for p in 재료 if not p.is_file()]
     assert not 없음, "차림표가 가리키는 재료가 없다 — %s" % [str(p) for p in 없음[:5]]
     엔진출처 = json.loads((REPO / "plugin" / "engine" / "출처_엔진.json").read_text(encoding="utf-8"))["파일"]

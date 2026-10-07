@@ -53,6 +53,10 @@ from paths import REPO, SHARED  # noqa: E402
     #   저장소의 코드·스킬·엔진은 이 파일을 부르지 않는다 (가져오기 도구와 같은 자리).
     #   옛 .env 가 다른 자리에 있으면 `-EnvFile` 로 받는다 — 박힌 값이 아니라 기본값이다.
     ('tools/키_환경변수에_넣기.ps1', '[string]$EnvFile = "C:\\codex\\.env",'),
+    # sky 2026-09-18 「원문 그대로 + 검사 예외」 — 원문이 자기 출처를 적어 둔 줄이다 (섹션 7 ③ 에 옮겨 온 파일).
+    #   옛 폴더를 **부르는** 코드가 아니라 「어디서 왔나」 를 적은 글이다.
+    ('plugin/shared/common/99_1차_실행조건_원문.md',
+     '> 원본: `C:\\codex_live_merge\\src\\dashboard60\\analysis_runner.py` (마지막 커밋 8117810 2026-08-20 17:53:20 +0900)'),
 }
 # 옛 저장소 이름 — 새 코드·스킬이 옛것을 가리키면 안 된다 (기록으로 적은 자리만 예외)
 옛저장소 = re.compile(r"(?i)youtube-comment-analyzer")

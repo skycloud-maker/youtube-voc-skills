@@ -27,8 +27,9 @@ def 묶음(tmp_path_factory):
     return d
 
 
-def test_스킬_셋을_다_묶었다(묶음):
-    assert build_skills.스킬들() == ["coordinating-voc-pipeline", "reading-voc-comments", "supervising-voc-disagreements"]
+def test_스킬_넷을_다_묶었다(묶음):
+    assert build_skills.스킬들() == ["coordinating-voc-pipeline", "reading-voc-comments",
+                                 "running-voc-engine", "supervising-voc-disagreements"]
     for s in build_skills.스킬들():
         assert (묶음 / "claude" / (s + ".zip")).is_file()
         assert (묶음 / "codex" / ".agents" / "skills" / s / "SKILL.md").is_file()
@@ -122,6 +123,33 @@ def test_낱개_스킬이_떨어진_자리에서_폴더를_차린다(묶음, tmp
     assert r.returncode == 0, r.stdout + r.stderr
     assert "못 찾" not in r.stdout, r.stdout
     assert len([p for p in 작업.rglob("*") if p.is_file()]) == 개수, r.stdout
+
+
+def test_1차_스킬이_떨어진_자리에서_실행_자리를_차린다(묶음, tmp_path):
+    """★ 1차 자리는 **엔진 한 벌**이 들어가야 한다 — 수집 · 분석 · 번들 · nlp_analyzer 를 다 쓴다.
+
+    그리고 차린 자리에서 돌리개가 **승인 없이는 돌지 않는지**(종료 2)를 같이 본다 — 돈이 드는 일이다.
+    """
+    s = _풀기(묶음, "running-voc-engine", tmp_path / "풀린곳")
+    자리 = tmp_path / "1차자리"
+    r = _돌리기(s / "scripts" / "1차자리_차리기.py", 자리)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "못 찾" not in r.stdout, r.stdout
+    for n in ("0_먼저_읽으십시오.md", "99_1차_실행조건_원문.md", "1차_돌리기.py",
+              "engine/config/settings.yaml", "engine/scripts/run_dashboard60_youtube_collect_and_analyze.py",
+              "engine/nlp_analyzer/__init__.py", "engine/src/cli.py"):
+        assert (자리 / n).is_file(), n
+    assert "provider: openai" in (자리 / "engine/config/settings.yaml").read_text(encoding="utf-8")
+    # 엔진 한 벌(출처 기록 포함) + 글 3개 + 설정 1개
+    엔진수 = len([p for p in (REPO / "plugin" / "engine").rglob("*") if p.is_file() and "__pycache__" not in p.parts])
+    assert len([p for p in 자리.rglob("*") if p.is_file()]) == 엔진수 + 4, r.stdout
+    # ★ 승인 없이는 돌지 않는다 (돈이 든다) — 어림만 내고 종료 2
+    r2 = _돌리기(자리 / "1차_돌리기.py", "--검색어", "시험", "--영상", "1", "--댓글", "5")
+    assert r2.returncode == 2, r2.stdout + r2.stderr
+    assert "돌리지 않았습니다" in r2.stdout and "$" in r2.stdout, r2.stdout
+    # ★ 볼 것을 못 찾으면 통과가 아니다 — 종료 2
+    r3 = _돌리기(자리 / "1차_돌리기.py", "--이름", "없는이름", "--확인만")
+    assert r3.returncode == 2 and "못 찾음" in r3.stdout, r3.stdout
 
 
 def test_총괄_스킬이_떨어진_자리에서_총괄_자리를_차린다(묶음, tmp_path):
