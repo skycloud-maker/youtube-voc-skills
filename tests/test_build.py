@@ -151,6 +151,22 @@ def test_1차_스킬이_떨어진_자리에서_실행_자리를_차린다(묶음
     r3 = _돌리기(자리 / "1차_돌리기.py", "--이름", "없는이름", "--확인만")
     assert r3.returncode == 2 and "못 찾음" in r3.stdout, r3.stdout
 
+    # ★ 이미 차린 자리가 **낡으면** 말하고 멈춘다 (2026-10-08 실제로 겪은 함정) ─────────────
+    #   차리기는 「이미 있는 파일은 건드리지 않는다」 — 그래서 스킬을 고쳐도 옛 자리는 옛 코드를 쓴다.
+    결과자리 = 자리 / "engine" / "outputs" / "voc_dashboard_60" / "지난실행"
+    결과자리.mkdir(parents=True, exist_ok=True)
+    (결과자리 / "voc_dashboard_dataset.csv").write_text("x\n", encoding="utf-8")   # 결과는 건드리면 안 된다
+    (자리 / "1차_돌리기.py").write_text("# 낡은 사본\n", encoding="utf-8")
+    r4 = _돌리기(s / "scripts" / "1차자리_차리기.py", 자리)
+    assert r4.returncode == 1 and "다릅니다" in r4.stdout and "1차_돌리기.py" in r4.stdout, r4.stdout
+    # `--새로` 로 갈아 끼우고, 결과 폴더는 그대로 둔다
+    r5 = _돌리기(s / "scripts" / "1차자리_차리기.py", 자리, "--새로")
+    assert r5.returncode == 0, r5.stdout + r5.stderr
+    assert (자리 / "1차_돌리기.py").read_text(encoding="utf-8") != "# 낡은 사본\n"
+    assert (결과자리 / "voc_dashboard_dataset.csv").read_text(encoding="utf-8") == "x\n", "결과를 건드렸다"
+    r6 = _돌리기(s / "scripts" / "1차자리_차리기.py", 자리)
+    assert r6.returncode == 0, r6.stdout
+
 
 def test_총괄_스킬이_떨어진_자리에서_총괄_자리를_차린다(묶음, tmp_path):
     s = _풀기(묶음, "coordinating-voc-pipeline", tmp_path / "풀린곳")

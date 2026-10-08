@@ -103,8 +103,40 @@ def 재료(공통: Path, 엔진: Path, 스킬스크립트: Path | None = None) -
     return 것
 
 
-def 차리기(자리: Path, 공통: Path, 엔진: Path, 스킬스크립트: Path | None = None) -> tuple[int, int]:
-    """차린 수 · 이미 있어 그대로 둔 수. 이미 있는 파일은 건드리지 않는다."""
+def _다른것(자리: Path, 재료: list, 엔진: Path) -> list[str]:
+    """이미 차려진 자리에서 **원본과 내용이 다른** 파일을 찾는다 (낡은 사본).
+
+    ★ 왜 (2026-10-08 실제로 겪었다) — 차리기는 「이미 있는 파일은 건드리지 않는다」. 판 중간에 다시 돌려도
+      안전하라는 규칙인데, 그 때문에 **스킬을 고쳐도 이미 차린 자리는 옛 코드를 쓴다.**
+      내가 `1차_돌리기.py` 를 고치고 작업 폴더에서 돌렸다가 옛 동작을 보고 한참 헤맸고,
+      `C:\\voc_대시보드` 자리도 옛 돌리개를 들고 있었다. 조용히 다르면 안 된다 — **찾아서 말한다.**
+    """
+    import hashlib
+    def _h(p: Path) -> str:
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+    다름 = []
+    for 원본, 안자리 in 재료:
+        p = 자리 / 안자리
+        if p.is_file() and 원본.is_file() and _h(p) != _h(원본):
+            다름.append(안자리)
+    엔진자리 = 자리 / "engine"
+    for 원본 in sorted(엔진.rglob("*")):
+        if not 원본.is_file() or "__pycache__" in 원본.parts:
+            continue
+        p = 엔진자리 / 원본.relative_to(엔진)
+        if p.is_file() and _h(p) != _h(원본):
+            다름.append("engine/" + 원본.relative_to(엔진).as_posix())
+    return 다름
+
+
+def 차리기(자리: Path, 공통: Path, 엔진: Path, 스킬스크립트: Path | None = None,
+         새로: bool = False) -> tuple[int, int, list[str]]:
+    """차린 수 · 이미 있어 그대로 둔 수 · **낡은 사본 목록**.
+
+    이미 있는 파일은 건드리지 않는다(판 중간에 다시 돌려도 안전하게).
+    다만 원본과 **내용이 다른** 것은 찾아서 돌려준다 — 조용히 옛 코드를 쓰지 않게.
+    `새로=True` 면 그 낡은 것들을 **덮어쓴다** (결과 폴더는 건드리지 않는다).
+    """
     자리.mkdir(parents=True, exist_ok=True)
     (자리 / "engine" / "outputs" / "voc_dashboard_60").mkdir(parents=True, exist_ok=True)
     차림, 그대로 = 0, 0
@@ -138,4 +170,13 @@ def 차리기(자리: Path, 공통: Path, 엔진: Path, 스킬스크립트: Path
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(글, encoding="utf-8", newline="\n")
         차림 += 1
-    return 차림, 그대로
+    # ★ 이미 있던 것 가운데 **원본과 다른 것**을 찾는다 — 조용히 옛 코드를 쓰지 않게 (2026-10-08)
+    낡음 = _다른것(자리, 재료(공통, 엔진, 스킬스크립트), 엔진)
+    if 새로 and 낡음:
+        for 안자리 in 낡음:
+            원본 = (엔진 / 안자리[len("engine/"):]) if 안자리.startswith("engine/") else None
+            if 원본 is None:
+                원본 = dict((b, a) for a, b in 재료(공통, 엔진, 스킬스크립트))[안자리]
+            shutil.copy2(원본, 자리 / 안자리)
+        낡음 = []
+    return 차림, 그대로, 낡음

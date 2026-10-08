@@ -30,10 +30,14 @@ from paths import DASHBOARD_ROOT  # noqa: E402
 
 def 띄우기(자리: Path, 포트: int = 8501) -> int:
     엔진 = 자리 / "engine"
-    if not (엔진 / "streamlit_app.py").is_file():
-        차림, 그대로 = 일차자리.차리기(자리, REPO / "plugin" / "shared", REPO / "plugin" / "engine",
-                                 REPO / "plugin" / "skills" / "running-voc-engine" / "scripts")
+    # ★ 띄울 때마다 차리기를 돌린다 — 없으면 차리고, **낡은 사본이 있으면 갈아 끼운다**(2026-10-08).
+    #   대시보드는 사람이 보는 화면이라 옛 코드로 뜨면 알아채기 어렵다. 1차 자리와 달리 묻지 않고 맞춘다.
+    차림, 그대로, 낡음 = 일차자리.차리기(자리, REPO / "plugin" / "shared", REPO / "plugin" / "engine",
+                                 REPO / "plugin" / "skills" / "running-voc-engine" / "scripts", 새로=True)
+    if 차림:
         print("  자리를 차렸습니다 — %s (차림 %d · 그대로 %d)" % (자리, 차림, 그대로))
+    if 낡음:
+        print("  · 낡은 사본 %d개를 갈아 끼웠습니다: %s" % (len(낡음), ", ".join(낡음[:5])))
     print("  띄웁니다 — %s (포트 %d)" % (엔진, 포트))
     환경 = dict(os.environ, YT_ANALYSIS_SETTINGS_PATH="config/settings.yaml",
               PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1")
