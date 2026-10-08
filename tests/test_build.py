@@ -16,6 +16,8 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
+sys.path.insert(0, str(REPO / "plugin" / "shared"))
+from paths import BASELINE  # noqa: E402
 import build_skills  # noqa: E402
 import check_shared  # noqa: E402
 
@@ -27,9 +29,10 @@ def 묶음(tmp_path_factory):
     return d
 
 
-def test_스킬_넷을_다_묶었다(묶음):
-    assert build_skills.스킬들() == ["coordinating-voc-pipeline", "reading-voc-comments",
-                                 "running-voc-engine", "supervising-voc-disagreements"]
+def test_스킬_다섯을_다_묶었다(묶음):
+    assert build_skills.스킬들() == ["building-voc-report", "coordinating-voc-pipeline",
+                                 "reading-voc-comments", "running-voc-engine",
+                                 "supervising-voc-disagreements"]
     for s in build_skills.스킬들():
         assert (묶음 / "claude" / (s + ".zip")).is_file()
         assert (묶음 / "codex" / ".agents" / "skills" / s / "SKILL.md").is_file()
@@ -177,3 +180,43 @@ def test_총괄_스킬이_떨어진_자리에서_총괄_자리를_차린다(묶�
     assert len(list(판.glob("*.py"))) == 42
     with zipfile.ZipFile(판 / "_배포" / "VoC_3_3차감독.zip") as zf:
         assert len([n for n in zf.namelist() if not n.endswith("/")]) == 74
+
+
+def test_보고서_스킬이_떨어진_자리에서_보고서를_만든다(묶음, tmp_path):
+    """★ 섹션 8 — 낱개 스킬 폴더 하나만으로 **실제 최종 산출물**에서 보고서가 나오는가.
+
+    보는 것 — ① 보고서가 만들어지나 ② 원문 전량(raw_voc)이 안 담기나 ③ 링크·이메일·사용자명이 0건이고
+    **치운 건수를 보고서가 적었나**(「했다」 가 아니라 「확인했다」 · 65 §3) ④ 숫자에 출처가 붙었나
+    ⑤ 못 찾거나 담을 시트가 없으면 **통과로 넘기지 않나**(종료 2).
+    """
+    import re
+    s = _풀기(묶음, "building-voc-report", tmp_path / "풀린곳")
+    도구 = s / "scripts" / "보고서_만들기.py"
+    최종 = BASELINE / "실행" / "4차반영_1" / "2판" / "_최종결과" / "3차_최종데이터.xlsx"
+    if not 최종.is_file():
+        pytest.skip("얼린 4차 결과가 없다")
+
+    낼것 = tmp_path / "보고서.html"
+    r = _돌리기(도구, 최종, 낼것)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert 낼것.is_file()
+    글 = 낼것.read_text(encoding="utf-8")
+    assert "★PL Issue" in 글 and "improvement_priority" in 글, "담아야 할 것이 없다"
+    assert 글.count("class=\"출처\"") >= 3, "숫자에 출처가 안 붙었다"
+    # 원문 전량은 「안 담았다」 는 설명에만 나와야 한다
+    assert 글.count("raw_voc") <= 6, "원문 전량이 담긴 것 같다"
+    assert not re.search(r"https?://", 글), "링크가 남았다"
+    assert not re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", 글), "이메일이 남았다"
+    assert "다시 훑은 결과" in 글 and "치운 것" in 글, "「했다」 가 아니라 「확인했다」 가 들어가야 한다"
+
+    # ★ 못 찾으면 통과가 아니다
+    r2 = _돌리기(도구, tmp_path / "없는것.xlsx")
+    assert r2.returncode == 2 and "못 찾음" in r2.stdout, r2.stdout
+    # ★ 담을 시트가 하나도 없어도 통과가 아니다
+    import openpyxl
+    엉뚱 = tmp_path / "엉뚱.xlsx"
+    wb = openpyxl.Workbook()
+    wb.active.append(["a", "b"])
+    wb.save(엉뚱)
+    r3 = _돌리기(도구, 엉뚱, tmp_path / "엉뚱.html")
+    assert r3.returncode == 2, r3.stdout

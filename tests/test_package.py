@@ -47,8 +47,8 @@ def _sha(p: Path) -> str:
 def test_출처_기록이_실제_파일과_같다():
     파일 = 꾸러미출처["파일"]
     # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5) + 최신결정_검사 (섹션 5b) − 엔진 28 (섹션 7 ① 출처_엔진.json 으로)
-    # + 99_1차_실행조건_원문 (섹션 7 ③ · docs/sources 에서 옮겨 왔다 — 1차 작업 폴더에 들어가므로 한 벌)
-    assert len(파일) == 72, len(파일)
+    # + 99_1차_실행조건_원문 (섹션 7 ③) + 안내서 그림 6 (섹션 7a ③) + 제출 규율 원문 2 (섹션 8 — 52 · 65)
+    assert len(파일) == 74, len(파일)
     없음 = [r for r in 파일 if not (REPO / r).is_file()]
     assert not 없음, "출처에 적힌 파일이 없다 — %s" % 없음[:5]
     어긋남 = [r for r, v in 파일.items() if _sha(REPO / r) != v["지금_sha256"]]
@@ -78,7 +78,13 @@ def test_차림표_재료가_모두_있고_출처에_적혀_있다():
     sys.path.insert(0, str(SHARED / "lib"))
     import 일차자리                                        # noqa: E402,PLC0415
     일차재료 = 일차자리.재료(SHARED, REPO / "plugin" / "engine")
-    재료 = [Path(원) for 원, _ in 차리기.전체_차림표() + 감독차리기.전체_차림표() + 총괄재료 + 대장 + 일차재료]
+    # ★ 섹션 8 — 보고서 스킬이 읽는 규율 원문 둘. 이 둘은 **작업 폴더에 실리지 않고** 낱개 스킬의
+    #   `shared/` 로만 간다 (보고서는 작업 폴더를 차리지 않고 최종 엑셀 하나만 받는다).
+    #   그래도 「기록만 있고 아무도 안 쓰는 파일」 이 아니다 — 스킬이 읽는다. 그래서 여기에 적어 둔다.
+    보고서재료 = [(SHARED / "common" / n, "") for n in
+               ("52_AX_FLEX_과제_제출본.md", "65_개인정보_처리_기준_및_제출문안.md")]
+    재료 = [Path(원) for 원, _ in (차리기.전체_차림표() + 감독차리기.전체_차림표() + 총괄재료
+                                + 대장 + 일차재료 + 보고서재료)]
     없음 = [p for p in 재료 if not p.is_file()]
     assert not 없음, "차림표가 가리키는 재료가 없다 — %s" % [str(p) for p in 없음[:5]]
     엔진출처 = json.loads((REPO / "plugin" / "engine" / "출처_엔진.json").read_text(encoding="utf-8"))["파일"]
