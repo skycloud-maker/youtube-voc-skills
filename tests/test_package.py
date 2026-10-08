@@ -48,7 +48,7 @@ def test_출처_기록이_실제_파일과_같다():
     파일 = 꾸러미출처["파일"]
     # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5) + 최신결정_검사 (섹션 5b) − 엔진 28 (섹션 7 ① 출처_엔진.json 으로)
     # + 99_1차_실행조건_원문 (섹션 7 ③ · docs/sources 에서 옮겨 왔다 — 1차 작업 폴더에 들어가므로 한 벌)
-    assert len(파일) == 66, len(파일)
+    assert len(파일) == 72, len(파일)
     없음 = [r for r in 파일 if not (REPO / r).is_file()]
     assert not 없음, "출처에 적힌 파일이 없다 — %s" % 없음[:5]
     어긋남 = [r for r, v in 파일.items() if _sha(REPO / r) != v["지금_sha256"]]
@@ -99,9 +99,9 @@ def 차린폴더(tmp_path_factory):
     return d
 
 
-def test_차리면_꾸러미와_같은_84개가_된다(차린폴더):
+def test_차리면_꾸러미와_같은_90개가_된다(차린폴더):
     파일 = [p for p in 차린폴더.rglob("*") if p.is_file()]
-    assert len(파일) == 84, len(파일)          # 옛 꾸러미 80 + 새 판 + 최신결정_검사.py + 엔진 +2 (섹션 7 ① — 옛 28개 자리 → 도구가 부르는 30개)
+    assert len(파일) == 90, len(파일)          # 옛 꾸러미 80 + 새 판 + 최신결정_검사.py + 엔진 +2 (섹션 7 ①) + 안내서 그림 6 (섹션 7a ③ — 옛 꾸러미부터 빠져 깨져 있었다)
     for 자리 in ("스크립트/자가점검.py", "판독패키지/1a_기준문서_정본_1부.md", "프롬프트/0_붙여넣을_프롬프트_도구형.md",
                 "대장/지문.json", "0_먼저_읽으십시오.md", "engine/src/voc_rebuild/engine.py"):
         assert (차린폴더 / 자리).is_file(), 자리
@@ -143,9 +143,9 @@ def 감독폴더(tmp_path_factory):
     return d
 
 
-def test_감독폴더는_68개이고_편향검사가_없다(감독폴더):
+def test_감독폴더는_74개이고_편향검사가_없다(감독폴더):
     파일 = [p for p in 감독폴더.rglob("*") if p.is_file()]
-    assert len(파일) == 68, len(파일)          # 옛 감독 꾸러미 66개 − 편향검사.py + 새 판 + 엔진 +2 (섹션 7 ①)
+    assert len(파일) == 74, len(파일)          # 옛 감독 꾸러미 66개 − 편향검사.py + 새 판 + 엔진 +2 (섹션 7 ①) + 안내서 그림 6 (섹션 7a ③)
     assert not (감독폴더 / "스크립트" / "편향검사.py").exists(), "감독 폴더에 편향검사가 있다 (98: 아예 없다)"
     assert (감독폴더 / "프롬프트" / "0_붙여넣을_프롬프트_감독.md").is_file()
 
@@ -169,8 +169,12 @@ def test_감독폴더_안내문은_옛_꾸러미와_편향검사_한_줄과_새_
     # 섹션 7 ① — engine/ 줄은 이제 도구가 부르는 엔진 파일을 코드로 따라가 뽑은 목록이다 (옛 꾸러미와 다르다 · 그 목록과 같아야 한다)
     엔진줄 = [x.strip() for x in b if x.strip().startswith("engine/")]
     assert 엔진줄 == ["engine/" + n for n in 꾸러미.꾸러미엔진(PLUGIN / "engine")], 엔진줄[:5]
+    # 섹션 7a ③ — 안내서 63 이 가리키는 그림 6개를 안내서 옆에 넣었다 (옛 꾸러미부터 빠져 깨져 있었다)
+    그림줄 = [x for x in b if "가이드/캡쳐/" in x]
+    assert len(그림줄) == 6, 그림줄
     옛것 = [x for x in a if "편향검사.py" not in x and not x.strip().startswith("engine/")]
-    assert 옛것 == [x for x in b if x not in 새판 and not x.strip().startswith("engine/")]
+    assert 옛것 == [x for x in b if x not in 새판 and x not in 그림줄
+                  and not x.strip().startswith("engine/")]
 
 
 def test_감독폴더_지문에_엔진이_들어가고_엔진을_고치면_잡는다(감독폴더, tmp_path):
@@ -198,7 +202,7 @@ def test_총괄자리는_도구_42개와_감독꾸러미를_갖춘다(tmp_path):
     import zipfile
     with zipfile.ZipFile(판 / "_배포" / "VoC_3_3차감독.zip") as z:
         이름 = [n for n in z.namelist() if not n.endswith("/")]
-    assert len(이름) == 68 and "스크립트/편향검사.py" not in 이름, "감독 꾸러미는 감독 스킬과 한 벌이어야 한다"
+    assert len(이름) == 74 and "스크립트/편향검사.py" not in 이름, "감독 꾸러미는 감독 스킬과 한 벌이어야 한다"
     assert 셈["차림"] > 0 and 총괄차리기.차리기(tmp_path / "총괄", "시험판")["차림"] == 0, "다시 돌리면 아무것도 덮지 않는다"
 
 
@@ -234,3 +238,25 @@ def test_1차가_만든_영상메타가_판독폴더에_앉는다(차린폴더, 
     말2 = 데이터_넣기.영상메타_갈아끼우기(빈자리 / "번들.xlsx", 차린폴더)
     assert "없습니다" in 말2 and "제목만" in 말2, 말2
     assert 자리.read_bytes() == 옛내용
+
+
+def test_안내서가_가리키는_그림이_다_있다(차린폴더):
+    """★ 섹션 7a ③ (2026-10-08) — 안내서 63 의 그림 6개가 **옛 꾸러미부터 빠져 있어** 전부 깨져 있었다.
+
+    글(`![…](캡쳐/01_전체화면.png)`)만 있고 파일이 없으면 실무자는 빈 자리를 본다.
+    안내서 **바로 옆**에 있어야 그 상대경로가 맞는다 — 자리가 어긋나도 여기서 드러난다.
+    ★ 가리키는 그림을 하나도 못 찾으면 그것도 실패다 (「못 찾음」 은 「없음」 이 아니다).
+    """
+    import re
+    가이드 = 차린폴더 / "가이드"
+    assert 가이드.is_dir(), "가이드 폴더가 없다"
+    모두, 없음 = 0, []
+    for 안내 in sorted(가이드.glob("*.md")):
+        for g in re.findall(r"!\[[^\]]*\]\(([^)]+)\)", 안내.read_text(encoding="utf-8")):
+            if g.startswith(("http://", "https://")):
+                continue
+            모두 += 1
+            if not (안내.parent / g).is_file():
+                없음.append("%s → %s" % (안내.name, g))
+    assert 모두 >= 6, "안내서가 가리키는 그림을 못 찾았다 (무늬가 안 맞나) — %d개" % 모두
+    assert not 없음, "안내서가 가리키는 그림이 없다 — %s" % 없음[:5]
