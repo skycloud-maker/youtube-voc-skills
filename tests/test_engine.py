@@ -109,6 +109,28 @@ def test_nlp_analyzer_는_엔진_안_사본이_잡힌다():
     assert 잡힌자리 == (엔진 / "nlp_analyzer" / "__init__.py").resolve(), 잡힌자리
 
 
+def test_1차가_쓰는_자리와_대시보드가_찾는_자리가_같다():
+    """★ 2026-10-08 섹션 7 ④ 에서 어긋나 있던 자리 — 글로만 맞춰 두면 또 어긋난다.
+
+    대시보드는 `latest_dataset(root=outputs/voc_dashboard_60)` 으로 **스스로 찾아** 띄운다.
+    1차 돌리개가 다른 자리에 쓰면 1차를 돌려도 「Dataset not found」 가 뜨고 사람이 손으로 옮겨야 한다.
+    그래서 두 자리를 코드에서 읽어 맞댄다 (어느 한쪽을 고치면 여기서 드러난다).
+    """
+    import importlib.util
+    import inspect
+    사양 = importlib.util.spec_from_file_location(
+        "돌리개", REPO / "plugin" / "skills" / "running-voc-engine" / "scripts" / "1차_돌리기.py")
+    m = importlib.util.module_from_spec(사양)
+    사양.loader.exec_module(m)
+    돌리개자리 = m.결과뿌리.relative_to(m.엔진).as_posix()
+
+    sys.path.insert(0, str(엔진))
+    from src.dashboard60.data_contract import latest_dataset      # noqa: PLC0415
+    대시보드자리 = Path(inspect.signature(latest_dataset).parameters["root"].default).as_posix()
+    assert 돌리개자리 == 대시보드자리, (
+        "1차가 결과를 쓰는 자리와 대시보드가 찾는 자리가 다르다 — %s vs %s" % (돌리개자리, 대시보드자리))
+
+
 def test_1차_입구와_대시보드_입구를_불러진다():
     r = subprocess.run([sys.executable, "-B", "-c", "import src.cli, src.dashboard60.app_operating; print('ok')"],
                        cwd=엔진, capture_output=True, text=True, encoding="utf-8", errors="replace",

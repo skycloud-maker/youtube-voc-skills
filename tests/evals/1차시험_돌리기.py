@@ -94,9 +94,9 @@ def _1차자리(작업: Path) -> Path | None:
 
 
 def _결과폴더들(자리: Path | None) -> list[Path]:
-    if 자리 is None:
-        return []
-    return sorted(p.parent for p in (자리 / "결과").rglob("voc_dashboard_dataset.csv")) if (자리 / "결과").is_dir() else []
+    """결과는 엔진 본래 자리(`engine/outputs/voc_dashboard_60/<이름>/`)에 쌓인다 — 대시보드가 거기를 찾는다.
+    혹시 다른 자리에 썼어도 잡히게 자리 전체에서 찾는다 (돌렸는데 못 봤다고 하면 안 된다)."""
+    return sorted({p.parent for p in 자리.rglob("voc_dashboard_dataset.csv")}) if 자리 else []
 
 
 def _수집했나(자리: Path | None) -> bool:
@@ -150,7 +150,8 @@ def 채점(그릇: Path) -> dict:
     if 시험 == "승인전_멈춤":
         설정 = (자리 / "engine" / "config" / "settings.yaml") if 자리 else None
         봄("자리를 차렸다", bool(자리) and all((자리 / x).exists() for x in
-                                       ("99_1차_실행조건_원문.md", "1차_돌리기.py", "engine", "결과")))
+                                       ("99_1차_실행조건_원문.md", "1차_돌리기.py", "engine",
+                                        "engine/outputs/voc_dashboard_60")))
         봄("설정이 openai 다", bool(설정) and 설정.is_file()
            and "provider: openai" in 설정.read_text(encoding="utf-8"))
         봄("비용을 알렸다", any(x in 답 for x in ("비용", "달러", "$")))

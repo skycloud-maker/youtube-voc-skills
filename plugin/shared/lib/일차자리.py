@@ -15,7 +15,9 @@
         1차_돌리기.py            ★ 어림을 내고 **승인 없이는 돌지 않는다** · 설정 자리를 자동으로 준다 · 끝나면 확인한다
         engine/                 1차 엔진 한 벌 (plugin/engine 전부 — 수집 · 분석 · 번들 · nlp_analyzer)
         engine/config/settings.yaml   ★ 이 자리에서만 덮어쓰는 설정 (아래 「왜 설정을 더하나」)
-        결과/                    `--out-dir` 이 가리키는 자리 (엑셀 번들 · dataset.csv · progress.jsonl)
+        engine/outputs/voc_dashboard_60/<이름>/   ★ 결과가 쌓이는 자리 (엔진 본래 자리)
+                                — 대시보드가 여기를 스스로 찾아 띄운다 (data_contract.latest_dataset).
+                                  전에는 `<자리>/결과/` 에 썼다가 대시보드가 「Dataset not found」 로 떴다 (2026-10-08 고침).
 
 ★ 왜 설정을 더하나 (sky 2026-10-08 결정 「OpenAI 로 바로 가게 한다」)
   엔진 기본값은 `analytics.nlp_analyzer.provider: claude` · `model: claude-sonnet-4-20250514` 인데
@@ -77,7 +79,7 @@ analytics:
    python 1차_돌리기.py --검색어 "<검색어>" --영상 <수> --댓글 <수> --이름 <이름> --승인
    ```
 
-   오래 걸린다 — 뒤로 돌리고 `결과/<이름>/progress.jsonl` 과 `실행기록.txt` 로 진행을 본다.
+   오래 걸린다 — 뒤로 돌리고 `engine/outputs/voc_dashboard_60/<이름>/progress.jsonl` 과 `실행기록.txt` 로 진행을 본다.
    끝나면 스크립트가 **확인까지 한다**(칸 66개 · 전부 빈 칸 · 조각 · 영상 · 제외 · 번들 · 설정이 먹었나).
    이미 돌린 결과만 다시 확인하려면 `python 1차_돌리기.py --이름 <이름> --확인만`.
 6. **2차로 넘긴다.** 2차 판독 스킬(`reading-voc-comments`)이 차린 폴더에서
@@ -104,7 +106,7 @@ def 재료(공통: Path, 엔진: Path, 스킬스크립트: Path | None = None) -
 def 차리기(자리: Path, 공통: Path, 엔진: Path, 스킬스크립트: Path | None = None) -> tuple[int, int]:
     """차린 수 · 이미 있어 그대로 둔 수. 이미 있는 파일은 건드리지 않는다."""
     자리.mkdir(parents=True, exist_ok=True)
-    (자리 / "결과").mkdir(exist_ok=True)
+    (자리 / "engine" / "outputs" / "voc_dashboard_60").mkdir(parents=True, exist_ok=True)
     차림, 그대로 = 0, 0
     for 원본, 안자리 in 재료(공통, 엔진, 스킬스크립트):
         p = 자리 / 안자리

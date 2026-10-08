@@ -32,3 +32,9 @@ BASELINE = Path(os.environ.get("VOC_BASELINE")
 #     (스킬 없는 비교 시험 5개가 그렇게 오염됐다). 그래서 한 번에 한 시험만, 옆에 아무것도 없는 자리에서 돌리고
 #     끝나면 기준 자리의 `스킬시험/` 으로 옮긴다. 다른 컴퓨터에서는 VOC_EVAL_ROOT 로 가리킨다.
 EVAL_ROOT = Path(os.environ.get("VOC_EVAL_ROOT") or r"C:\voc_시험격리")
+
+# 대시보드 · 1차 실행을 돌리는 자리 — **저장소 밖** (2026-10-08 섹션 7 ③④)
+#   ★ 1차 엔진과 대시보드는 자기 폴더 아래에 쓴다 (`data/` · `outputs/` · 업로드 파일 ·
+#     `dashboard_run_state.json` · `exact_reanalysis/`). 저장소 안에서 돌리면 엔진 지문검사가 깨진다.
+#     다른 컴퓨터에서는 VOC_대시보드자리 로 가리킨다.
+DASHBOARD_ROOT = Path(os.environ.get("VOC_대시보드자리") or r"C:\voc_대시보드")

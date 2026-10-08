@@ -1,0 +1,11 @@
+# 1차 실행 자리 설정 — `running-voc-engine` 스킬이 차렸다 (고쳐도 된다).
+# 엔진 원본 설정은 config/settings.example.yaml 이고 이 파일이 그것을 대신한다
+# (돌릴 때 YT_ANALYSIS_SETTINGS_PATH=config/settings.yaml).
+#
+# ★ 왜 이 두 줄인가 (sky 2026-10-08) — 엔진 기본값은 primary 가 Claude 인데 이 PC 에는 Anthropic 키가 없어
+#   댓글마다 호출이 실패하고 OpenAI 로 넘어갔다(530회 전부). 결과는 OpenAI 가 낸 것이니 처음부터 그렇게 적는다.
+#   Anthropic 키를 쓰게 되면 provider 를 claude 로 되돌리고 model 을 claude 판으로 바꾼다.
+analytics:
+  nlp_analyzer:
+    provider: openai
+    model: gpt-4o-mini

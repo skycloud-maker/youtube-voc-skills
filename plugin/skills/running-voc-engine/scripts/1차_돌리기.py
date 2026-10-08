@@ -29,7 +29,11 @@ from pathlib import Path
 
 자리 = Path(__file__).resolve().parent
 엔진 = 자리 / "engine"
-결과뿌리 = 자리 / "결과"
+# ★ 결과는 **엔진 본래 자리**에 쓴다 (2026-10-08 섹션 7 ④ 에서 고쳤다).
+#   대시보드가 `outputs/voc_dashboard_60/*/voc_dashboard_dataset.csv` 를 스스로 찾아 띄우기 때문이다
+#   (`src/dashboard60/data_contract.py:294 latest_dataset`). 전에는 `<자리>/결과/` 에 썼더니
+#   1차를 돌려도 대시보드가 「Dataset not found」 로 떴다 — 사람이 손으로 옮겨야 했다.
+결과뿌리 = 엔진 / "outputs" / "voc_dashboard_60"
 돌리개 = "scripts/run_dashboard60_youtube_collect_and_analyze.py"
 설정 = "config/settings.yaml"
 키들 = ("YOUTUBE_API_KEY", "OPENAI_API_KEY")
@@ -100,6 +104,7 @@ def 확인(결과: Path) -> int:
         return 1
     print("  ✓ 1차 결과가 온전합니다. 2차로 넘기려면 판독 폴더에서:")
     print('      python 스크립트/데이터_넣기.py "%s"' % 번들)
+    print("  대시보드는 이 결과를 스스로 찾습니다 (outputs/voc_dashboard_60 아래에 있습니다).")
     return 0
 
 

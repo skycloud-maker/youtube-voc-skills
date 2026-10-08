@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "voc-dashboard",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["tools/대시보드_띄우기.py"],
+      "port": 8501
+    }
+  ]
+}
