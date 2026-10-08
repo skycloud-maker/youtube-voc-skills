@@ -109,6 +109,23 @@ def test_nlp_analyzer_는_엔진_안_사본이_잡힌다():
     assert 잡힌자리 == (엔진 / "nlp_analyzer" / "__init__.py").resolve(), 잡힌자리
 
 
+def test_저장소_안에_엔진_사본이_하나뿐이다():
+    """★ 2026-10-08 에 실제로 겪었다 — 띄우개에 `--help` 를 줬더니 그것을 **자리 이름으로 보고**
+    저장소 안에 `--help/` 폴더를 만들어 엔진 157개를 복사했고, `git add -A` 로 같이 커밋됐다.
+
+    1차 · 대시보드 자리는 **저장소 밖**이어야 한다. 저장소 안에 엔진 사본이 또 생기면 여기서 드러난다.
+    """
+    표시 = ["streamlit_app.py", "출처_엔진.json"]
+    딴것 = []
+    for 이름 in 표시:
+        for p in REPO.rglob(이름):
+            if "__pycache__" in p.parts or ".git" in p.parts:
+                continue
+            if p.parent != 엔진:
+                딴것.append(p.relative_to(REPO).as_posix())
+    assert not 딴것, "저장소 안에 엔진 사본이 또 있다 (작업 자리는 저장소 밖이어야 한다) — %s" % 딴것[:5]
+
+
 def test_1차가_쓰는_자리와_대시보드가_찾는_자리가_같다():
     """★ 2026-10-08 섹션 7 ④ 에서 어긋나 있던 자리 — 글로만 맞춰 두면 또 어긋난다.
 
