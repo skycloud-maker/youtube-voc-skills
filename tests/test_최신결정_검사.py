@@ -123,7 +123,12 @@ def test_쓰지_않는_라벨_목록_세_벌이_서로_맞다():
         if 옛 is not None:
             os.environ["VOC_얼린기준_재현"] = 옛
     assert set(cs.DEAD_TOPIC) == set(pj.바꿀것), (cs.DEAD_TOPIC, pj.바꿀것)
-    assert set(pj.바꿀것) <= 검.폐기라벨, set(pj.바꿀것) - 검.폐기라벨
+    # ★ 2026-10-09 재점검에서 고쳤다 — 전에는 `⊆`(부분집합)만 봐서 **검사만 아는 라벨**을 놓쳤다.
+    #   그래서 `위생/살균` · `배수·부품` 이 「판독 중에 잡히기는 하는데 아무도 안 바꿔 주는」 채로 남아 있었다
+    #   (새 판 [나12] · [나13] 에는 「위생/냄새 로 읽는다」 · 「배수/급배수 가 흡수했다」 고 적혀 있었다).
+    #   **같아야 한다** — 잡는 것과 바꾸는 것이 어긋나면 사람이 손으로 메워야 한다.
+    assert set(pj.바꿀것) == 검.폐기라벨, {"정리만": set(pj.바꿀것) - 검.폐기라벨,
+                                     "검사만": 검.폐기라벨 - set(pj.바꿀것)}
     판 = (도구.parents[1] / "standards" / "0_최신결정_먼저.md").read_text(encoding="utf-8")
     표줄 = [l for l in 판.splitlines() if l.startswith("| 라7 |")]
     assert 표줄 and all(x in 표줄[0] for x in 검.폐기라벨), (표줄, 검.폐기라벨)
