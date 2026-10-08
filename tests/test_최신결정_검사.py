@@ -128,3 +128,53 @@ def test_쓰지_않는_라벨_목록_세_벌이_서로_맞다():
     표줄 = [l for l in 판.splitlines() if l.startswith("| 라7 |")]
     assert 표줄 and all(x in 표줄[0] for x in 검.폐기라벨), (표줄, 검.폐기라벨)
     assert not cs.DEAD_REASON, "out_of_scope_product 는 [가1] 로 살아 있는 사유다 (옛 동작은 VOC_얼린기준_재현=1 때만)"
+
+
+def test_폐기라벨_정리가_기타_다섯을_하나로_바꾼다(tmp_path):
+    """★ [가13] sky 2026-10-08 「하나로 합친다」 — 결정은 2026-08-16 [나14] 에 이미 있었는데
+    **도구에는 없었다.** 글자만 맞추고 끝내지 않도록, 얼린 3차 결과에 「기타(…)」 를 심어 실제로 돌려 본다.
+
+    ★ 돌리는 것은 **공통 한 벌**(`shared/tools`)이다 — 얼린 기준 안의 사본은 옛 도구다
+      (그 사본을 돌려 「안 바뀐다」 고 잘못 본 적이 있다).
+    """
+    import csv as _csv
+    import io as _io
+    import shutil
+    import subprocess
+    from collections import Counter
+    sys.path.insert(0, str(도구.parents[1]))
+    from paths import BASELINE                               # noqa: PLC0415
+    얼린 = BASELINE / "실행" / "3차마무리_1" / "2판"
+    if not 얼린.is_dir():
+        pytest.skip("얼린 3차 기준이 없다")
+    뿌리 = tmp_path / "2판"
+    shutil.copytree(얼린, 뿌리)
+    shutil.copyfile(도구.parent / "폐기라벨_정리.py", 뿌리 / "폐기라벨_정리.py")
+
+    p = 뿌리 / "s15_master" / "raw_voc.csv"
+    줄 = list(_csv.DictReader(_io.StringIO(p.read_bytes().decode("utf-8-sig"))))
+    심을것 = ["기타(세탁기)", "기타(냉장고)", "기타(로봇청소기)", "기타(식기세척기)"]
+    n = 0
+    for r in 줄:
+        if n < len(심을것) and (r.get("topic") or "") not in ("", "N/A", "미분류"):
+            r["topic"] = 심을것[n]
+            n += 1
+    assert n == len(심을것), "심을 행을 못 찾았다 — 통과가 아니다"
+    with _io.open(p, "w", encoding="utf-8-sig", newline="") as f:
+        w = _csv.DictWriter(f, list(줄[0]))
+        w.writeheader()
+        w.writerows(줄)
+
+    def 세기():
+        c = Counter(r.get("topic") or "" for r in
+                    _csv.DictReader(_io.StringIO(p.read_bytes().decode("utf-8-sig"))))
+        return sum(v for k, v in c.items() if k.startswith("기타(")), c.get("기타", 0)
+
+    앞괄호, 앞기타 = 세기()
+    assert 앞괄호 >= len(심을것), 앞괄호
+    r = subprocess.run([sys.executable, "-B", str(뿌리 / "폐기라벨_정리.py")], cwd=str(뿌리),
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+    assert r.returncode == 0, r.stdout[-1500:] + r.stderr[-500:]
+    뒤괄호, 뒤기타 = 세기()
+    assert 뒤괄호 == 0, "「기타(…)」 가 %d행 남았다" % 뒤괄호
+    assert 뒤기타 == 앞기타 + 앞괄호, (뒤기타, 앞기타, 앞괄호)

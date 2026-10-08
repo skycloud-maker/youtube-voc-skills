@@ -36,7 +36,9 @@ from pathlib import Path
 # ── 라2 · 라4 · 라7
 자사 = re.compile(r"^\s*(LG|엘지|LG전자|엘지전자|자사)\s*$", re.I)
 역할값 = {"creator_channel", "unknown", "product_brand", "competitor_brand"}
-폐기라벨 = {"구매의사/이탈", "위생/살균", "위생/냄새(곰팡이)", "배수·부품", "주거 수납/공간"}
+폐기라벨 = {"구매의사/이탈", "위생/살균", "위생/냄새(곰팡이)", "배수·부품", "주거 수납/공간",
+         # ★ sky 2026-10-08 (가13 · 섹션 7a) — 「기타」 를 하나로 합친다 (제품군은 product_category 에 있다)
+         "기타(로봇청소기)", "기타(식기세척기)", "기타(세탁기)", "기타(냉장고)"}
 뭉뚱 = {"", "N/A", "미분류"}
 시각 = re.compile(r"^\s*\(?\d{1,2}:\d{2}(:\d{2})?")
 TEE = ("time", "effort", "emotion", "success")
