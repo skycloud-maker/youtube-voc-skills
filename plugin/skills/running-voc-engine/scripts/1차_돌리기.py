@@ -65,6 +65,41 @@ def 키검사() -> list[str]:
     return [k for k in 키들 if not os.environ.get(k)]
 
 
+def 영상메타_만들기(결과: Path, 줄들: list[dict]) -> Path | None:
+    """판독자가 쓰는 `7_영상메타.csv` 를 **이 판의 영상으로** 만든다.
+
+    ★ 왜 (2026-09-22 섹션 5b 에서 알게 된 것 · 섹션 7 에서 고치기로 했다)
+      꾸러미에 들어 있던 `7_영상메타.csv` 는 영상 21개짜리 **옛 판 것**이라, 2판 240행의 영상 18개 중
+      16개가 거기에 없었다. 판독자는 `video_id` 로 조인해 제목 · 태그 · 설명 · 채널을 보는데
+      (판독 프롬프트 「영상 메타  판독패키지\\7_영상메타.csv  video_id 로 조인」),
+      없으면 **제목만 보고 판독**하게 된다. 판마다 1차가 만들어야 한다.
+
+    칸은 옛 파일과 같게 둔다 — video_id · video_title · video_tags · video_description ·
+    channel_title · published_at · atomic_rows (그 영상에서 나온 조각 수).
+    """
+    표 = 결과.parent.parent.parent / "data" / "processed" / 결과.name / "videos_normalized.parquet"
+    if not 표.is_file():
+        print("  · 영상 표를 못 찾아 7_영상메타.csv 를 만들지 못했습니다 — %s" % 표)
+        return None
+    import pandas as pd                                           # noqa: PLC0415
+    v = pd.read_parquet(표).fillna("")
+    셈: dict = {}
+    for r in 줄들:
+        셈[r.get("video_id", "")] = 셈.get(r.get("video_id", ""), 0) + 1
+    낼것 = 결과 / "7_영상메타.csv"
+    with io.open(낼것, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["video_id", "video_title", "video_tags", "video_description",
+                    "channel_title", "published_at", "atomic_rows"])
+        for _, r in v.iterrows():
+            태그 = r["tags"]
+            태그 = " ".join(map(str, 태그)) if not isinstance(태그, str) else 태그
+            w.writerow([r["video_id"], r["title"], 태그, r["description"],
+                        r["channel_title"], r["published_at"], 셈.get(r["video_id"], 0)])
+    print("  · 7_영상메타.csv 를 만들었습니다 — 영상 %d개 (판독자가 video_id 로 조인한다)" % len(v))
+    return 낼것
+
+
 def 확인(결과: Path) -> int:
     """돌린 결과를 확인한다. 하나라도 어긋나면 1, 볼 것을 못 찾으면 2."""
     csv자리 = 결과 / "voc_dashboard_dataset.csv"
@@ -83,6 +118,7 @@ def 확인(결과: Path) -> int:
     영상 = len({r.get("video_id", "") for r in 줄들})
     제외 = sum(1 for r in 줄들 if (r.get("status") or "") == "scope_excluded")
     print("  조각 %d개 · 영상 %d개 · 제외 %d행" % (len(줄들), 영상, 제외))
+    메타 = 영상메타_만들기(결과, 줄들)
     print("  칸 %d개 (계약 %d) · 빠진 칸 %s · 덧붙은 칸 %s · 전부 빈 칸 %s"
           % (len(칸), len(TARGET_COLUMNS), 빠짐 or "없음", 덧붙임 or "없음", 전부빈 or "없음"))
     for c in 드문것이_빈것:
@@ -99,7 +135,7 @@ def 확인(결과: Path) -> int:
             #   `1차_돌리기.py --승인` 으로 돌렸으면 0 이어야 한다 (설정 자리를 자동으로 주므로).
             print("     ✗ 설정(config/settings.yaml)이 안 먹었습니다 — 헛호출이 %d번 났습니다." % 경고)
             print("       이 스크립트로 돌리지 않았거나 YT_ANALYSIS_SETTINGS_PATH 가 빠졌습니다.")
-    if 빠짐 or 덧붙임 or 전부빈 or 경고 or not 번들.is_file() or not 줄들:
+    if 빠짐 or 덧붙임 or 전부빈 or 경고 or 메타 is None or not 번들.is_file() or not 줄들:
         print("  ✗ 확인에서 어긋난 것이 있습니다 — 위를 보십시오.")
         return 1
     print("  ✓ 1차 결과가 온전합니다. 2차로 넘기려면 판독 폴더에서:")

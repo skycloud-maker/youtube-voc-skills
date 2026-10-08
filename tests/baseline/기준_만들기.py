@@ -52,6 +52,18 @@ _공통제외 = [
     ]),
     # 3차_마무리 (원래 08-26 09:47) — 감독결과 28개 + 매핑 → 통합 ~ _최종결과
     "3차마무리": ("3차_마무리.py", _공통제외),
+    # 번들_마무리꾸미기 (섹션 7 · 2026-10-08) — 3차_마무리 가 낸 최종 번들을 사람이 보기 좋게 다듬는다.
+    #   ★ 혼자 돌 수 없다 — 꾸밀 번들이 있어야 하므로 **3차_마무리 를 먼저 돌리고** 이어서 돌린다.
+    #   그래서 도구 자리에 목록을 둘 수 있게 넓혔다.
+    "번들꾸미기": (["3차_마무리.py", "번들_마무리꾸미기.py"], _공통제외),
+    # 4차_반영 (섹션 7 · 2026-10-08) — 3차 결과에 4차 결정을 반영하고 최종 번들까지 다시 만든다.
+    #   ★ 사본의 사람 결정(분리제안 승인 · 총괄검수 판정)은 **비어 있다** — 그래도 도구가 도는 길
+    #   (분리 반영 · 묶음 맞추기 · xlsx 다시 · 우선순위 · PL 이슈 · 시트 붙이기)은 그대로 탄다.
+    #   그 길이 바뀌면 드러나는 것이 이 기준의 쓸모다. 사람 결정이 든 판은 나중에 따로 얼린다.
+    #   ★ `폐기라벨_정리` 를 **먼저** 돌린다 — 없이 돌리면 4차_반영 이 ⓪-2 묶음 맞추기 에서 멈춘다
+    #     (매핑에 없는 라벨 `구매의사/이탈` 440행 · `위생/냄새(곰팡이)` 44행 · 2026-10-08 확인).
+    #     2판 실제 흐름도 그 순서였다 (sky 2026-08-26 「구매의사/이탈 → 구매의사」).
+    "4차반영": (["3차_마무리.py", "폐기라벨_정리.py", "4차_반영.py"], _공통제외),
 }
 
 
@@ -78,18 +90,24 @@ def 차려서_돌리기(이름: str, 그릇: Path) -> int:
     ★ 그릇의 부모에는 다른 2판이 없어야 한다 — 도구가 부모 폴더까지 뒤진다.
     """
     도구, 제외 = 실행들[이름]
+    도구들 = [도구] if isinstance(도구, str) else list(도구)      # 차례로 둘 이상도 받는다
     뿌리 = 그릇 / "2판"
     shutil.copytree(원본, 뿌리, ignore=_뺄것(제외))
     env = dict(os.environ, VOC_ENGINE=str(엔진), PYTHONDONTWRITEBYTECODE="1",
                PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
-    r = subprocess.run([sys.executable, "-B", str(뿌리 / 도구)], cwd=str(뿌리),
-                       env=env, text=True, encoding="utf-8", errors="replace",
-                       capture_output=True)
-    (그릇 / "실행기록.txt").write_text(
-        "도구: %s\n종료코드: %d\n\n--- stdout ---\n%s\n--- stderr ---\n%s\n"
-        % (도구, r.returncode, r.stdout, r.stderr), encoding="utf-8")
-    print("  · %s — 종료코드 %d" % (그릇.name, r.returncode))
-    return r.returncode
+    적을것, 마지막코드 = [], 0
+    for 도구이름 in 도구들:
+        r = subprocess.run([sys.executable, "-B", str(뿌리 / 도구이름)], cwd=str(뿌리),
+                           env=env, text=True, encoding="utf-8", errors="replace",
+                           capture_output=True)
+        적을것.append("도구: %s\n종료코드: %d\n\n--- stdout ---\n%s\n--- stderr ---\n%s\n"
+                    % (도구이름, r.returncode, r.stdout, r.stderr))
+        마지막코드 = r.returncode
+        if r.returncode:
+            break                                            # 앞이 실패하면 뒤를 돌리지 않는다
+    (그릇 / "실행기록.txt").write_text("\n".join(적을것), encoding="utf-8")
+    print("  · %s — 종료코드 %d (도구 %d개)" % (그릇.name, 마지막코드, len(적을것)))
+    return 마지막코드
 
 
 def main() -> int:

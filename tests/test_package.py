@@ -200,3 +200,37 @@ def test_총괄자리는_도구_42개와_감독꾸러미를_갖춘다(tmp_path):
         이름 = [n for n in z.namelist() if not n.endswith("/")]
     assert len(이름) == 68 and "스크립트/편향검사.py" not in 이름, "감독 꾸러미는 감독 스킬과 한 벌이어야 한다"
     assert 셈["차림"] > 0 and 총괄차리기.차리기(tmp_path / "총괄", "시험판")["차림"] == 0, "다시 돌리면 아무것도 덮지 않는다"
+
+
+def test_1차가_만든_영상메타가_판독폴더에_앉는다(차린폴더, tmp_path):
+    """★ 2026-09-22 에 알게 되어 2026-10-08 에 고친 자리 (섹션 7).
+
+    꾸러미에 든 `7_영상메타.csv` 는 **옛 판의 영상 21개**짜리다. 판독자는 `video_id` 로 조인해
+    제목 · 태그 · 설명 · 채널을 보므로, 이 판의 영상이 없으면 **제목만 보고 판독**하게 된다
+    (2판 240행의 영상 18개 중 16개가 없었다). 1차가 판마다 만들고, `데이터_넣기.py` 가 갈아 끼운다.
+    여기서는 ① 갈아 끼우는가 ② **없으면 조용히 넘어가지 않는가** 둘을 본다.
+    """
+    sys.path.insert(0, str(SHARED / "tools"))
+    import 데이터_넣기                                     # noqa: PLC0415
+
+    자리 = 차린폴더 / "판독패키지" / "7_영상메타.csv"
+    옛내용 = 자리.read_bytes()
+
+    # ① 1차 결과 옆에 있으면 갈아 끼운다
+    원본 = tmp_path / "번들.xlsx"
+    원본.write_bytes(b"x")                                # 이 시험은 갈아끼우기만 본다
+    (tmp_path / "7_영상메타.csv").write_text(
+        "video_id,video_title,video_tags,video_description,channel_title,published_at,atomic_rows\n"
+        "aaa,제목,,,채널,2026-01-01,3\n", encoding="utf-8-sig")
+    말 = 데이터_넣기.영상메타_갈아끼우기(원본, 차린폴더)
+    assert "갈아 끼웠습니다" in 말 and "영상 1개" in 말, 말
+    assert 자리.read_bytes() != 옛내용
+    assert "aaa" in 자리.read_text(encoding="utf-8-sig")
+
+    # ② 없으면 그대로 두고 **말한다** (「못 찾음」 을 「없음」 으로 넘기지 않는다)
+    자리.write_bytes(옛내용)
+    빈자리 = tmp_path / "빈곳"
+    빈자리.mkdir()
+    말2 = 데이터_넣기.영상메타_갈아끼우기(빈자리 / "번들.xlsx", 차린폴더)
+    assert "없습니다" in 말2 and "제목만" in 말2, 말2
+    assert 자리.read_bytes() == 옛내용

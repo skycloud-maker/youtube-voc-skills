@@ -153,3 +153,31 @@ def test_1차_입구와_대시보드_입구를_불러진다():
                        cwd=엔진, capture_output=True, text=True, encoding="utf-8", errors="replace",
                        env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONIOENCODING="utf-8"))
     assert r.returncode == 0 and "ok" in r.stdout, r.stdout + r.stderr[-2000:]
+
+
+def test_Enum_두_자리가_어긋나지_않는다():
+    """★ 남은 일 목록의 「Enum 두 자리(엔진 schema · 대장) 맞대기」 (섹션 7).
+
+    1차 엔진의 `schema.ENUM_COLUMNS` 는 **동결**이고, 2차는 그 위에 `registry/secondary_enums.json` 의
+    「확장 Enum」 을 더해 쓴다 (`check_submission.py` 가 둘을 합친다). 둘이 어긋나면 2차 판정이 튕긴다.
+    보는 것 셋 —
+      ① 확장이 가리키는 칸이 엔진에 **있는** 칸인가 (없는 칸을 늘리면 1차 결과와 안 맞는다)
+      ② 확장 값이 엔진 값과 **겹치지 않는가** (겹치면 둘 중 어느 쪽 뜻인지 모른다)
+      ③ `secondary_topics.json` 의 확장 라벨도 캐노니컬 topic 과 겹치지 않는가
+    """
+    import json
+    sys.path.insert(0, str(엔진))
+    from src.voc_rebuild.schema import CANONICAL_TOPICS, ENUM_COLUMNS   # noqa: PLC0415
+    대장자리 = REPO / "plugin" / "shared" / "registry"
+    확장 = (json.loads((대장자리 / "secondary_enums.json").read_text(encoding="utf-8"))
+           .get("확장 Enum") or {})
+    assert 확장, "확장 Enum 을 못 찾았다 — 통과가 아니다"
+    for 칸, 값들 in 확장.items():
+        assert 칸 in ENUM_COLUMNS, "확장 Enum 이 엔진에 없는 칸을 가리킨다 — %s" % 칸
+        겹침 = [v for v in 값들 if v in (ENUM_COLUMNS[칸] or [])]
+        assert not 겹침, "확장 Enum 값이 엔진 값과 겹친다 — %s: %s" % (칸, 겹침)
+    확장라벨 = (json.loads((대장자리 / "secondary_topics.json").read_text(encoding="utf-8"))
+             .get("확장 라벨") or {})
+    assert 확장라벨, "확장 라벨을 못 찾았다 — 통과가 아니다"
+    겹친라벨 = [t for t in 확장라벨 if t in CANONICAL_TOPICS]
+    assert not 겹친라벨, "2차 확장 라벨이 캐노니컬 topic 과 겹친다 — %s" % 겹친라벨
