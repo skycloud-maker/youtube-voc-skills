@@ -37,9 +37,13 @@ from paths import BASELINE  # noqa: E402
     "claudeD": "실험_claudeD/작업/_판독패키지/_결과/claudecode_bundle/raw_voc.csv",
     "codexC": "실험_codexC/작업/_판독패키지/_결과/Codex_bundle/raw_voc.csv",
     "codexE": "실험_codexE/작업/_판독패키지/_결과/Codex_bundle/raw_voc.csv",
+    # ★ 2026-10-09 (Ver3) — 같은 Claude 안의 **다른 모델**(Sonnet). 앞의 claude* 는 기본 모델(Opus 계열)이다.
+    #   까닭: Codex 로직을 글로 옮기는 길에서 대조군을 거치고 남은 규칙이 셋뿐이라, 다른 지렛대를 잰다.
+    "sonnetF": "실험_sonnetF/작업/_판독패키지/_결과/claudecode_bundle/raw_voc.csv",
 }
-짝들 = [("claudeA", "codexC", "다른 모델"), ("claudeB", "codexC", "다른 모델"),
-        ("claudeD", "codexE", "다른 모델 · 5b 뒤"), ("claudeA", "claudeB", "같은 모델(대조군)")]
+짝들 = [("claudeA", "codexC", "다른 모델 — Claude · Codex (Ver1 이 쓰는 짝)"),
+        ("claudeA", "sonnetF", "다른 모델 — Claude 안에서 (Opus · Sonnet)"),
+        ("claudeA", "claudeB", "같은 모델(대조군)")]
 # 판정 대상 칸 (원본사본/2판/25_판정대상_컬럼분류.md D절) 가운데 라벨 갈림 뒤에 더 볼 칸
 볼칸 = ["status", "scope_exclusion_reason", "topic", "topic_evidence", "entity_role", "brand",
         "product_category", "inquiry_flag", "inquiry_type", "need_signal_flag", "need_signal_type",
@@ -155,25 +159,29 @@ def 모델몫(쌓은: dict) -> dict:
     """★ 모델 차이 = 다른 모델 쌍의 갈림 − 같은 모델 쌍(대조군)의 갈림.
 
     까닭 — 판독은 같은 모델로 두 번 돌려도 갈린다. 그 흔들림을 빼지 않으면 모델 차이를 셀 수 없다.
-    5b 전 세 쌍만 같은 자리에서 대고(A·C · B·C vs 대조군 A·B), 5b 뒤(D·E)는 규칙이 달라 따로 적는다.
+
+    ★ 2026-10-09 (Ver3) — 세 짝을 **같은 자**로 잰다:
+      Claude·Codex (Ver1 이 쓰는 짝) · Claude 안의 Opus·Sonnet · 대조군 Claude·Claude.
+      Opus·Sonnet 이 대조군 수준이면 모델을 바꿔도 소용없고, Codex 수준에 가까우면
+      **구독 하나로도 교차검증이 남는다**는 뜻이다.
     """
-    대조 = 쌓은["claudeA·claudeB"]
-    print("\n── 모델 몫 (5b 전 · 같은 240행) — 「다른 모델 쌍 평균 − 대조군」, 맞댄 조각 대비 %")
-    print("   %-24s %9s %9s %9s %9s" % ("", "A·C", "B·C", "대조 A·B", "모델 몫"))
+    짝1, 짝2, 대조 = "claudeA·codexC", "claudeA·sonnetF", "claudeA·claudeB"
+    print("\n── 세 짝을 같은 자로 (같은 240행) — 맞댄 조각 대비 %")
+    print("   %-24s %11s %11s %11s %11s" % ("", "A·Codex", "A·Sonnet", "대조 A·A'", "Sonnet 몫"))
     줄들 = [("조각수 다름(원문 대비)", "조각수 다름", "원문"), ("제외↔라벨", "제외↔라벨", "조각"),
             ("제외 사유만 다름", "제외 사유만 다름", "조각"), ("라벨 — 같은 그룹 안", "라벨 — 같은 그룹 안", "조각"),
             ("라벨 — 다른 그룹", "라벨 — 다른 그룹", "조각")]
     out = {}
     for 이름, 열쇠, 밑 in 줄들 + [(c, c, "맞댄 조각") for c in 볼칸]:
         값 = []
-        for 짝 in ("claudeA·codexC", "claudeB·codexC", "claudeA·claudeB"):
-            셈 = 쌓은[짝]
-            값.append(100.0 * 셈[열쇠] / 셈[밑] if 셈[밑] else 0.0)
-        몫 = (값[0] + 값[1]) / 2 - 값[2]
+        for 짝 in (짝1, 짝2, 대조):
+            셈 = 쌓은.get(짝)
+            값.append(100.0 * 셈[열쇠] / 셈[밑] if 셈 and 셈[밑] else 0.0)
+        몫 = 값[1] - 값[2]              # Sonnet 짝이 대조군보다 얼마나 더 갈리나
         if max(값) < 1.0 and abs(몫) < 1.0:
             continue
         out[이름] = 몫
-        print("   %-24s %8.1f%% %8.1f%% %8.1f%% %+8.1f%%p" % (이름, 값[0], 값[1], 값[2], 몫))
+        print("   %-24s %10.1f%% %10.1f%% %10.1f%% %+10.1f%%p" % (이름, 값[0], 값[1], 값[2], 몫))
     return out
 
 
@@ -232,7 +240,7 @@ def main() -> int:
     몫 = 모델몫(쌓은)
     볼것 =["topic_evidence", "brand", "entity_role", "cej", "need_signal_flag", "need_signal_type",
             "tee_emotion_score", "rootcause_cause", "topic", "scope_exclusion_reason", "rootcause_target"]
-    for 짝 in (("claudeA", "codexC"), ("claudeD", "codexE")):
+    for 짝 in (("claudeA", "codexC"), ("claudeA", "sonnetF")):
         print("\n── 쏠렸나 (%s·%s) — 상위 3가지가 갈림의 몇 %%를 덮나. 높으면 규칙으로 적을 수 있다" % 짝)
         for c in 볼것:
             덮음, 상위 = 쏠림(자료, c, 짝)

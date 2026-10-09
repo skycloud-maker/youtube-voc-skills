@@ -48,9 +48,16 @@ def 돌리기(누구들: dict[str, str] | None = None) -> None:
         그릇, 최종 = 공통.격리_준비("실험_%s" % 이름)
         작업 = 그릇 / "작업"
         shutil.copyfile(재료, 작업 / 재료.name)
-        if 누구 == "claude":
+        if 누구.startswith("claude"):
+            # ★ 2026-10-09 (Ver3) — 「claude:모델」 꼴로 **모델을 고를 수 있게** 넓혔다.
+            #   까닭 — Codex 로직을 지시문으로 옮기는 길(②③)에서 대조군을 거치고 남은 규칙이 셋뿐이었다.
+            #   그래서 다른 지렛대를 잰다: **같은 Claude 안의 다른 모델**(예: Opus 와 Sonnet).
+            #   「하나의 엔진(Claude)」 은 지키면서 모델 바탕 차이가 진짜로 남는지 보는 것이다.
             명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
                   "--dangerously-skip-permissions", "--plugin-dir", str(PLUGIN)]
+            모델 = 누구.split(":", 1)[1] if ":" in 누구 else ""
+            if 모델:
+                명령 += ["--model", 모델]
             환경 = 공통._env()
         else:
             d = 그릇 / ".agents"
