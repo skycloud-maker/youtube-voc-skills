@@ -220,3 +220,29 @@ def test_보고서_스킬이_떨어진_자리에서_보고서를_만든다(묶�
     wb.save(엉뚱)
     r3 = _돌리기(도구, 엉뚱, tmp_path / "엉뚱.html")
     assert r3.returncode == 2, r3.stdout
+
+
+def test_스킬마다_시험과_돌리개가_실제로_있다():
+    """★ 2026-10-09 — 보고서 스킬의 evals.json 에 「돌리는 도구: …보고서시험_돌리기.py」 라고
+    적어 놓고 **그 파일을 안 만든** 적이 있다. 적어 두기만 하고 없으면 「시험이 있다」 고 착각한다.
+
+    스킬마다 ① evals.json 이 있고 ② 그 안에 시험이 3개 이상이고 ③ 「돌리는 도구」 가 적혀 있고
+    ④ 그 파일이 **실제로 있는지** 본다. (못 찾으면 통과가 아니다.)
+    """
+    import re
+    없음 = []
+    for s in build_skills.스킬들():
+        ev = REPO / "plugin" / "skills" / s / "evals" / "evals.json"
+        if not ev.is_file():
+            없음.append("%s — evals.json 이 없다" % s)
+            continue
+        d = json.loads(ev.read_text(encoding="utf-8"))
+        if len(d.get("evals") or []) < 3:
+            없음.append("%s — 시험이 %d개뿐이다 (3개 이상)" % (s, len(d.get("evals") or [])))
+        m = re.search(r"돌리는 도구:\s*([^\s\"',]+)", d.get("설명") or "")
+        if not m:
+            없음.append("%s — 「돌리는 도구」 가 안 적혀 있다" % s)
+        elif not (REPO / m.group(1)).is_file():
+            없음.append("%s — 돌리개가 없다: %s" % (s, m.group(1)))
+    assert build_skills.스킬들(), "스킬을 하나도 못 찾았다 — 통과가 아니다"
+    assert not 없음, "스킬의 시험·돌리개가 갖춰지지 않았다 — %s" % 없음

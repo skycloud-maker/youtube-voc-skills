@@ -3,6 +3,22 @@
 유튜브 댓글에서 제품 개선 포인트(VoC)를 찾는 업무를 **Claude 스킬로 넘기기 위한** 저장소.
 스킬만 받으면 같은 순서·같은 기준으로 같은 업무를 할 수 있게 하는 것이 목표다.
 
+> ## 「유튜브VoC분석내부화 Ver1」 — 2026-10-09 동결
+>
+> 1차 수집·분석부터 사내 보고서까지 **스킬 다섯**으로 옮겼다. 기계 시험과 **실제 AI 시험** 양쪽을 통과했다.
+> 태그 `ver1-유튜브VoC분석내부화` · [결정 0003](docs/decisions/0003-Ver1-동결.md) 에 재고·한계·되돌아갈 자리가 있다.
+>
+> | 역할 | 스킬 | 누가 |
+> |---|---|---|
+> | 1차 실행 (수집 + 분석엔진) | `running-voc-engine` | Claude Code |
+> | 2차 판독 ×2 | `reading-voc-comments` | Claude Code · Codex |
+> | 3차 감독 ×2 | `supervising-voc-disagreements` | Codex · Claude Code |
+> | 차수 잇기 · 4차 반영 | `coordinating-voc-pipeline` | Claude Code |
+> | 사내 보고서 | `building-voc-report` | Claude Code |
+>
+> 4차 검토는 **사람 몫**이다 (원래 그렇게 설계됐다).
+> **다음은 Ver2** — Codex 가 하던 역할을 Claude 가 대신하게 해 AI 엔진 하나로 돌린다.
+
 > **독립된 새 출발이다.** 원본 저장소 `youtube-comment-analyzer` 와 지금의 Streamlit 사이트는
 > 새 구현이 안 될 때 돌아갈 예비로 그대로 두고, 여기서 제로부터 새로 세팅한다 (새 GitHub 저장소 ·
 > 새 Streamlit 사이트). 옛 폴더는 한 번 복사할 때만 읽고, 그 뒤로 엮지 않는다 —
