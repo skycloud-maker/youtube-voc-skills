@@ -171,3 +171,65 @@ def test_절대경로는_paths_py_에만():
             걸림.append("%s:%d: %s" % (p.relative_to(REPO).as_posix(), i, 줄[:120]))
     assert 본것 > 0, "검사할 코드 파일을 하나도 못 찾았다 — 통과가 아니다"
     assert not 걸림, "paths.py 밖에 절대경로가 있다 — paths.py 에서 가져올 것:\n" + "\n".join(걸림)
+
+
+# ── 제어문자 ───────────────────────────────────────────────────────────────
+# ★ 2026-10-09 — 진행 파일과 조사 기록에서 **세로탭(0x0B) 세 개**를 찾았다.
+#   `Temp\voc` · `outputs\voc_secondary` · `skills\voc-probe-english` 를 적을 때
+#   역슬래시+v 가 글자 그대로 남지 않고 **세로탭 한 글자로 바뀌어** 들어간 것이다
+#   (셸 heredoc · 파이썬 문자열을 거치면서 생긴다).
+#   눈으로는 공백처럼 보여서 안 보이고, 그 줄의 경로가 조용히 틀린 경로가 된다.
+#   Ver2 결과를 적다가 또 같은 일이 나서, 사람 눈이 아니라 여기서 잡는다.
+#
+# ★ 줄을 `splitlines()` 로 나누면 **이 검사가 헛돈다** — 파이썬은 세로탭·폼피드에서도
+#   줄을 나눠서, 찾으려는 글자가 줄 안에 남지 않는다 (처음 짰을 때 그래서 못 잡았다).
+#   그래서 여기서는 `split(개행)` 으로만 나눈다.
+제어문자 = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+# ★ docs/ 도 본다 — 다른 검사는 「무엇을 복사했나」 기록이라 docs/ 를 빼지만,
+#   깨진 경로는 그 기록에서 더 자주 생긴다 (찾은 셋 다 docs/ 에서 났다).
+제어문자_보는곳 = ("plugin", "tools", "tests", "docs")
+
+
+def 제어문자_찾기(글: str) -> list[tuple[int, str]]:
+    """개행으로만 나눠서 찾는다 — `splitlines()` 를 쓰면 안 된다 (위 주석)."""
+    return [(i, 줄.strip()[:70]) for i, 줄 in enumerate(글.split(chr(10)), 1)
+            if 제어문자.search(줄)]
+
+
+def _제어문자_볼파일():
+    for 곳 in 제어문자_보는곳:
+        밑 = REPO / 곳
+        if not 밑.is_dir():
+            continue
+        for p in sorted(밑.rglob("*")):
+            if p.is_file() and p.suffix.lower() in 글파일 and "__pycache__" not in p.parts:
+                yield p
+    for 이름 in 맨위파일:
+        p = REPO / 이름
+        if p.is_file():
+            yield p
+
+
+def test_제어문자_검사기가_일부러_틀린_것을_잡는다():
+    assert 제어문자_찾기("자리(Temp" + chr(11) + "oc)만"), "세로탭을 못 잡는다"
+    assert 제어문자_찾기("a" + chr(12) + "b"), "폼피드를 못 잡는다"
+    assert 제어문자_찾기("a" + chr(0) + "b"), "널 문자를 못 잡는다"
+    # ★ 헛통과 확인 — splitlines() 로 나누면 세로탭을 못 잡는다는 것을 여기서 못 박는다
+    assert not [1 for 줄 in ("자리(Temp" + chr(11) + "oc)만").splitlines()
+                if 제어문자.search(줄)], "splitlines() 가 세로탭을 남겼다 — 주석을 고쳐야 한다"
+    for 좋음 in ("경로 " + chr(92) + "voc_Ver2판1", "탭\t도 괜찮다", "한글 · 화살표 → 별 ★"):
+        assert not 제어문자_찾기(좋음), 좋음
+
+
+def test_문서와_코드에_제어문자가_없다():
+    본것, 걸림 = 0, []
+    여기 = Path(__file__).resolve()
+    for p in _제어문자_볼파일():
+        if p == 여기:                       # 일부러 틀린 예시가 이 파일에 있다
+            continue
+        본것 += 1
+        for 줄번호, 줄 in 제어문자_찾기(p.read_text(encoding="utf-8", errors="replace")):
+            걸림.append("%s:%d  %s" % (p.relative_to(REPO), 줄번호, 줄))
+    assert 본것 > 0, "검사한 파일이 0개다 — 「못 찾음」 은 통과가 아니다"
+    assert not 걸림, ("제어문자가 든 줄 %d개 (경로가 조용히 틀어진다):\n  %s"
+                     % (len(걸림), "\n  ".join(걸림[:10])))
