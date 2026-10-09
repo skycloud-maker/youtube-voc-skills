@@ -114,16 +114,31 @@ def test_저장소_안에_엔진_사본이_하나뿐이다():
     저장소 안에 `--help/` 폴더를 만들어 엔진 157개를 복사했고, `git add -A` 로 같이 커밋됐다.
 
     1차 · 대시보드 자리는 **저장소 밖**이어야 한다. 저장소 안에 엔진 사본이 또 생기면 여기서 드러난다.
+
+    ★ `dist/` 는 뺀다 — **묶는 도구가 일부러 거기에 엔진을 복사한다**
+      (`build_skills.py` 의 낱개 스킬 · `판_묶기.py` 의 판 꾸러미). git 에 들어가지 않는 생성물이라
+      그 안의 사본은 사고가 아니다. 이 시험이 잡으려는 것은 **git 에 들어갈 자리**의 사본이다
+      (2026-10-08 의 `--help/` 는 저장소 맨 위에 생겨 `git add -A` 로 커밋됐다).
+      ★ 그래서 「dist 밖에 또 있나」 와 「dist 안의 사본은 도구가 만든 것인가」 를 따로 본다.
     """
     표시 = ["streamlit_app.py", "출처_엔진.json"]
-    딴것 = []
+    안보는곳 = ("__pycache__", ".git", ".pytest_cache")
+    딴것, 생성물 = [], []
     for 이름 in 표시:
         for p in REPO.rglob(이름):
-            if "__pycache__" in p.parts or ".git" in p.parts:
+            if set(안보는곳) & set(p.parts) or p.parent == 엔진:
                 continue
-            if p.parent != 엔진:
-                딴것.append(p.relative_to(REPO).as_posix())
+            길 = p.relative_to(REPO).as_posix()
+            (생성물 if 길.startswith("dist/") else 딴것).append(길)
     assert not 딴것, "저장소 안에 엔진 사본이 또 있다 (작업 자리는 저장소 밖이어야 한다) — %s" % 딴것[:5]
+    # ★ dist 안의 사본은 **차림표에 적혀 있어야** 한다 — 도구가 만든 것만 있다는 뜻이다.
+    #   「못 찾음」 을 「없음」 으로 돌리지 않는다: dist 가 있는데 차림표가 없으면 실패한다.
+    for 길 in 생성물:
+        뿌리 = REPO / Path(길).parts[0] / Path(길).parts[1]
+        차림표 = 뿌리 / "차림표.json"
+        assert 차림표.is_file(), "%s 에 차림표.json 이 없다 — 손으로 만든 사본인지 알 수 없다" % 뿌리
+        적힌것 = json.dumps(json.loads(차림표.read_text(encoding="utf-8")), ensure_ascii=False)
+        assert Path(길).name in 적힌것, "%s 가 차림표에 없다 — 도구가 만든 것이 아니다" % 길
 
 
 def test_1차가_쓰는_자리와_대시보드가_찾는_자리가_같다():
