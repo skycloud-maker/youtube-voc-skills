@@ -246,3 +246,44 @@ def test_스킬마다_시험과_돌리개가_실제로_있다():
             없음.append("%s — 돌리개가 없다: %s" % (s, m.group(1)))
     assert build_skills.스킬들(), "스킬을 하나도 못 찾았다 — 통과가 아니다"
     assert not 없음, "스킬의 시험·돌리개가 갖춰지지 않았다 — %s" % 없음
+
+
+def test_한줄흐름이_이어가고_되감고_조건없이는_안돈다(tmp_path):
+    """★ Ver2 ①② — 총괄이 단계를 잇고, 멈추면 **그대로 다시 넣어 이어간다**.
+
+    돈을 쓰지 않고 본다(`--확인만`) — ① 끝난 단계는 건너뛰나 ② 되감으면 그 앞부터인가
+    ③ 조건 없이 처음 돌리면 막히나(지어내고 돌리지 않는다).
+    """
+    import importlib.util as u
+    도구 = REPO / "plugin" / "skills" / "coordinating-voc-pipeline" / "scripts" / "한줄_돌리기.py"
+    assert 도구.is_file(), "한줄_돌리기.py 를 못 찾았다"
+    s = u.spec_from_file_location("한줄", 도구)
+    m = u.module_from_spec(s)
+    s.loader.exec_module(m)
+
+    판 = tmp_path / "판"
+    상태 = m.상태읽기(판)
+    상태["조건"] = {"검색어": "시험", "영상": "1", "댓글": "5", "이름": "시험판"}
+    상태["끝난단계"] = ["1차", "2차준비", "2차판독"]
+    m.상태쓰기(판, 상태)
+    # 소견 — 분석에 지장 없는 지적은 **싣고 간다**
+    m.소견더하기(판, 상태, "총괄검수1", "라벨이 모자란 행이 있습니다")
+    assert "라벨이 모자란" in (판 / m.소견이름).read_text(encoding="utf-8")
+
+    def 돌려(*인자):
+        return subprocess.run([sys.executable, "-B", str(도구), str(판), *인자],
+                              capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+    r = 돌려("--확인만")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "이미 끝난 단계: 1차 · 2차준비 · 2차판독" in r.stdout, r.stdout
+    assert "아무것도 돌리지 않았고" in r.stdout
+
+    r2 = 돌려("--되감기", "2차판독", "--확인만")
+    assert "이미 끝난 단계: 1차 · 2차준비" in r2.stdout and "2차판독 —" not in r2.stdout, r2.stdout
+
+    # ★ 조건 없이 처음 돌리면 막힌다 (지어내고 돌리지 않는다)
+    새판 = tmp_path / "새판"
+    r3 = subprocess.run([sys.executable, "-B", str(도구), str(새판)],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    assert r3.returncode == 2 and "--조건 이 필요합니다" in r3.stdout, r3.stdout
