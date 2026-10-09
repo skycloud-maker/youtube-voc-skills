@@ -107,18 +107,49 @@ def test_Ver1에는_한줄_돌리개가_없다(꾸러미):
     assert (자리 / "Ver2_한줄흐름" / 돌리개자리).is_file()
 
 
-def test_두_판의_차이는_돌리개_하나뿐이다(꾸러미):
-    """그보다 많이 다르면 둘 중 하나가 의도 없이 갈린 것이다 — 여기서 멈춘다."""
-    _, 표 = 꾸러미
-    a = 표["판"]["Ver1_스킬다섯"]["파일"]
-    b = 표["판"]["Ver2_한줄흐름"]["파일"]
-    assert sorted(set(b) - set(a)) == [돌리개자리], \
-        "Ver2 에만 있는 파일이 돌리개 하나가 아니다 — %s" % sorted(set(b) - set(a))
-    assert not (set(a) - set(b)), "Ver1 에만 있는 파일이 있다 — %s" % sorted(set(a) - set(b))
-    다름 = [k for k in set(a) & set(b) if a[k] != b[k]]
-    assert not 다름, ("Ver1 과 Ver2 의 같은 파일이 내용이 다르다 %d개 — "
-                    "동결본과 지금 판이 갈렸다는 뜻이다:\n  %s" % (len(다름), "\n  ".join(sorted(다름)[:5])))
+def test_두_판의_차이는_태그_뒤에_바뀐_것뿐이다(꾸러미):
+    """Ver2 는 **Ver1 태그 + 그 뒤 plugin/ 변경**이어야 한다.
 
+    ★ 처음에는 「차이는 한 줄 돌리개 하나뿐」 으로 못 박았다. 그런데 동결 뒤에 공통 도구를
+      더하면(2026-10-09 `글자_점검.py`) 차이가 둘이 되어 시험이 깨진다 — 그것은 사고가 아니다.
+      그래서 **git 에 물어본다**: 태그에서 지금까지 `plugin/` 에서 더해지고 지워지고 고쳐진 것과
+      두 꾸러미의 차이가 같은가. 그러면 의도 없이 갈린 것만 잡힌다.
+    """
+    _, 표 = 꾸러미
+    아 = 표["판"]["Ver1_스킬다섯"]["파일"]
+    브 = 표["판"]["Ver2_한줄흐름"]["파일"]
+    a, b = set(아), set(브)
+    # ★ 「태그 → **지금 작업 자리**」 로 댄다. HEAD 로 대면 **커밋 안 한 새 파일**이 빠져
+    #   꾸러미에는 있는데 git 은 모른다고 해서 시험이 깨진다 (2026-10-09 `글자_점검.py`).
+    #   묶개는 작업 자리를 담으니, 대는 쪽도 작업 자리여야 한다.
+    r = 묶개._git("-c", "core.quotePath=false", "diff", "--name-status",
+                묶개.Ver1태그, "--", "plugin/")
+    assert r.returncode == 0, r.stderr
+    더함, 지움, 고침 = set(), set(), set()
+    for 줄 in r.stdout.splitlines():
+        if not 줄.strip():
+            continue
+        갈래, _, 길 = 줄.partition(chr(9))
+        길 = 길.strip().strip(chr(34))
+        if 묶개._뺄까(Path(길).relative_to('plugin')):
+            continue
+        {"A": 더함, "D": 지움}.get(갈래[:1], 고침).add(길)
+    # 아직 git 이 모르는 새 파일(untracked)도 꾸러미에는 들어간다
+    r2 = 묶개._git("-c", "core.quotePath=false", "ls-files", "--others",
+                 "--exclude-standard", "--", "plugin/")
+    assert r2.returncode == 0, r2.stderr
+    for 줄 in r2.stdout.splitlines():
+        길 = 줄.strip().strip(chr(34))
+        if 길 and not 묶개._뺄까(Path(길).relative_to('plugin')):
+            더함.add(길)
+    맞대기 = ((sorted(b - a), sorted(더함), '태그 뒤에 **더한** 것'),
+            (sorted(a - b), sorted(지움), '태그 뒤에 **지운** 것'),
+            (sorted({k for k in a & b if 아[k] != 브[k]}), sorted(고침), '태그 뒤에 **고친** 것'))
+    for 꾸러미쪽, git쪽, 무엇 in 맞대기:
+        assert 꾸러미쪽 == git쪽, chr(10).join([
+            '%s 이 git 이 말하는 것과 다릅니다 — 동결본과 지금 판이 뜻 없이 갈렸습니다.' % 무엇,
+            '  꾸러미: %s' % 꾸러미쪽,
+            '  git  : %s' % git쪽])
 
 def test_zip_맨위에_꾸러미_폴더_하나(꾸러미):
     """풀면 폴더 하나가 나와야 한다 — 받는 사람의 자리에 파일이 흩어지지 않게."""

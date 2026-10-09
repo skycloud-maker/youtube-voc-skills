@@ -209,3 +209,99 @@ def test_되감기_이름은_단계_목록과_같다():
     assert 이름들[0] == "1차" and 이름들[-1] == "아웃풋1"
     assert "4차반영" not in 이름들, \
         "4차반영이 단계 목록에 들어왔다 — 되감기 쪽 처리를 다시 보아야 한다"
+
+
+# ── 인풋 2 — 사람이 정한 것을 정말 읽는가 ──────────────────────────────────
+# ★ 2026-10-09 — `--4차반영` 이 사람이 정한 것을 **아무도 읽지 않고** 최종 엑셀을 냈다.
+#   원문 `98_전체흐름_1차부터_4차까지.md` 의 「정한 뒤 — 총괄」 ①②③ 이 빠져 있었다.
+#   또 아웃풋 1 에 **승인 칸이 든 파일**(수정로그 둘)이 안 담겨서, 사람이 정한 것을
+#   적을 자리 자체가 없었다. 그래서 「정한 것이 하나도 없는 최종본」 이 나올 수 있었다.
+def test_아웃풋1이_승인칸이_든_파일을_담는다():
+    """★ 인풋 2 칸이 있는 파일은 **전부** 아웃풋 1 에 들어가야 한다.
+
+    글자 검색이 아니라 **값**을 본다 (`아웃풋1에담을것` 과 `인풋2칸` 을 맞댄다) —
+    모듈 어딘가에 그 이름이 있기만 해도 통과하면 지키는 것이 없다.
+    """
+    담을것 = set(총괄.아웃풋1에담을것)
+    칸있는것 = {이름 for 이름, _, _, _ in 총괄.인풋2칸}
+    빠진것 = 칸있는것 - 담을것
+    assert not 빠진것, (
+        "승인 칸이 있는데 아웃풋 1 에 안 담는다 — 사람이 정한 것을 적을 자리가 없다: %s"
+        % sorted(빠진것))
+    assert "사람이볼목록.csv" in 담을것, "읽는 표(사람이볼목록)도 같이 줘야 한다"
+
+
+def test_인풋2칸이_실제_파일의_칸_이름과_같다():
+    """칸 이름을 코드에 적었으니, 도구들이 쓰는 이름과 **같아야** 한다.
+
+    `apply_approved.py` 가 읽는 이름은 `승인상태` 다 — 그 도구에서 직접 확인한다.
+    """
+    import apply_approved
+    assert "승인상태" in inspect_소스(apply_approved), \
+        "apply_approved 가 「승인상태」 를 안 읽는다 — 칸 이름이 바뀌었다"
+    칸들 = {칸 for _, 칸, _, _ in 총괄.인풋2칸}
+    assert 칸들 == {"승인상태", "처리상태"}, "인풋 2 칸 이름이 바뀌었다 — %s" % sorted(칸들)
+    assert 총괄._승인말 >= {"승인"} and 총괄._반려말 >= {"반려"}
+    # ★ apply_approved 와 **같은 말**을 승인으로 봐야 한다. 다르면 사람이 적은 「Y」 가 한쪽에서만 통한다
+    assert 총괄._승인말 == apply_approved.APPROVED, \
+        "승인으로 보는 말이 apply_approved 와 다르다 — %s vs %s" % (
+            sorted(총괄._승인말), sorted(apply_approved.APPROVED))
+
+
+def inspect_소스(모듈) -> str:
+    import inspect
+    return inspect.getsource(모듈)
+
+
+def test_아무것도_안정하면_센다(tmp_path):
+    """`인풋2_센다` 가 「아직 안 정한 칸」 을 센다 — 0 이면 사차반영이 멈춘다."""
+    import csv as _csv
+    모을곳 = tmp_path / "아웃풋1_회의에서_정할것"
+    모을곳.mkdir()
+    길 = 모을곳 / "수정로그_재검토필요.csv"
+    with open(길, "w", encoding="utf-8-sig", newline="") as h:
+        w = _csv.DictWriter(h, fieldnames=["atomic_id", "field", "제안값", "승인상태"])
+        w.writeheader()
+        w.writerow({"atomic_id": "a", "field": "topic", "제안값": "", "승인상태": "대기"})
+        w.writerow({"atomic_id": "b", "field": "topic", "제안값": "", "승인상태": ""})
+        w.writerow({"atomic_id": "c", "field": "topic", "제안값": "x", "승인상태": "승인"})
+    남은 = 총괄.인풋2_센다(모을곳)
+    assert 남은["수정로그_재검토필요.csv"] == 2, \
+        "안 정한 칸을 잘못 센다 (「대기」 와 빈칸이 둘) — %s" % 남은
+
+
+def test_승인했는데_데이터에_없으면_잡는다(tmp_path):
+    """★ 「총괄이 돌았다」 와 「반영됐다」 는 다르다 — 값을 하나씩 대본다."""
+    import csv as _csv
+    판자리 = tmp_path / "총괄판"
+    번들 = 판자리 / "_판독패키지" / "_결과" / "master_final"
+    번들.mkdir(parents=True)
+    (판자리 / "_최종결과").mkdir()
+
+    def 쓰기(길, 머리, 줄들):
+        with open(길, "w", encoding="utf-8-sig", newline="") as h:
+            w = _csv.DictWriter(h, fieldnames=머리)
+            w.writeheader()
+            w.writerows(줄들)
+
+    쓰기(번들 / "raw_voc.csv", ["atomic_id", "topic"],
+       [{"atomic_id": "a", "topic": "옛라벨"}, {"atomic_id": "b", "topic": "새라벨"}])
+    쓰기(번들 / "수정로그_재검토필요.csv", ["atomic_id", "field", "제안값", "승인상태"],
+       [{"atomic_id": "a", "field": "topic", "제안값": "새라벨", "승인상태": "승인"},
+        {"atomic_id": "b", "field": "topic", "제안값": "새라벨", "승인상태": "승인"},
+        {"atomic_id": "a", "field": "topic", "제안값": "딴것", "승인상태": "반려"}])
+    안된것 = 총괄.인풋2_확인(판자리)
+    assert len(안된것) == 1 and "a" in 안된것[0], \
+        "승인했는데 안 들어간 것을 못 잡거나, 반려를 잡는다 — %s" % 안된것
+
+    # 제안값이 비었는데 승인한 것도 잡는다
+    쓰기(번들 / "수정로그_재검토필요.csv", ["atomic_id", "field", "제안값", "승인상태"],
+       [{"atomic_id": "b", "field": "topic", "제안값": "", "승인상태": "승인"}])
+    안된것2 = 총괄.인풋2_확인(판자리)
+    assert 안된것2 and "제안값이 비었" in 안된것2[0],안된것2
+
+    # ★ 「못 찾음」 은 통과가 아니다 — raw_voc 가 없으면 그것을 말한다
+    (번들 / "raw_voc.csv").unlink()
+    안된것3 = 총괄.인풋2_확인(판자리)
+    assert 안된것3 and "못 찾았습니다" in 안된것3[0], \
+        "raw_voc 가 없는데 「문제 없음」 으로 돌려준다 — 검사 안 한 것을 숨긴다"

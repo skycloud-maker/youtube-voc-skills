@@ -48,7 +48,8 @@ def test_출처_기록이_실제_파일과_같다():
     파일 = 꾸러미출처["파일"]
     # 판독 70 (섹션 4) + 감독 3 + 총괄 19 (섹션 5) + 최신결정_검사 (섹션 5b) − 엔진 28 (섹션 7 ① 출처_엔진.json 으로)
     # + 99_1차_실행조건_원문 (섹션 7 ③) + 안내서 그림 6 (섹션 7a ③) + 제출 규율 원문 2 (섹션 8 — 52 · 65)
-    assert len(파일) == 74, len(파일)
+    # + 글자_점검.py (2026-10-09 — 깨진 글자 · 라벨 오타)
+    assert len(파일) == 75, len(파일)
     없음 = [r for r in 파일 if not (REPO / r).is_file()]
     assert not 없음, "출처에 적힌 파일이 없다 — %s" % 없음[:5]
     어긋남 = [r for r, v in 파일.items() if _sha(REPO / r) != v["지금_sha256"]]
@@ -200,7 +201,8 @@ def test_총괄자리는_도구_42개와_감독꾸러미를_갖춘다(tmp_path):
     assert not 셈["못찾음"], 셈["못찾음"]
     판 = tmp_path / "총괄" / "시험판"
     도구 = sorted(p.name for p in 판.glob("*.py"))
-    assert len(도구) == 42, len(도구)          # 41 + 최신결정_검사.py (섹션 5b)
+    # 41 + 최신결정_검사.py(섹션 5b) + 글자_점검.py(2026-10-09 · 깨짐·라벨 오타)
+    assert len(도구) == 43, len(도구)
     for 옛관리 in ("마무리_이력정리.py", "정본_맞추기.py", "make_zip.py", "박힌말_검사.py", "5차기준_검사.py"):
         assert 옛관리 not in 도구, "옛 관리 도구가 들어갔다 — %s (sky: 새 방식으로 대신)" % 옛관리
     assert (tmp_path / "총괄" / "s9_group" / "topic_group_map.json").is_file(), "대장은 판 폴더의 부모에"
