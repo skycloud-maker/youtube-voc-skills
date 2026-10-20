@@ -264,6 +264,76 @@ Ver2 를 짤 때 그 자리를 미리 뚫어 두었습니다.
 """
 
 
+_빈컴퓨터_안내 = """# 빈 컴퓨터에서 — 이것만 갖추면 됩니다
+
+★ 2026-10-20 재점검에서 찾은 빈 칸입니다. 전에는 받은 사람이 **스스로 알아내야** 했습니다.
+
+## 차수마다 필요한 것이 다릅니다
+
+| 하려는 것 | 필요한 것 | 키 |
+|---|---|---|
+| **보고서 · 대시보드 HTML** (최종본을 보기만) | 파이썬 + `pandas` `openpyxl` | **없음** |
+| **2차 판독 · 3차 감독 · 총괄** | 거기에 `claude` · `codex` 명령 | 없음 |
+| **1차 수집·분석** (유튜브에서 모으기) | 거기에 엔진 꾸러미 전부 | **둘 필요** |
+
+즉 **최종본만 받아 보는 사람은 키도 AI 명령도 필요 없습니다.**
+
+## ① 파이썬
+
+```
+python 3.11 이상   —  python --version 으로 확인
+```
+
+## ② 파이썬 꾸러미
+
+보기만 할 때 (보고서 · 대시보드 HTML) —
+
+```bash
+python -m pip install pandas openpyxl
+```
+
+1차까지 돌릴 때 — 깔 목록이 꾸러미에 **들어 있습니다** —
+
+```bash
+python -m pip install -r plugin/engine/requirements.txt
+```
+
+## ③ 키 둘 — 1차를 돌릴 때만
+
+본보기가 `plugin/engine/.env.example` 에 있습니다. 환경변수로 넣으십시오.
+
+```
+YOUTUBE_API_KEY     댓글을 모읍니다
+OPENAI_API_KEY      1차 분석을 합니다 (gpt-4o-mini)
+```
+
+★ 키를 이 꾸러미 안의 파일에 적지 마십시오. 꾸러미는 사람에게 건네는 것입니다.
+
+## ④ AI 명령 — 2·3·4차를 돌릴 때만
+
+```
+claude     Claude Code      2차 판독 한 자리 · 3차 감독 한 자리 · 총괄
+codex      Codex CLI        2차 판독 한 자리 · 3차 감독 한 자리
+```
+
+★ 판독·감독을 **둘씩 따로** 돌리는 것이 이 분석의 교차검증입니다. 하나로 줄이면
+  지금만큼 지켜지지 않습니다 — `Ver3_아직_못_씁니다.md` 에 재 본 숫자가 있습니다.
+
+## ⑤ 안 되는 것 하나
+
+**라이브 재분석**은 이 꾸러미만으로 안 됩니다 — 유튜브와 OpenAI 를 부르려면 외부망이 필요합니다.
+이미 나온 결과를 보는 것은 **HTML 파일 하나로 어디서든** 됩니다 (인터넷도 필요 없습니다).
+
+## 갖췄는지 확인하는 법
+
+```bash
+python -c "import pandas, openpyxl; print('보기 준비됨')"
+python -c "import streamlit, altair, pydantic; print('대시보드 준비됨')"
+python -c "import os; print('키', [k for k in ('YOUTUBE_API_KEY','OPENAI_API_KEY') if os.environ.get(k)])"
+```
+"""
+
+
 def 만들기(자리: Path) -> int:
     if 자리.exists():
         shutil.rmtree(자리)
@@ -300,6 +370,11 @@ def 만들기(자리: Path) -> int:
     shutil.rmtree(임시)
 
     (자리 / "Ver3_아직_못_씁니다.md").write_text(_Ver3_안내, encoding="utf-8", newline="\n")
+    (자리 / "0_빈컴퓨터에서_무엇을_깔까.md").write_text(
+        _빈컴퓨터_안내, encoding="utf-8", newline=chr(10))
+    for 판이름 in 기록["판"]:
+        (자리 / 판이름 / "0_빈컴퓨터에서_무엇을_깔까.md").write_text(
+            _빈컴퓨터_안내, encoding="utf-8", newline=chr(10))
     print("  · Ver3            꾸러미 없음 — 안내문 하나 (코드가 없다)")
     (자리 / "차림표.json").write_text(json.dumps(기록, ensure_ascii=False, indent=1) + "\n",
                                   encoding="utf-8", newline="\n")

@@ -29,10 +29,12 @@ def 묶음(tmp_path_factory):
     return d
 
 
-def test_스킬_다섯을_다_묶었다(묶음):
+def test_스킬_여섯을_다_묶었다(묶음):
+    # ★ 2026-10-20 — showing-voc-dashboard 를 더해 다섯 → **여섯** (sky 「대시보드 스킬을 더한다」).
+    #   이름을 적어 두는 까닭 — 스킬이 조용히 늘거나 줄면 여기서 드러난다.
     assert build_skills.스킬들() == ["building-voc-report", "coordinating-voc-pipeline",
                                  "reading-voc-comments", "running-voc-engine",
-                                 "supervising-voc-disagreements"]
+                                 "showing-voc-dashboard", "supervising-voc-disagreements"]
     for s in build_skills.스킬들():
         assert (묶음 / "claude" / (s + ".zip")).is_file()
         assert (묶음 / "codex" / ".agents" / "skills" / s / "SKILL.md").is_file()
