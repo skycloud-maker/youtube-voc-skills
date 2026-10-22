@@ -24,6 +24,7 @@
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -418,7 +419,7 @@ def test_전부_맡길_때의_부름말이_설명에_있다():
 def test_스킬_문서가_돌리개_쓰는_법_넷을_적는다():
     """쓰는 법이 넷이다 — 처음 돌리기 · 미리보기 · 이어가기(같은 명령 다시) · 4차 반영."""
     글 = _스킬글()
-    for 조각 in ("--조건", "--확인만", "--4차반영", "--되감기", "상태.json"):
+    for 조각 in ("--조건", "--확인만", "--승인", "--4차반영", "--되감기", "상태.json"):
         assert 조각 in 글, "돌리개 쓰는 법에서 빠졌다 — %s" % 조각
 
 
@@ -444,3 +445,153 @@ def test_한_차수만_맡길_때는_돌리개를_안_쓴다고_적는다():
     """돌리개는 **전부를 맡길 때**만 쓴다 — 아니면 끝난 차수를 다시 돌려 돈이 두 번 나간다."""
     글 = _스킬글()
     assert "전부를 맡길 때" in 글, "돌리개를 언제 안 쓰는지 적지 않았다"
+
+
+# ── ⑧ 미리보기가 **말과 같은가** (2026-10-22 Codex 교차점검) ──────────────────────
+#   ★ 찾은 것 둘 —
+#     ① 「아무것도 돌리지 않았고 돈도 쓰지 않았습니다」 라고 말하면서 판자리와
+#        `상태.json` 을 **만들었다.** 말과 행동이 달랐다.
+#     ② 미리보기가 **비용 숫자를 말하지 않았다.** 돌리개는 1차에 `--승인` 을 붙여
+#        넘기므로 사람이 어림을 보는 자리는 미리보기 한 곳뿐이다. 숫자가 없으면
+#        묻지 않고 돈이 나가는 셈이 된다.
+def _미리보기_돌리기(monkeypatch, 판자리, 조건="검색어=시험; 영상=5; 댓글=50") -> str:
+    import io as _io
+    import contextlib
+    monkeypatch.setattr(총괄.sys, "argv",
+                        ["한줄_돌리기.py", str(판자리), "--확인만", "--조건", 조건])
+    통 = _io.StringIO()
+    with contextlib.redirect_stdout(통):
+        코드 = 총괄.main()
+    assert 코드 == 0, 통.getvalue()[-800:]
+    return 통.getvalue()
+
+
+def test_미리보기는_아무것도_쓰지_않는다(monkeypatch, tmp_path):
+    판자리 = tmp_path / "아직_없는_자리"
+    _미리보기_돌리기(monkeypatch, 판자리)
+    assert not 판자리.exists(), "미리보기가 판자리를 만들었다 — 말과 다르다"
+
+
+def test_미리보기가_어림을_말한다(monkeypatch, tmp_path):
+    글 = _미리보기_돌리기(monkeypatch, tmp_path / "자리")
+    for 말 in ("어림", "조각", "분", "$", "할당량"):
+        assert 말 in 글, "미리보기가 「%s」 를 말하지 않았다 — 묻지 않고 돈이 나간다" % 말
+    assert "판독자 둘" in 글 and "따로" in 글, \
+        "1차 어림만 말하고 판독·감독 값을 안 말했다 — 사람이 전체 비용을 모른다"
+
+
+def test_어림은_1차돌리개에서_온다():
+    """두 벌로 세지 않는다 — 잰 숫자는 `1차_돌리기.py` 의 `잰것` 한 곳에 있다."""
+    모 = 총괄._일차돌리개()
+    assert 모 is not None, "1차 돌리개를 못 봤다 — 못 찾음은 통과가 아니다"
+    assert hasattr(모, "어림") and hasattr(모, "잰것"), "어림·잰것이 1차 돌리개에 없다"
+    e = 모.어림(5, 50)
+    for 칸 in ("모은댓글", "조각", "분", "달러", "할당량"):
+        assert 칸 in e, "어림에 %s 가 없다" % 칸
+    글 = Path(총괄.__file__).read_text(encoding="utf-8")
+    assert "잰것 =" not in 글, "총괄이 잰 숫자를 또 적었다 (두 벌)"
+
+
+def test_1차돌리개를_못_보면_크게_실패한다(monkeypatch, tmp_path):
+    """「못 찾음」 은 「없음」 이 아니다 — 1차 돌리개를 못 보면 키 이름도 어림도 못 낸다.
+
+    ★ 처음 이 시험을 「어림만 못 낸다」 로 적었다가 틀렸다. 실제로는 갖춤새 점검이
+      **먼저** 「키 이름 목록을 못 봤습니다」 로 잡고 종료코드 2 로 멈춘다. 그게 맞다 —
+      조용히 넘어가는 것보다 크게 실패하는 쪽이다.
+    """
+    import io as _io
+    import contextlib
+    monkeypatch.setattr(총괄, "_일차돌리개", lambda: None)
+    monkeypatch.setattr(총괄.sys, "argv",
+                        ["한줄_돌리기.py", str(tmp_path / "자리"), "--확인만",
+                         "--조건", "검색어=시험; 영상=5; 댓글=50"])
+    통 = _io.StringIO()
+    with contextlib.redirect_stdout(통):
+        코드 = 총괄.main()
+    글 = 통.getvalue()
+    assert 코드 == 2, "못 봤는데 통과했다"
+    assert "키 이름 목록을 못 봤습니다" in 글, 글[-600:]
+    assert "못 찾음은 통과가 아닙니다" in 글, 글[-600:]
+
+
+def test_어림만_못_낼_때는_그렇게_말하고_계속한다(monkeypatch, tmp_path):
+    """키 이름은 보이지만 `어림()` 이 없는 경우 — 조용히 넘어가지 않는다."""
+    import io as _io
+    import contextlib
+
+    class _반쪽:
+        키들 = 총괄._키이름들()
+
+    monkeypatch.setattr(총괄, "_일차돌리개", lambda: _반쪽())
+    for k in _반쪽.키들:
+        monkeypatch.setenv(k, "시험용-값-아님")
+    monkeypatch.setattr(총괄.shutil, "which", lambda x: "/시험/" + x)
+    monkeypatch.setattr(총괄.sys, "argv",
+                        ["한줄_돌리기.py", str(tmp_path / "자리"), "--확인만",
+                         "--조건", "검색어=시험; 영상=5; 댓글=50"])
+    통 = _io.StringIO()
+    with contextlib.redirect_stdout(통):
+        코드 = 총괄.main()
+    글 = 통.getvalue()
+    assert 코드 == 0, 글[-600:]
+    assert "어림을 내지 못했습니다" in 글, 글[-800:]
+
+
+# ── ⑨ 돈 관문 — 승인 없이는 돌지 않는다 (2026-10-22) ────────────────────────────
+#   ★ 왜 생겼나. 돌리개는 1차에 `--승인` 을 **자동으로** 붙여 넘겼다. 그래서 사람이
+#     어림을 보는 자리도, 승인하는 자리도 없었다. 그날 내가 코드를 잘못 고쳐
+#     미리보기가 실제 실행으로 흘렀고, **묻지 않은 1차가 돌아** 유튜브 할당량 108 과
+#     OpenAI 호출 44 번을 썼다. 관문이 있으면 그렇게 흐르지 못한다.
+#   ★ 이 시험들은 **아무것도 돌리지 않는다** — `단계들` 을 빈 목록으로 바꿔 둔다.
+def _돌려보기(monkeypatch, 판자리, *덧붙임, 단계비우기=True) -> tuple:
+    import io as _io
+    import contextlib
+    if 단계비우기:
+        monkeypatch.setattr(총괄, "단계들", [])
+    monkeypatch.setattr(총괄.sys, "argv",
+                        ["한줄_돌리기.py", str(판자리),
+                         "--조건", "검색어=시험; 영상=5; 댓글=50", *덧붙임])
+    통 = _io.StringIO()
+    with contextlib.redirect_stdout(통):
+        코드 = 총괄.main()
+    return 코드, 통.getvalue()
+
+
+def test_승인_없이는_돌지_않는다(monkeypatch, tmp_path):
+    코드, 글 = _돌려보기(monkeypatch, tmp_path / "자리")
+    assert 코드 == 2, "승인 없이 돌았다 — 묻지 않고 돈이 나간다" + 글[-600:]
+    assert "돌리지 않았습니다" in 글, 글[-600:]
+    assert "--승인" in 글, "무엇을 붙이라는지 말하지 않았다"
+
+
+def test_승인_관문이_어림을_같이_말한다(monkeypatch, tmp_path):
+    """숫자를 안 보여 주고 승인을 받는 것은 승인이 아니다."""
+    _, 글 = _돌려보기(monkeypatch, tmp_path / "자리")
+    for 말 in ("어림", "조각", "$", "할당량", "판독자 둘"):
+        assert 말 in 글, "관문이 「%s」 를 말하지 않았다" % 말
+
+
+def test_승인을_붙이면_지나간다(monkeypatch, tmp_path):
+    판자리 = tmp_path / "자리"
+    코드, 글 = _돌려보기(monkeypatch, 판자리, "--승인")
+    assert 코드 == 0, 글[-800:]
+    상태 = json.loads((판자리 / "상태.json").read_text(encoding="utf-8"))
+    assert 상태.get("승인") is True, "승인을 적어 두지 않았다 — 이어갈 때 또 묻는다"
+
+
+def test_한_번_승인하면_이어갈_때_또_묻지_않는다(monkeypatch, tmp_path):
+    """「멈춰도 같은 명령을 그대로 다시 넣으면 이어진다」 가 살아 있어야 한다."""
+    판자리 = tmp_path / "자리"
+    판자리.mkdir()
+    (판자리 / "상태.json").write_text(
+        json.dumps({"끝난단계": [], "소견": [], "기록": {}, "승인": True}, ensure_ascii=False),
+        encoding="utf-8")
+    코드, 글 = _돌려보기(monkeypatch, 판자리)          # `--승인` 없이
+    assert 코드 == 0, "이미 승인한 판인데 또 막았다" + 글[-600:]
+
+
+def test_미리보기는_승인을_요구하지_않는다(monkeypatch, tmp_path):
+    """미리보기는 돈이 안 든다 — 관문이 걸리면 안 된다."""
+    코드, 글 = _돌려보기(monkeypatch, tmp_path / "자리", "--확인만", 단계비우기=False)
+    assert 코드 == 0, 글[-600:]
+    assert "돌리지 않았습니다" not in 글, "미리보기를 승인 관문이 막았다"
