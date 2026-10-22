@@ -141,13 +141,16 @@ def test_1차_스킬이_떨어진_자리에서_실행_자리를_차린다(묶음
     assert r.returncode == 0, r.stdout + r.stderr
     assert "못 찾" not in r.stdout, r.stdout
     for n in ("0_먼저_읽으십시오.md", "99_1차_실행조건_원문.md", "1차_돌리기.py",
+              # ★ 2026-10-22 (sky) — 결합 방식(OR·AND)은 코드를 읽어야 알 수 있어 따로 적어 두었다.
+              #   1차 자리에서 사람에게 물을 때 읽어야 하므로 같이 놓는다.
+              "키워드결합_OR_AND_기준.md",
               "engine/config/settings.yaml", "engine/scripts/run_dashboard60_youtube_collect_and_analyze.py",
               "engine/nlp_analyzer/__init__.py", "engine/src/cli.py"):
         assert (자리 / n).is_file(), n
     assert "provider: openai" in (자리 / "engine/config/settings.yaml").read_text(encoding="utf-8")
-    # 엔진 한 벌(출처 기록 포함) + 글 3개 + 설정 1개
+    # 엔진 한 벌(출처 기록 포함) + 글 4개(안내문 · 실행조건 원문 · 결합 기준 · 돌리개) + 설정 1개
     엔진수 = len([p for p in (REPO / "plugin" / "engine").rglob("*") if p.is_file() and "__pycache__" not in p.parts])
-    assert len([p for p in 자리.rglob("*") if p.is_file()]) == 엔진수 + 4, r.stdout
+    assert len([p for p in 자리.rglob("*") if p.is_file()]) == 엔진수 + 5, r.stdout
     # ★ 승인 없이는 돌지 않는다 (돈이 든다) — 어림만 내고 종료 2
     r2 = _돌리기(자리 / "1차_돌리기.py", "--검색어", "시험", "--영상", "1", "--댓글", "5")
     assert r2.returncode == 2, r2.stdout + r2.stderr

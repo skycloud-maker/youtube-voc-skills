@@ -595,3 +595,177 @@ def test_미리보기는_승인을_요구하지_않는다(monkeypatch, tmp_path)
     코드, 글 = _돌려보기(monkeypatch, tmp_path / "자리", "--확인만", 단계비우기=False)
     assert 코드 == 0, 글[-600:]
     assert "돌리지 않았습니다" not in 글, "미리보기를 승인 관문이 막았다"
+
+
+# ── ⑩ 실행조건 — 적은 칸이 **엔진까지 가는가** (2026-10-22 재점검) ────────────────
+#   ★ 찾은 것 — 전에는 네 칸(검색어 · 영상 · 댓글 · 이름)만 넘겼다. 원문에는 스물두 칸이
+#     있는데 나머지는 엔진 기본값으로 **조용히** 떨어졌다. 국가·언어·게시일·대댓글을
+#     바꿔 돌릴 길이 아예 없었고, 적어도 사라졌다 (`_조건풀기` 가 버렸다).
+def test_조건칸이_1차돌리개_한_곳에_있다():
+    모 = 총괄._일차돌리개()
+    assert 모 is not None, "1차 돌리개를 못 봤다 — 못 찾음은 통과가 아니다"
+    assert hasattr(모, "조건칸") and hasattr(모, "꼭묻는칸"), "조건칸·꼭묻는칸이 없다"
+    이름들 = [c[0] for c in 모.조건칸]
+    # sky 2026-10-22 가 「그 외에는 필수」 라고 가른 열 칸
+    for 칸 in ("검색어", "키워드들", "결합", "시작일", "종료일", "국가", "언어",
+              "영상", "댓글", "대댓글"):
+        assert 칸 in 모.꼭묻는칸, "반드시 묻는 칸에서 빠졌다 — %s" % 칸
+    # sky 가 「필수가 아닐 수도」 라고 한 것들
+    for 칸 in ("채널", "최대행", "묶음", "대기초", "모델"):
+        assert 칸 in 이름들, "칸이 아예 없다 — %s" % 칸
+        assert 칸 not in 모.꼭묻는칸, "묻지 않기로 한 칸을 필수로 적었다 — %s" % 칸
+
+
+def test_모든_조건칸이_엔진_옵션에_이어진다():
+    """칸마다 엔진이 **실제로 받는** 옵션이 있어야 한다. 없는 옵션을 넘기면 엔진이 죽는다."""
+    모 = 총괄._일차돌리개()
+    엔진돌리개 = _뿌리 / "plugin" / "engine" / "scripts" / \
+        "run_dashboard60_youtube_collect_and_analyze.py"
+    assert 엔진돌리개.is_file(), "엔진 돌리개를 못 찾았다 — 못 찾음은 통과가 아니다"
+    글 = 엔진돌리개.read_text(encoding="utf-8")
+    for 칸, 옵션, _기, _꼭, _설 in 모.조건칸:
+        assert ('"%s"' % 옵션) in 글, "엔진이 받지 않는 옵션이다 — %s → %s" % (칸, 옵션)
+
+
+def test_조건을_적으면_버리지_않는다():
+    """`_조건풀기` 가 네 칸만 남기고 버리던 자리."""
+    조건 = 총괄._조건풀기(
+        "검색어=LG 로봇청소기; 국가=US; 언어=en; 대댓글=false; 최대행=100", Path("."))
+    for 칸, 값 in (("국가", "US"), ("언어", "en"), ("대댓글", "false"), ("최대행", "100")):
+        assert 조건.get(칸) == 값, "적은 칸이 사라졌다 — %s (받은 것: %r)" % (칸, 조건)
+
+
+def test_모르는_칸은_잡는다():
+    조건 = 총괄._조건풀기("검색어=x; 국가코드=US; 언어코드=en", Path("."))
+    모름 = 총괄.모르는조건(조건)
+    assert "국가코드" in 모름 and "언어코드" in 모름, "오타를 못 잡았다 — %r" % (모름,)
+    assert "검색어" not in 모름 and "이름" not in 모름, "쓰는 칸을 모른다고 했다 — %r" % (모름,)
+
+
+def test_모르는_칸이_있으면_돌지_않는다(monkeypatch, tmp_path):
+    import io as _io
+    import contextlib
+    monkeypatch.setattr(총괄, "단계들", [])
+    monkeypatch.setattr(총괄.sys, "argv",
+                        ["한줄_돌리기.py", str(tmp_path / "자리"), "--확인만",
+                         "--조건", "검색어=x; 국가코드=US; 영상=5; 댓글=50"])
+    통 = _io.StringIO()
+    with contextlib.redirect_stdout(통):
+        코드 = 총괄.main()
+    assert 코드 == 2, "모르는 칸이 있는데 지나갔다"
+    assert "모르는 조건 칸입니다" in 통.getvalue()
+
+
+def test_댓글_0이면_어림을_내지_않고_멈춘다(monkeypatch, tmp_path):
+    """★ 「가능한 모두」 는 양을 모른다. 모르는 것을 숫자로 말하면 승인이 거짓이 된다."""
+    import io as _io
+    import contextlib
+    monkeypatch.setattr(총괄, "단계들", [])
+    monkeypatch.setattr(총괄.sys, "argv",
+                        ["한줄_돌리기.py", str(tmp_path / "자리"),
+                         "--조건", "검색어=x; 영상=5; 댓글=0"])
+    통 = _io.StringIO()
+    with contextlib.redirect_stdout(통):
+        코드 = 총괄.main()
+    글 = 통.getvalue()
+    assert 코드 == 2, "양을 모르는데 승인 관문을 지나갔다"
+    assert "어림을 낼 수 없습니다" in 글, 글[-700:]
+    assert "최대행" in 글, "묶는 길을 알려 주지 않았다"
+
+
+def test_최대행을_걸면_어림이_줄어든다():
+    모 = 총괄._일차돌리개()
+    다 = 모.어림(5, 50)
+    끊은것 = 모.어림(5, 50, 100)
+    assert 끊은것["분석조각"] == 100 < 다["조각"], 끊은것
+    assert 끊은것["달러"] < 다["달러"], "분석을 줄였는데 돈이 그대로다"
+    assert 끊은것["할당량"] == 다["할당량"], "수집은 안 줄었는데 할당량이 줄었다"
+
+
+def test_최댓값을_넘기면_돌리개가_멈춘다():
+    """엔진이 조용히 깎는 것보다 여기서 말하는 쪽이 낫다."""
+    모 = 총괄._일차돌리개()
+    assert 모.최댓값["영상"] == 500 and 모.최댓값["댓글"] == 2000, 모.최댓값
+    assert 모.최댓값["최대행"] == 10000, 모.최댓값
+
+
+def test_스킬_문서가_묻는_칸을_적는다():
+    """AI 가 무엇을 물어야 하는지 **문서에서** 알 수 있어야 한다."""
+    일차 = (_뿌리 / "plugin" / "skills" / "running-voc-engine" / "SKILL.md") \
+        .read_text(encoding="utf-8")
+    for 칸 in ("키워드들", "결합", "시작일", "종료일", "국가", "언어", "대댓글"):
+        assert ("`%s`" % 칸) in 일차, "1차 스킬 문서에 칸이 없다 — %s" % 칸
+    for 말 in ("최대행", "묶음", "대기초", "중간 저장"):
+        assert 말 in 일차, "끊길 때 묶는 법에서 빠졌다 — %s" % 말
+    총괄글 = _스킬글()
+    for 칸 in ("키워드들", "대댓글", "최대행"):
+        assert 칸 in 총괄글, "총괄 문서에 칸이 없다 — %s" % 칸
+    assert "국가코드=US" in 총괄글, "오타가 멈춘다는 말이 없다"
+
+
+# ── ⑪ 키워드 결합 OR · AND 기준 (2026-10-22 · sky 「명확히 기록해주세요」) ──────────
+#   ★ 왜 — 2026-08-20 에 대시보드 안내문이 **코드와 달랐다.** 「키워드별 개별 검색 후 공통」
+#     이라 적혀 있었으나 실제로는 맨 윗줄로만 검색하고 아랫줄은 영상 메타데이터에서 글자로
+#     걸러낸다. 안내문은 사람이 쓰므로 또 어긋날 수 있다. 그래서 **기준서가 엔진 코드와
+#     같은 말을 하는지** 여기서 대본다.
+_결합기준 = _뿌리 / "plugin" / "shared" / "common" / "키워드결합_OR_AND_기준.md"
+_인제스트 = _뿌리 / "plugin" / "engine" / "src" / "pipelines" / "ingest_pipeline.py"
+
+
+def test_결합기준서가_있다():
+    assert _결합기준.is_file(), "OR·AND 기준서를 못 찾았다 — 못 찾음은 통과가 아니다"
+    assert _인제스트.is_file(), "엔진 인제스트를 못 찾았다"
+
+
+def test_결합기준서가_엔진_상수와_같은_숫자를_적는다():
+    """후보를 몇 개까지 넓히는지 — 기준서의 숫자가 엔진과 어긋나면 사람이 잘못 안다."""
+    엔진 = _인제스트.read_text(encoding="utf-8")
+    기준 = _결합기준.read_text(encoding="utf-8")
+    for 이름, 값 in (("AND_CANDIDATE_MULTIPLIER", "5"),
+                   ("AND_CANDIDATE_MIN", "200"),
+                   ("AND_CANDIDATE_CAP", "300")):
+        쪽 = "%s = %s" % (이름, 값)
+        assert 쪽 in 엔진, "엔진 상수가 바뀌었다 — %s" % 이름
+        # ★ 처음에는 `이름 in 기준 and 값 in 기준` 으로 적었다 — **헛통과했다.**
+        #   「200~300개」 같은 글에도 300 이 있어서, 상수를 999 로 틀리게 적어도 지나갔다.
+        #   그래서 **상수 줄 그대로**를 찾는다 (기준서가 코드를 그대로 인용한다).
+        assert 쪽 in 기준, "기준서의 상수가 엔진과 다르다 — %s 가 없다" % 쪽
+
+
+def test_결합기준서가_걸러내는_자리_넷을_적는다():
+    """제목 · 설명 · 채널명 둘 · 태그 — 엔진이 보는 자리와 같아야 한다."""
+    엔진 = _인제스트.read_text(encoding="utf-8")
+    기준 = _결합기준.read_text(encoding="utf-8")
+    assert '("title", "description", "channel_title", "channel_name")' in 엔진, \
+        "엔진이 보는 자리가 바뀌었다 — 기준서를 다시 맞춰야 한다"
+    for 말 in ("title", "description", "channel_title", "channel_name", "tags"):
+        assert 말 in 기준, "기준서에 걸러내는 자리가 없다 — %s" % 말
+    assert "댓글 본문은 보지 않는다" in 기준, "댓글을 보지 않는다는 말이 없다 (헷갈리는 자리다)"
+
+
+def test_결합기준서가_AND는_교집합이_아니라고_못박는다():
+    기준 = _결합기준.read_text(encoding="utf-8")
+    assert "교집합" in 기준 and "아니다" in 기준, "2026-08-20 에 틀렸던 그 말을 못박지 않았다"
+    assert "맨 윗줄이 모수를 정한다" in 기준, "무엇이 모수를 정하는지 적지 않았다"
+    # 최소매칭이 비면 전체 수라는 것 — 셈이 달라지는 자리다
+    assert "비우면 = 키워드 전체 수" in 기준 or "비우면 **= 키워드 전체 수**" in 기준, \
+        "최소매칭 기본값(= 전체 포함)을 적지 않았다"
+
+
+def test_AND는_키워드가_하나면_OR와_같다():
+    """엔진이 `len(search_keywords) > 1` 로 가른다 — 기준서도 그렇게 적어야 한다."""
+    엔진 = _인제스트.read_text(encoding="utf-8")
+    assert 'if keyword_mode == "AND" and len(search_keywords) > 1:' in 엔진, \
+        "엔진의 갈림 조건이 바뀌었다"
+    assert "AND 인데 키워드가 하나면 OR 와 똑같이 돈다" in _결합기준.read_text(encoding="utf-8")
+
+
+def test_스킬_문서들이_결합기준서를_가리킨다():
+    """AI 가 묻기 전에 읽어야 한다 — 문서가 가리키지 않으면 안 읽는다."""
+    일차 = (_뿌리 / "plugin" / "skills" / "running-voc-engine" / "SKILL.md") \
+        .read_text(encoding="utf-8")
+    assert "키워드결합_OR_AND_기준.md" in 일차, "1차 스킬이 기준서를 가리키지 않는다"
+    assert "키워드결합_OR_AND_기준.md" in _스킬글(), "총괄 스킬이 기준서를 가리키지 않는다"
+    # 1차 작업 폴더에도 같이 놓이는가
+    자리글 = (_뿌리 / "plugin" / "shared" / "lib" / "일차자리.py").read_text(encoding="utf-8")
+    assert "키워드결합_OR_AND_기준.md" in 자리글, "1차 자리에 기준서를 놓지 않는다"
