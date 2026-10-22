@@ -358,6 +358,11 @@ def 만들기(자리: Path) -> int:
         받을곳 = 자리 / 이름
         표 = _담기(바탕, 받을곳)
         (받을곳 / "0_읽어주세요.md").write_text(읽어주세요, encoding="utf-8", newline="\n")
+        # ★ 2026-10-22 — 전에는 이 안내를 **zip 을 봉한 뒤** 폴더에만 썼다. 그래서
+        #   사람에게 건네는 zip 안에는 없었다 (푼 자리에 `0_읽어주세요.md` 와 `plugin` 뿐).
+        #   시험은 **폴더**를 보고 있어 통과했다 — 폴더에는 있었으니까.
+        (받을곳 / "0_빈컴퓨터에서_무엇을_깔까.md").write_text(
+            _빈컴퓨터_안내, encoding="utf-8", newline=chr(10))
         크기 = sum(p.stat().st_size for p, _ in 표)
         z = 자리 / (이름 + ".zip")
         with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -374,9 +379,6 @@ def 만들기(자리: Path) -> int:
     (자리 / "Ver3_아직_못_씁니다.md").write_text(_Ver3_안내, encoding="utf-8", newline="\n")
     (자리 / "0_빈컴퓨터에서_무엇을_깔까.md").write_text(
         _빈컴퓨터_안내, encoding="utf-8", newline=chr(10))
-    for 판이름 in 기록["판"]:
-        (자리 / 판이름 / "0_빈컴퓨터에서_무엇을_깔까.md").write_text(
-            _빈컴퓨터_안내, encoding="utf-8", newline=chr(10))
     print("  · Ver3            꾸러미 없음 — 안내문 하나 (코드가 없다)")
     (자리 / "차림표.json").write_text(json.dumps(기록, ensure_ascii=False, indent=1) + "\n",
                                   encoding="utf-8", newline="\n")

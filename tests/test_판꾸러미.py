@@ -210,6 +210,18 @@ def test_빈컴퓨터_안내가_꾸러미마다_있다(꾸러미):
     자리, 표 = 꾸러미
     이름 = "0_빈컴퓨터에서_무엇을_깔까.md"
     assert (자리 / 이름).is_file(), "꾸러미 바깥에 %s 가 없다" % 이름
+    # ★ 2026-10-22 — 전에는 **폴더만** 봤다. 그래서 zip 안에 이 안내가 없는 것을 놓쳤다.
+    #   사람에게 건네는 것은 zip 이다. 폴더는 묶개가 쓰다 남긴 자리일 뿐이다.
+    for 판이름 in 표["판"]:
+        with zipfile.ZipFile(자리 / (판이름 + '.zip')) as zf:
+            안 = '%s/%s' % (판이름, 이름)
+            assert 안 in zf.namelist(), (
+                "%s.zip 안에 %s 가 없다 — 받은 사람이 무엇을 깔지 알 수 없다" % (판이름, 이름))
+            글 = zf.read(안).decode('utf-8')
+            for 말 in ("YOUTUBE_API_KEY", "OPENAI_API_KEY", "requirements.txt",
+                      "claude", "codex", "라이브"):
+                assert 말 in 글, "%s.zip 의 안내에 「%s」 가 없다" % (판이름, 말)
+
     for 판이름 in 표["판"]:
         q = 자리 / 판이름 / 이름
         assert q.is_file(), "%s 안에 %s 가 없다" % (판이름, 이름)
