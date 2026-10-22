@@ -118,8 +118,14 @@ def 채점(그릇: Path) -> dict:
         봄("바깥 자원(CDN)이 0개다",
           all(not re.search(r'(?:src|href)="https?://', g) for g in 글들))
         공유 = [g for p, g in zip(html들, 글들) if "공유" in p.name]
+        # ★ 꼬리말이 「원문 전량과 식별자를 뺐습니다(original_voc · …)」 로 **뺀 칸 이름을 적는다**.
+        #   그 글자를 원문으로 세면 거짓 반려가 된다 (2026-10-20 실측). 표의 **칸 머리**를 본다.
+        def _표머리에_원문이(글: str) -> bool:
+            import re as _re
+            머리 = " ".join(_re.findall(r"<th[^>]*>([^<]*)</th>", 글))
+            return any(c in 머리 for c in ("original_voc", "parent_voc", "voc_cleaned"))
         봄("공유용에 원문 전량이 없다",
-          bool(공유) and all("original_voc" not in g for g in 공유),
+          bool(공유) and not any(_표머리에_원문이(g) for g in 공유),
           "공유용 %d장" % len(공유))
         봄("치운 건수와 다시 훑은 결과를 적었다",
           bool(공유) and all("다시 훑은" in g for g in 공유))

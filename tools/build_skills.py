@@ -103,8 +103,15 @@ def _sha(p: Path) -> str:
 
 
 def 만들기(자리: Path) -> int:
-    if 자리.exists():
-        shutil.rmtree(자리)
+    # ★ 2026-10-22 — 전에는 `dist/` 를 **통째로 지웠다.** 그래서 `판_묶기.py` 로 만든
+    #   `dist/판/`(Ver1·Ver2 꾸러미)이 이 도구를 돌리는 순간 **말없이 사라졌다.**
+    #   도구 둘이 같은 자리를 쓰는데 한쪽이 남의 것까지 치운 것이다.
+    #   이제 **자기가 만드는 것만** 치운다 — `claude/` · `codex/` · 자기 차림표.
+    for 내것 in ("claude", "codex"):
+        if (자리 / 내것).exists():
+            shutil.rmtree(자리 / 내것)
+    if (자리 / "차림표.json").is_file():
+        (자리 / "차림표.json").unlink()
     기록 = {"설명": "build_skills.py 가 만든 것 — 손으로 고치지 않는다. check_shared.py 가 원본과 대조한다", "스킬": {}}
     나쁨 = 0
     for 스킬 in 스킬들():

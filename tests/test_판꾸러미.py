@@ -34,6 +34,7 @@ sys.path.insert(0, str(_뿌리 / "tools"))
 from paths import REPO  # noqa: E402
 
 묶개 = pytest.importorskip("판_묶기", reason="판_묶기.py 를 못 읽었다")
+스킬묶기 = pytest.importorskip("build_skills", reason="build_skills.py 를 못 읽었다")
 돌리개자리 = "plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌리기.py"
 
 
@@ -251,3 +252,24 @@ def test_읽어주세요가_승인_관문을_적는다(꾸러미):
                 continue                      # Ver1 에는 돌리개가 없다 — 적을 것도 없다
             assert "--승인" in 글, "%s 의 안내에 `--승인` 이 없다" % 판이름
             assert "어림" in 글, "%s 의 안내가 어림을 말하지 않는다" % 판이름
+
+
+def test_묶개_둘이_서로의_것을_지우지_않는다(tmp_path):
+    """★ 2026-10-22 — `build_skills.py` 가 `dist/` 를 **통째로 지워** `판_묶기.py` 가 만든
+    `dist/판/`(Ver1·Ver2 꾸러미)이 말없이 사라졌다. 도구 둘이 같은 자리를 쓰는데 한쪽이
+    남의 것까지 치운 것이다. 실제로 겪었다 — 낱개 zip 을 만들고 보니 판 꾸러미가 없었다.
+
+    차례를 **바꿔 가며** 둘 다 돌려, 뒤에 돈 쪽이 앞의 것을 지우지 않는지 본다.
+    """
+    import shutil                                            # noqa: PLC0415
+    자리 = tmp_path / "dist"
+    for 먼저, 나중 in ((묶개.만들기, 스킬묶기.만들기), (스킬묶기.만들기, 묶개.만들기)):
+        if 자리.exists():
+            shutil.rmtree(자리)
+        assert 먼저(자리 / "판" if 먼저 is 묶개.만들기 else 자리) == 0
+        assert 나중(자리 / "판" if 나중 is 묶개.만들기 else 자리) == 0
+        남아야할것 = [자리 / "판" / "Ver1_스킬다섯.zip", 자리 / "판" / "Ver2_한줄흐름.zip",
+                 자리 / "claude", 자리 / "codex", 자리 / "차림표.json"]
+        없는것 = [p.name for p in 남아야할것 if not p.exists()]
+        assert not 없는것, ("%s 를 뒤에 돌리니 %s 가 사라졌다"
+                         % (getattr(나중, "__module__", "?"), 없는것))
