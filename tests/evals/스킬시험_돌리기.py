@@ -135,6 +135,13 @@ def 밖을_봤나(그릇: Path) -> tuple[bool, str]:
             # 띄어쓰기에서 잘린 경로(program files → program)도 허용 자리의 앞머리면 통과
             if any(경로.startswith(h.rstrip("\\")) or (len(경로) >= 8 and h.startswith(경로)) for h in 허용):
                 continue
+            # ★ 공통 작업규칙 자리는 **지시의 출처**다 — 분석 자료를 뒤진 것이 아니다 (2026-10-20).
+            #   전역 CLAUDE.md 가 「손대지말것_전역.txt 를 보라」 고 적어 두었고, AI 는 그 규칙을 따른다.
+            #   실측 — 대시보드 시험 둘이 `cat …/_공통_작업규칙/손대지말것_전역.txt` 로 걸렸다.
+            #   받는 사람 컴퓨터엔 그 규칙이 없으니 거기선 일어나지 않는다.
+            #   ★ 폴더 **이름**으로 거른다 — 절대경로를 코드에 박지 않는다 (paths.py 규칙).
+            if "_공통_작업규칙" in 경로:
+                continue
             걸림.append(경로[:100])
         if re.search(r"채점\.json|입력해시\.json|(?<![\w가-힣])시험\.json", c2):
             걸림.append("채점용 파일")

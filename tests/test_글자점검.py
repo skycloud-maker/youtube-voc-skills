@@ -105,14 +105,23 @@ def test_기준서와_도구와_대장이_깨끗하다():
 
 
 def test_엔진의_깨진_파일은_알려진_둘뿐이다():
-    """★ 2026-10-09 — 엔진 동결 사본에 **옛 프로젝트에서 넘어온 깨짐**이 둘 있다.
+    """★ 2026-10-20 정정 — 이 둘은 **일부러 둔 것**이다. 결함이 아니다.
 
-    우리가 만든 것이 아니라 복사해 온 사본에 원래 있던 것이다. 지금은 고치지 않고
-    **수가 늘지 않는 것**만 지킨다 (엔진을 고치면 `출처_엔진.json` 의 지문과
-    `test_engine` 이 함께 움직여야 한다 — 사람이 정할 일이다).
+    처음에는 「옛 프로젝트에서 넘어온 깨짐」 으로 적었다. 틀렸다. 코드가 직접 그렇게 적어 두었다 —
 
-      engine/voc-classifier/src/classifier.py          cp949 로 읽어 저장한 꼴 (되살릴 수 있다)
-      engine/src/application/shadow/semantic_sidecar.py  치환문자가 박혀 있다 (되살릴 수 없다)
+      voc-classifier/src/classifier.py:47
+        `# Mojibake compatibility markers (existing harness data)`
+        옛 하네스 데이터에 깨진 글자가 들어 있어서, 그것을 **알아보려고** 목록에 넣었다.
+        멀쩡한 말(`물고임` · `전기료`)과 같은 목록에 함께 있다.
+
+      src/application/shadow/semantic_sidecar.py:4868
+        「위 블록은 옛 동작을 **산출물 호환**을 위해 보존한다. 다만 그 과거 override 의 한국어
+          글자 일부가 mojibake 다. 이 마지막 블록은 **일부러** 덧붙여, 실행 때는 깨끗한 v2
+          규칙을 쓰게 한다.」
+
+    ★ 그래서 **고치지 않는다.** 고치면 옛 산출물을 못 알아본다.
+      여기서 지키는 것은 「고쳤나」 가 아니라 **「수가 늘지 않았나」** 다 —
+      새로 깨진 파일이 생기면 그것은 진짜 결함이다.
     """
     엔진 = SHARED.parent / "engine"
     if not 엔진.is_dir():

@@ -104,7 +104,10 @@ sky 2026-10-09 요청으로 만들었다.
 `tests/test_글자점검.py` 가 점검기를 지킨다 (일부러 다섯 가지로 깨 보고, 사람이 쓴
 `ㅋㅋ`·`ㅜㅜ` 는 안 걸리는 것까지 확인한다).
 
-★ **엔진 동결 사본에 옛 프로젝트에서 넘어온 깨짐이 둘 있다** — 우리가 만든 것이 아니다.
-`engine/voc-classifier/src/classifier.py`(cp949 로 읽어 저장한 꼴 · 되살릴 수 있다) ·
-`engine/src/application/shadow/semantic_sidecar.py`(치환문자가 박혀 있어 되살릴 수 없다).
-지금은 고치지 않고 **수가 늘지 않는 것**만 시험으로 지킨다.
+★ **엔진 동결 사본의 「깨진 글자」 둘은 일부러 둔 것이다** (2026-10-20 확인 · 고치지 않는다).
+`engine/voc-classifier/src/classifier.py:47` 은 `# Mojibake compatibility markers
+(existing harness data)` — 옛 데이터에 든 깨진 글자를 **알아보려고** 목록에 넣었다.
+`engine/src/application/shadow/semantic_sidecar.py:4868` 은 「옛 동작을 산출물 호환을 위해
+보존하고, 실행 때는 일부러 덧붙인 깨끗한 v2 규칙을 쓴다」 고 적어 두었다.
+고치면 옛 산출물을 못 알아본다. 그래서 시험은 「고쳤나」 가 아니라
+**「수가 늘지 않았나」** 를 지킨다 — 새로 깨진 파일이 생기면 그것은 진짜 결함이다.
