@@ -305,3 +305,83 @@ def test_승인했는데_데이터에_없으면_잡는다(tmp_path):
     안된것3 = 총괄.인풋2_확인(판자리)
     assert 안된것3 and "못 찾았습니다" in 안된것3[0], \
         "raw_voc 가 없는데 「문제 없음」 으로 돌려준다 — 검사 안 한 것을 숨긴다"
+
+
+# ── ⑥ 갖춤새를 **돌리기 전에** 보는가 (2026-10-22) ────────────────────────────
+#   ★ 찾은 구멍 — `--확인만` 이 「누가 무엇을 한다」 만 보여 주고 **갖춤새를 안 봤다.**
+#     키가 없어도 · `claude`·`codex` 가 없어도 미리보기는 종료코드 0 으로 통과했고,
+#     실제로 돌려 1차에 들어가서야 멈췄다. 받은 사람에게는 「미리보기가 됐는데 왜 멈추나」 다.
+#     「못 찾음」 을 「없음」 으로 돌려주던 것과 같은 모양의 결함이다.
+def test_갖춤새가_없는_키를_잡는다(monkeypatch):
+    for k in 총괄._키이름들():
+        monkeypatch.delenv(k, raising=False)
+    말들 = 총괄.갖춤새_점검([])
+    키말 = [x for x in 말들 if "키가 없습니다" in x]
+    assert 키말, "키가 없는데 못 잡았다 — %r" % (말들,)
+    for k in 총괄._키이름들():
+        assert k in 키말[0], "어느 키가 없는지 말하지 않았다 — %s" % 키말[0]
+
+
+def test_1차가_끝났으면_키를_보지_않는다(monkeypatch):
+    """차수마다 필요한 것이 다르다 — 이미 모은 뒤에는 키가 없어도 이어갈 수 있다."""
+    for k in 총괄._키이름들():
+        monkeypatch.delenv(k, raising=False)
+    말들 = 총괄.갖춤새_점검(["1차", "2차준비", "2차판독", "총괄검수1", "3차준비", "3차감독"])
+    assert not [x for x in 말들 if "키가 없습니다" in x], "끝난 1차에 키를 요구했다 — %r" % (말들,)
+
+
+def test_갖춤새가_없는_AI명령을_잡는다(monkeypatch):
+    monkeypatch.setattr(총괄.shutil, "which", lambda _: None)
+    말들 = 총괄.갖춤새_점검([])
+    for 명령 in ("claude", "codex"):
+        assert [x for x in 말들 if ("`%s`" % 명령) in x], \
+            "%s 가 없는데 못 잡았다 — %r" % (명령, 말들)
+    # 어느 자리를 못 띄우는지까지 말해야 한다 (사람이 바로 알 수 있게)
+    붙은 = " ".join(말들)
+    for 자리, _ in list(총괄.판독자) + list(총괄.감독자):
+        assert 자리 in 붙은, "%s 자리를 말하지 않았다 — %r" % (자리, 말들)
+
+
+def test_판독이_끝났으면_그_명령은_보지_않는다(monkeypatch):
+    monkeypatch.setattr(총괄.shutil, "which", lambda _: None)
+    말들 = 총괄.갖춤새_점검(["1차", "2차준비", "2차판독", "총괄검수1", "3차준비", "3차감독"])
+    붙은 = " ".join(말들)
+    for 자리, _ in list(총괄.판독자) + list(총괄.감독자):
+        assert 자리 not in 붙은, "끝난 자리를 요구했다 (%s) — %r" % (자리, 말들)
+
+
+def test_4차반영은_총괄_명령만_본다(monkeypatch):
+    for k in 총괄._키이름들():
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(총괄.shutil, "which", lambda _: None)
+    말들 = 총괄.갖춤새_점검(["1차"], 사차=True)
+    assert not [x for x in 말들 if "키가 없습니다" in x], "4차 반영에 키를 요구했다 — %r" % (말들,)
+    assert [x for x in 말들 if "총괄" in x], "총괄 명령이 없는데 못 잡았다 — %r" % (말들,)
+
+
+def test_갖추면_아무것도_안_나온다(monkeypatch):
+    for k in 총괄._키이름들():
+        monkeypatch.setenv(k, "시험용-값-아님")
+    monkeypatch.setattr(총괄.shutil, "which", lambda n: "/시험/" + n)
+    assert 총괄.갖춤새_점검([]) == [], "다 갖췄는데 모자란다고 했다"
+
+
+def test_키_이름은_1차돌리개_한_곳에서_온다():
+    """두 벌로 적지 않는다 — 1차 돌리개의 `키들` 이 원본이다 (공통 규칙 6)."""
+    이름들 = 총괄._키이름들()
+    assert 이름들, "키 이름 목록을 못 봤다 — 못 찾음은 통과가 아니다"
+    글 = Path(총괄.__file__).read_text(encoding="utf-8")
+    for k in 이름들:
+        # 총괄 스크립트 안에 키 이름이 **박혀 있으면** 두 벌이 된다
+        assert k not in 글, "키 이름을 총괄에도 박았다 (두 벌) — %s" % k
+
+
+def test_미리보기가_못_갖춘_것을_보면_멈춘다(monkeypatch, tmp_path):
+    """★ 이것이 구멍 그 자체였다 — 미리보기가 **통과**했다. 이제 종료코드 2 로 멈춘다."""
+    for k in 총괄._키이름들():
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setattr(총괄.shutil, "which", lambda _: None)
+    monkeypatch.setattr(총괄.sys, "argv",
+                        ["한줄_돌리기.py", str(tmp_path), "--확인만",
+                         "--조건", "검색어=시험; 영상=1; 댓글=1"])
+    assert 총괄.main() == 2, "못 갖췄는데 미리보기가 통과했다"

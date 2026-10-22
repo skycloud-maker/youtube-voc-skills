@@ -27,6 +27,7 @@
 쓰기
     python 한줄_돌리기.py <판자리> --조건 "검색어=LG 로봇청소기; 영상=5; 댓글=50"
     python 한줄_돌리기.py <판자리> --확인만          무엇을 할지만 보여 준다 (돈 안 든다)
+                                                   ★ 갖춤새도 본다 — 꾸러미 · 명령 · 키(이름만)
     python 한줄_돌리기.py <판자리>                   멈춘 지점부터 이어간다
     python 한줄_돌리기.py <판자리> --되감기 3차감독   그 단계부터 다시 한다
 """
@@ -763,6 +764,89 @@ def _엔진_가리키기() -> None:
         print("  ! 엔진 폴더를 못 찾았습니다 (%s) — 칸 검수가 눈먼 길로 갈 수 있습니다" % 엔진)
 
 
+def _키이름들() -> tuple:
+    """키 이름은 **1차 돌리개 한 곳**에서 가져온다 — 두 벌로 적지 않는다.
+
+    못 가져오면 「없음」 이라 하지 않고 **못 봤다**고 말한다 (공통 규칙 4).
+    """
+    길 = _옆스킬("running-voc-engine") / "scripts" / "1차_돌리기.py"
+    if not 길.is_file():
+        return ()
+    import importlib.util                                               # noqa: PLC0415
+    묶 = importlib.util.spec_from_file_location("_일차돌리개", 길)
+    모 = importlib.util.module_from_spec(묶)
+    묶.loader.exec_module(모)
+    return tuple(getattr(모, "키들", ()))
+
+
+def 갖춤새_점검(끝난: list, *, 사차: bool = False) -> list[str]:
+    """★ **돌리기 전에** 갖춤새를 본다 — 못 갖춘 것을 글로 돌려준다 (2026-10-22).
+
+    왜 — 전에는 `--확인만` 이 「누가 무엇을 한다」 만 보여 주고 끝났다. 키가 없어도 ·
+      `claude`·`codex` 명령이 없어도 **미리보기는 아무 말 없이 통과**했고, 실제로 돌려
+      1차에 들어가서야 멈췄다. 받은 사람은 「미리보기가 됐는데 왜 멈추나」 가 된다.
+      그래서 미리보기가 **갖춤새까지** 본다.
+
+    ★ 키는 **이름만** 본다 — 값은 읽지 않는다 (sky 규칙).
+    ★ 차수마다 필요한 것이 다르다 (`dist/판/0_빈컴퓨터에서_무엇을_깔까.md` 의 표) —
+      1차가 이미 끝났으면 키는 필요 없고, 4차 반영만 할 때는 총괄 명령만 있으면 된다.
+    """
+    안된것 = []
+
+    # ① 파이썬 꾸러미 — 번들 읽기·보고서 만들기가 이것 없이는 안 된다
+    for 꾸러미 in ("pandas", "openpyxl"):
+        try:
+            __import__(꾸러미)
+        except ImportError:
+            안된것.append("파이썬 꾸러미 `%s` 가 없습니다 "
+                       "— python -m pip install pandas openpyxl" % 꾸러미)
+
+    # ② AI 명령 — **이번에 부를 쪽만** 본다
+    부를것 = []
+    if 사차:
+        부를것 = [("총괄", 총괄누구)]
+    else:
+        if "2차판독" not in 끝난:
+            부를것 += list(판독자)
+        if "3차감독" not in 끝난:
+            부를것 += list(감독자)
+    종류 = {}
+    for 자리, 누구 in 부를것:
+        종류.setdefault(누구.split(":", 1)[0], []).append(자리)
+    for 명령, 자리들 in sorted(종류.items()):
+        if not shutil.which(명령):
+            안된것.append("`%s` 명령이 이 컴퓨터에 없습니다 — 띄울 수 없는 자리: %s"
+                       % (명령, " · ".join(자리들)))
+
+    # ③ 키 — 1차를 돌릴 때만. **이름만** 본다
+    if not 사차 and "1차" not in 끝난:
+        이름들 = _키이름들()
+        if not 이름들:
+            안된것.append("키 이름 목록을 못 봤습니다 (running-voc-engine/scripts/1차_돌리기.py) "
+                       "— 못 찾음은 통과가 아닙니다")
+        else:
+            없는키 = [k for k in 이름들 if not os.environ.get(k)]
+            if 없는키:
+                안된것.append("환경변수에 키가 없습니다 — %s (tools/키_환경변수에_넣기.ps1 로 넣습니다)"
+                           % " · ".join(없는키))
+
+    # ④ 엔진 — 1차 수집·분석은 엔진 꾸러미가 있어야 한다
+    if not 사차 and "1차" not in 끝난 and not _찾기("engine").is_dir():
+        안된것.append("엔진 폴더가 없습니다 (%s) — 1차 수집·분석을 할 수 없습니다" % _찾기("engine"))
+
+    return 안된것
+
+
+def 갖춤새_말하기(안된것: list) -> None:
+    """갖춘 것은 한 줄로, 못 갖춘 것은 **하나씩** 말한다."""
+    if not 안된것:
+        print("  갖춤새 — 다 됐습니다 (꾸러미 · 명령 · 키)")
+        return
+    print("  ✗ 갖춤새 — %d 가지가 모자랍니다" % len(안된것))
+    for x in 안된것:
+        print("     · %s" % x)
+
+
 def main() -> int:
     _엔진_가리키기()
     p = argparse.ArgumentParser(add_help=True)
@@ -783,6 +867,11 @@ def main() -> int:
         조건 = 상태["조건"]
 
     if a.사차:
+        안된것 = 갖춤새_점검(상태.get("끝난단계", []), 사차=True)
+        갖춤새_말하기(안된것)
+        if 안된것:
+            print("  ✗ 갖추기 전에는 4차 반영을 하지 않습니다 — 반쯤 반영되면 더 나쁩니다.")
+            return 2
         return 사차반영(판, 상태, 조건)
     if a.되감기:
         # ★ 모르는 이름이면 **먼저 말한다**. 그 전에는 `.index()` 가 ValueError 로 터져
@@ -813,7 +902,15 @@ def main() -> int:
     끝난 = 상태.get("끝난단계", [])
     if 끝난:
         print("  이미 끝난 단계: %s — 다시 돌리지 않습니다" % " · ".join(끝난))
+    # ★ 2026-10-22 — 미리보기가 갖춤새를 **안 보던** 구멍. 여기서 먼저 말한다.
+    안된것 = 갖춤새_점검(끝난)
+    갖춤새_말하기(안된것)
     print("=" * 66)
+    if 안된것:
+        print("\n  ✗ 갖추지 못한 것이 있어 여기서 멈춥니다 — 돈을 쓰기 전에 알립니다.")
+        print("    깔 것과 키 넣는 법: dist/판/0_빈컴퓨터에서_무엇을_깔까.md")
+        print("    갖춘 뒤 **같은 명령을 그대로 다시** 넣으십시오.")
+        return 2
 
     for 이름, 하기 in 단계들:
         if 이름 in 끝난:
