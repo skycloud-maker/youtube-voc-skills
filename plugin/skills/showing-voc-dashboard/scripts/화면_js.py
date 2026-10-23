@@ -117,8 +117,24 @@ function applyFilters(rows, opt) {
   var gate = opt.gate || "";
   // 「중국」 묶음 펼치기는 한 번만 한다 (행마다 하면 느리고 결과는 같다)
   var 고른브랜드 = expandBrands(S.brand);
+  // ★ scope: 「제외 사유」 그림용 집합 — 원본 app_operating.py:543
+  //   `apply_filters(products=·brands=·markets=, high_confidence_only=False,
+  //     include_scope_excluded=True)`. 제외행은 신뢰도가 낮고 영역이 미판정이라
+  //   그 조건을 걸면 다 사라진다. **제품군·브랜드·국가만** 건다.
+  var scope = !!opt.scope;
   return rows.filter(function (r) {
-    if (txt(r.status) !== "normal") return false;
+    if (!scope && txt(r.status) !== "normal") return false;
+    if (scope) {
+      if (S.product_category.length &&
+          S.product_category.indexOf(txt(r.product_category)) < 0) return false;
+      if (S.market.length && S.market.indexOf(txt(r.market_display || r.market)) < 0) return false;
+      if (고른브랜드.length) {
+        var c2 = tagList(r[COMP_COL]);
+        if (!(brandMatches(r[OWN_COL], 고른브랜드) ||
+              c2.some(function (c) { return brandMatches(c, 고른브랜드); }))) return false;
+      }
+      return true;
+    }
     // 판정 충족도 — 고른 목록으로 거른다 (빈 목록이면 0행 · 원본과 같다)
     // ★ gate: "none" 은 「무엇을 볼까」 만 통과한 집합(dimension_filtered) ·
     //   gate: "conf" 는 판정 충족도까지만(confidence_filtered). 원본 app_operating.py:430-467
@@ -279,7 +295,36 @@ function table(head, rows, id, pickable, detailId) {
 // 화면 ① VoC 현황 — 원본 views/overview.py:render
 //   카드 7 · 개선/강화 영역 고르개(막대를 누르면 필터) · 그림 4 · 행 자세히
 // ─────────────────────────────────────────────────────────────────────────
-function viewOverview(rows, groupSource) {
+// ★ 원본 views/overview.py:175 ROOTCAUSE_GRADE_NOTE — 엔진에서 실어 온다 (베끼지 않는다)
+var GRADE_NOTE = K.등급풀이 || {};
+var GRADE_CODES = ["L3", "L2", "L1", "L0"];
+
+// ★ 원본 _split_series — 「분리로 생긴 행인지. 칸이 없으면 전부 False」
+function 분리행인가(r) {
+  var v = txt(r.split_origin_atomic_id);
+  return v !== "" && v !== "nan" && v !== "None" && v !== "N/A";
+}
+
+// ★ 원본 _rootcause_grade — rootcause_summary 앞 두 글자가 등급이다
+function 등급코드(r) {
+  var s = txt(r.rootcause_summary).slice(0, 2);
+  return GRADE_NOTE[s] ? s : "";
+}
+
+// ★ 원본 overview.py:385-407 `display_columns` — **칸이름을 바꾸지 않는다**(원본도 안 바꾼다).
+//   「RC 를 왼쪽에 모은다. 『RC 가 있는 행』 을 눈으로 훑을 수 있어야 한다」 (sky 2026-08-19)
+function 현황표칸() {
+  var c = ["rootcause_summary", "rootcause_problem", "rootcause_target", "rootcause_cause",
+           "source_id", "raw_row_index", "product_category", "topic", "sentiment_dir", "cej",
+           "entity_role", "tee_time_score", "tee_effort_score", "tee_emotion_score",
+           "tee_success_score", "confidence_rating", "review_required", "atomic_voc_summary"];
+  // ★ 원본과 같은 자리에 끼운다 — source_run 은 2번, 그 뒤에 2차분리가 4번
+  if ((D.칸 || []).indexOf("source_run") >= 0) c.splice(2, 0, "source_run");
+  c.splice(4, 0, "2차분리");
+  return c;
+}
+
+function viewOverview(rows, groupSource, scopeSource) {
   var total = rows.length;
   var inq = rows.filter(function (r) { return txt(r.inquiry_flag).toUpperCase() === "Y"; }).length;
   var review = rows.filter(function (r) { return r.review_queue === true; }).length;
@@ -287,7 +332,7 @@ function viewOverview(rows, groupSource) {
   // ★ 2026-10-21 Codex 교차점검 — 원본(overview.py:183-195)은 `split_origin_atomic_id` 가
   //   비어 있지 않은 **모든** 행을 센다. 내 것은 `atomic_index != 1` 로 세어 **첫 조각을 빼먹었다**
   //   (실측 — 원본 2행 vs 내 1행).
-  var split = rows.filter(function (r) { return txt(r.split_origin_atomic_id) !== ""; }).length;
+  var split = rows.filter(분리행인가).length;
   var h = "<h2>VoC 현황</h2><p class=\"sub\">topic 은 제품군·감성과 분리된 <b>이유</b> 라벨이며, " +
     "감성은 TEE/S 기반 sentiment_dir 로 별도 표시합니다.</p>";
   h += cardGrid([
@@ -304,7 +349,8 @@ function viewOverview(rows, groupSource) {
   if (gp.length) {
     var now = S.topic_group.length ? S.topic_group.join(" · ") : "전체";
     h += '<div class="pickhead">' + sectionTitle("개선/강화 영역",
-      "막대를 누르면 그 영역만 봅니다. · 사이드바 필터와 같은 값을 씁니다. · 지금: " + now) +
+      "막대를 누르면 그 영역만 봅니다.  ·  Shift+클릭으로 여러 영역을 함께 고릅니다." +
+      "  ·  사이드바 필터와 같은 값을 씁니다.  ·  지금: " + now) +
       '<button id="groupReset"' + (S.topic_group.length ? "" : " disabled") +
       ">전체 보기</button></div>";
     h += barChart(gp, "", "", null, "topic_group");
@@ -319,42 +365,134 @@ function viewOverview(rows, groupSource) {
   h += barChart(countBy(rows, "inquiry_flag", "N", {upper: true, always: ["Y", "N"],
                 order: ["Y", "N"]}), "문의 Flag", "질문형 VoC 비율");
   h += "</div>";
-  // 행 자세히 — 표에서 고르면 아래에 요약문·RootCause·원문
-  var head = ["atomic_id", "topic", "감성", "CEJ", "제품군", "요약문"];
-  var body = rows.map(function (r) {
-    return [r.atomic_id, r.topic, r.sentiment_dir, r.cej, r.product_category,
-            (r.atomic_voc_summary || r.atomic_voc || "").slice(0, 60)];
+
+  // ─── Scope 제외 사유 — 원본 overview.py:352-380 (2026-10-23 에 넣었다) ──────────
+  //   ★ 전에는 **통째로 없었다.** 「분석에서 빠진 것」 을 볼 자리가 화면에 아예 없었다.
+  //   ★ 원본 주석 — 「이 그래프는 『제외된 행』 을 센다. 그런데 위 화면에 오는 frame 에는
+  //     제외행이 애초에 걸러져 없다. 그래서 무엇을 하든 0 이 나왔다」 (sky 2026-08-19).
+  //     그래서 **제외 전 자료**(제품군·브랜드·국가만 걸린 것)로 센다.
+  var 제외들 = 제외사유셈(scopeSource || []);
+  var 제외합 = 제외들.reduce(function (a, b) { return a + b[1]; }, 0);
+  h += sectionTitle("Scope 제외 사유",
+    "분석에서 빠진 " + num(제외합) + "건이 왜 빠졌는지 봅니다  ·  제품군·브랜드·국가 필터만 반영합니다");
+  h += '<p class="sub">★ confidence 필터와 영역 필터는 일부러 걸지 않습니다. ' +
+    "제외행은 본래 신뢰도가 낮고(513건 중 424건이 Low) 영역이 「미판정」이라, " +
+    "그 조건을 걸면 거의 다 사라져 왜 빠졌는지를 볼 수 없습니다.</p>";
+  h += barChart(제외들, "Scope 제외 사유별 건수", "건수 0 인 사유도 함께 둡니다");
+
+  // ─── 개별 VoC 개선 포인트 체크 — 원본 overview.py:381-460 ──────────────────────
+  h += sectionTitle("개별 VoC 개선 포인트 체크",
+    "행을 고르면 그 VoC 의 요약문과 RootCause 를 아래에서 읽습니다");
+  // ★ L 등급 거르개 — 원본과 같이 **건수가 있는 등급만** 보기에 둔다
+  var 등급셈 = {"": 0};
+  GRADE_CODES.forEach(function (c) { 등급셈[c] = 0; });
+  rows.forEach(function (r) { var c = 등급코드(r); 등급셈[c] = (등급셈[c] || 0) + 1; });
+  var 등급보기 = GRADE_CODES.filter(function (c) { return 등급셈[c]; })
+    .map(function (c) { return [c, c + " (" + 등급셈[c] + ")"]; });
+  if (등급셈[""]) 등급보기.push(["", "등급 없음 (" + 등급셈[""] + ")"]);
+  var 고른등급 = window.__grades || [];
+  var 분리만 = !!window.__splitOnly;
+  h += '<div class="d60-axis"><b>RootCause 등급으로 거르기</b> ';
+  등급보기.forEach(function (q) {
+    h += ' <label title="' + esc(GRADE_NOTE[q[0]] || "등급 없음") + '">' +
+      '<input type="checkbox" data-grade="' + esc(q[0]) + '"' +
+      (고른등급.indexOf(q[0]) >= 0 ? " checked" : "") + "> " + esc(q[1]) + "</label>";
   });
-  h += sectionTitle("행 자세히 보기", "표에서 행을 하나 고르면 그 VoC 의 요약문과 RootCause 를 아래에서 읽습니다.");
-  h += table(head, body, "t-voc", true);
-  h += '<div id="rowDetail"></div>';
+  h += ' <span class="d60-note">L3 문제·대상·원인이 모두 원문에 있다  ·  L2 원인 서술만 없다  ·  ' +
+    'L1 개선 대상이 없다  ·  L0 원문에 결핍 서술이 없다. 비워 두면 전부 봅니다.</span></div>';
+  // D-5 — 2차가 나눈 행만 골라 보기 (원본 checkbox)
+  h += '<div class="d60-axis"><label><input type="checkbox" id="splitOnly"' +
+    (분리만 ? " checked" : "") + "> 2차 분리 행만 보기 (" + num(split) + "건)</label>" +
+    ' <span class="d60-note">한 댓글에 주제가 여럿이라 2차에서 나눈 행입니다. ' +
+    '원행은 RootCause 상세에 나옵니다.</span></div>';
+  var 표행 = 분리만 ? rows.filter(분리행인가) : rows;
+  if (고른등급.length) {
+    표행 = 표행.filter(function (r) { return 고른등급.indexOf(등급코드(r)) >= 0; });
+  }
+  if (고른등급.length || 분리만) {
+    h += '<p class="sub">' + num(표행.length) + "행 / 전체 " + num(rows.length) + "행</p>";
+  }
+  window.__vocTableRows = 표행;
+  var 칸들 = 현황표칸();
+  h += table(칸들, 표행.map(function (r) {
+    return 칸들.map(function (c) {
+      return c === "2차분리" ? (분리행인가(r) ? "Y" : "") : txt(r[c]);
+    });
+  }), "t-voc", true, "rowDetail");
+  // D-3 — 고른 행을 영역 → 주제 → 요약문 → 근본원인 순으로 읽게 한다
+  h += '<div class="d60-mini-card">' + sectionTitle("RootCause 상세", "고른 행의 요약문과 문제·대상·원인") +
+    '<div id="rowDetail">' + renderRowDetail(표행, S.detail) + "</div></div>";
   return h;
 }
 
-function renderRowDetail(rows, ri) {
-  var r = rows[ri];
-  if (!r) return "";
-  var meta = ["제품군 " + txt(r.product_category), "topic " + txt(r.topic),
-              "영역 " + txt(r.topic_group), "CEJ " + txt(r.cej),
-              "감성 " + txt(r.sentiment_dir)].filter(function (x) { return x.length > 4; });
-  var h = '<div class="d60-mini-card detail"><h4>' + esc(r.topic || "(라벨 없음)") + "</h4>" +
-    '<p class="sub">' + esc(meta.join("  ·  ")) + "</p>";
-  if (txt(r.atomic_voc_summary)) h += "<p><b>요약문</b><br>" + esc(r.atomic_voc_summary) + "</p>";
-  var rc = [["문제", r.rootcause_problem], ["원인", r.rootcause_cause], ["대상", r.rootcause_target]]
-    .filter(function (x) { return txt(x[1]) && txt(x[1]) !== "N/A"; });
-  if (rc.length) {
-    h += "<p><b>RootCause</b></p>" + rc.map(function (x) {
-      return "<p>" + esc(x[0]) + " — " + esc(x[1]) + "</p>"; }).join("");
+// ★ 원본 data_contract.scope_exclusion_reason_distribution —
+//   「일곱 가지를 **건수 0 이어도 다 낸다**. 빠진 분류가 보이도록」.
+//   등록되지 않은 사유가 자료에 있으면 「미등록/확인 필요」 로 뒤에 붙인다.
+function 제외사유셈(scopeRows) {
+  var 사유들 = K.제외사유 || [], 이름 = K.제외사유이름 || {};
+  var 센것 = {};
+  scopeRows.forEach(function (r) {
+    if (txt(r.status) !== "scope_excluded") return;
+    var v = txt(r.scope_exclusion_reason);
+    센것[v] = (센것[v] || 0) + 1;
+  });
+  var 낸것 = 사유들.map(function (k) { return [이름[k] || k, 센것[k] || 0]; });
+  Object.keys(센것).sort().forEach(function (k) {
+    if (k && 사유들.indexOf(k) < 0) 낸것.push(["미등록/확인 필요: " + k, 센것[k]]);
+  });
+  return 낸것;
+}
+
+// ★ 원본 _render_row_detail — 「고른 행을 4층 구조로 읽게 한다 (D-3).
+//   영역 → 주제 → 요약문 → 근본원인. sky 가 정한 층이다 (CP-23)」
+function renderRowDetail(목록, ri) {
+  if (ri === null || ri === undefined || ri < 0 || ri >= 목록.length) {
+    return '<p class="sub">위 표에서 행을 하나 고르면 그 VoC 의 요약문과 RootCause 를 ' +
+      "여기서 읽습니다.</p>";
+  }
+  var r = 목록[ri];
+  var 머리 = [txt(r.product_category), txt(r.topic_group), txt(r.topic)]
+    .filter(function (v) { return v; }).join(" · ");
+  var h = "<h3>" + esc(머리 || "(라벨 없음)") + "</h3>";
+  // D-5 — 나뉜 행이면 원행과의 관계를 알려준다
+  var 원행 = txt(r.split_origin_atomic_id), 분리말 = "";
+  if (원행 && 원행 !== "nan" && 원행 !== "None" && 원행 !== "N/A") {
+    var 형제 = 목록.filter(function (x) {
+      return txt(x.split_origin_atomic_id) === 원행; }).length;
+    분리말 = "2차 분리 · 원행 " + 원행 + (형제 > 1 ? " · 형제 " + 형제 + "개" : "");
+  }
+  var 쪽말 = [GRADE_NOTE[등급코드(r)] || "", 분리말, txt(r.decided_by)]
+    .filter(function (v) { return v; });
+  if (쪽말.length) h += '<p class="sub">' + esc(쪽말.join("  ·  ")) + "</p>";
+  // ★ 「요약문」 이라는 말을 박스 안에 넣는다. 밖에 두면 무엇의 제목인지 흐리다 (원본 · sky)
+  h += '<div class="d60-preview"><b>요약문</b><br>' +
+    esc(txt(r.atomic_voc_summary) || "비어 있습니다.") + "</div>";
+  // ★ 원본 주석 — 「데이터사전 정의 그대로 쓴다. 내가 지어낸 『무엇이/어디가/왜』 는
+  //   실제 내용과 어긋났다」 (sky 2026-08-19). 이름과 **순서**가 뜻이다.
+  var 셋 = [["문제 현상", txt(r.rootcause_problem)], ["개선 대상", txt(r.rootcause_target)],
+           ["근본 원인", txt(r.rootcause_cause)]];
+  h += "<hr>";
+  if (셋.some(function (q) { return q[1]; })) {
+    h += '<div class="row">' + 셋.map(function (q) {
+      return '<div class="d60-mini-card"><p><b>' + esc(q[0]) + "</b></p><p>" +
+        esc(q[1] || "—") + "</p></div>";
+    }).join("") + "</div>";
   } else {
     h += '<p class="sub">이 행에는 RootCause 가 채워져 있지 않습니다.</p>';
   }
-  if (txt(r.video_title)) h += "<p><b>어떤 영상 밑의 말인가</b><br>" + esc(r.video_title) + "</p>";
-  if (txt(r.atomic_voc)) h += "<p><b>조각</b><br>" + esc(r.atomic_voc) + "</p>";
-  if (txt(r.original_voc)) h += "<p><b>원문</b><br>" + esc(r.original_voc) + "</p>";
-  if (!txt(r.atomic_voc) && !txt(r.original_voc)) {
-    h += '<p class="sub">공유용이라 원문은 담지 않았습니다.</p>';
+  h += "<details><summary>원문 보기</summary>";
+  // D-7 — 어떤 영상 밑에 달린 말인지. 댓글만 보면 맥락을 모른다 (원본 · sky 2026-08-19)
+  var 제목 = txt(r.video_title), 설명 = txt(r.video_description);
+  if (제목 || 설명) {
+    h += "<p><b>어떤 영상 밑의 말인가</b></p>";
+    if (제목) h += "<p>" + esc(제목) + "</p>";
+    if (설명) h += '<p class="sub">' + esc(설명.slice(0, 200)) + "</p>";
   }
-  return h + "</div>";
+  var 조각 = txt(r.atomic_voc), 원문 = txt(r.original_voc);
+  if (조각 && 조각 !== 원문) h += "<p><b>분리된 조각</b></p><p>" + esc(조각) + "</p>";
+  h += "<p><b>원문</b></p><p>" + esc(원문 || "—") + "</p>";
+  h += "</details>";
+  return h;
 }
 
 
@@ -506,7 +644,7 @@ function scoreBadges(x) {
 }
 
 // ★ 원본 ui_cards.task_card_html — 클래스를 그대로 써야 원본 CSS 가 먹는다
-function taskCard(title, badgesHtml, preview, tone) {
+function taskCard(title, badgesHtml, preview, tone, previewHtml) {
   // ★ 원본 ui_cards.TONE_CLASS — 여섯 가지 그대로
   var TONE = {blue: "tone-blue", green: "tone-green", orange: "tone-orange",
               purple: "tone-purple", red: "tone-red", gray: "tone-gray"};
@@ -514,7 +652,10 @@ function taskCard(title, badgesHtml, preview, tone) {
   return '<div class="d60-task-card ' + cls + '">' +
     '<div class="d60-task-title">' + esc(title) + "</div>" +
     '<div class="d60-task-meta">' + badgesHtml + "</div>" +
-    (preview ? '<div class="d60-preview">' + esc(preview) + "</div>" : "") +
+    // ★ previewHtml 은 「이미 짜 놓은 HTML 을 그대로 넣는 자리」 다 (원본 preview_html).
+    //   부르는 쪽에서 값을 직접 escape 해서 넘긴다. ② 영상 카드의 파란 박스가 쓴다.
+    (previewHtml ? previewHtml
+     : preview ? '<div class="d60-preview">' + esc(preview) + "</div>" : "") +
     "</div>";
 }
 
@@ -851,10 +992,32 @@ var VIDEO_SORTS = {
 };
 var VIDEO_COUNTS = [4, 8, 12, "전체"];
 
+// ── 영상별 집계 — 원본 data_contract.video_summary 를 그대로 ──────────────────
+//   ★ 유효행만 쓴다. 비율의 분모는 묶음 행수, 댓글 수는 source_id 가 있는 행.
+//   ★ 2026-10-23 더한 것 — 주요 제품군·브랜드 **쪼갠 값**(breakdown) · 제품명 보조(hint) ·
+//     영상 설명·태그. 전에는 제품군 하나만 세고 나머지는 아예 없었다.
 function videoSummary(rows) {
   // 유효행이 하나라도 있으면 유효행만 (원본 valid / if valid.empty: valid = frame)
   var valid = rows.filter(function (r) { return txt(r.validity) === "유효"; });
   if (!valid.length) valid = rows;
+  // ★ 브랜드 칸 고르기 — 원본과 같은 순서 (brand_display 가 있으면 그것)
+  var 브랜드칸 = valid.some(function (r) { return r.brand_display !== undefined; })
+                ? "brand_display" : "brand";
+  // 태그에서 떼어낼 브랜드 이름 — 「LG」·「LG전자」 는 제품이 아니다 (원본 brand_aliases)
+  var 별칭 = {};
+  valid.forEach(function (r) {
+    var b = txt(r[브랜드칸]);
+    if (b) { 별칭[b] = 1; 별칭[b + "전자"] = 1; 별칭[b + " 전자"] = 1; }
+  });
+  // 영상 맥락 — video_id 로 묶어 **처음 비어 있지 않은 값** (원본 context)
+  var 맥락 = {};
+  valid.forEach(function (r) {
+    var v = txt(r.video_id);
+    if (!맥락[v]) 맥락[v] = {video_tags: "", video_description: ""};
+    ["video_tags", "video_description"].forEach(function (c) {
+      if (!맥락[v][c]) 맥락[v][c] = txt(r[c]);
+    });
+  });
   var g = {}, 차례 = [];
   valid.forEach(function (r) {
     var k = [txt(r.video_id), txt(r.video_title), txt(r.video_url)].join(SEP);
@@ -873,17 +1036,155 @@ function videoSummary(rows) {
     var pc = txt(r.product_category);
     if (pc) o.pc[pc] = (o.pc[pc] || 0) + 1;
   });
+  // ★ 쪼갠 값은 **video_id 로** 센다 (원본 subset = valid[video_id == …]).
+  //   묶음 열쇠(제목·URL 까지)보다 넓다 — 원본이 그렇게 센다.
+  function 셈(열쇠칸, 조건) {
+    var m = {};
+    valid.forEach(function (r) {
+      if (!조건(r)) return;
+      var v = txt(r[열쇠칸]);
+      if (v) m[v] = (m[v] || 0) + 1;
+    });
+    // value_counts — 많은 순, 같으면 먼저 나온 순 (pandas 와 같다)
+    var 순 = {}, i = 0;
+    valid.forEach(function (r) {
+      if (!조건(r)) return;
+      var v = txt(r[열쇠칸]);
+      if (v && 순[v] === undefined) 순[v] = i++;
+    });
+    return Object.keys(m).map(function (v) { return [v, m[v]]; })
+      .sort(function (a, b) { return (b[1] - a[1]) || (순[a[0]] - 순[b[0]]); });
+  }
+  // product_tags 에서 실제 제품명만 — 원본 _product_hints
+  function 제품명보조(조건) {
+    var m = {};
+    valid.forEach(function (r) {
+      if (!조건(r)) return;
+      txt(r.product_tags).split(",").forEach(function (조각) {
+        var t = 조각.trim();
+        if (!t || 별칭[t]) return;
+        var 말들 = Object.keys(별칭);
+        for (var i = 0; i < 말들.length; i++) {
+          var w = 말들[i];
+          if (t.indexOf(w) === 0 && t.length > w.length) { t = t.slice(w.length).trim(); break; }
+        }
+        if (!t || 별칭[t]) return;
+        m[t] = (m[t] || 0) + 1;
+      });
+    });
+    return Object.keys(m).sort(function (a, b) {
+      return (m[b] - m[a]) || a.localeCompare(b, "ko");
+    });
+  }
   return 차례.map(function (k) {
     var o = g[k], d = o.rows || 1;
     o.positive_rate = o.pos / d;
     o.negative_rate = o.neg / d;
     o.inquiry_rate = o.inq / d;
+    o.positive_count = o.pos;
+    o.negative_count = o.neg;
+    o.inquiry_count = o.inq;
     o.축이름 = o.video_title || o.video_id;
+    var 같은영상 = function (r) { return txt(r.video_id) === o.video_id; };
+    o.제품군쪼갬 = 셈("product_category", 같은영상);
+    o.브랜드쪼갬 = 셈(브랜드칸, 같은영상);
+    o.main_product_category = o.제품군쪼갬.length ? o.제품군쪼갬[0][0] : "";
+    o.main_brand = o.브랜드쪼갬.length ? o.브랜드쪼갬[0][0] : "";
+    // ★ 제품군이 「기타」·「미분류」·빈값일 때만 보조 이름을 붙인다 (원본과 같은 조건)
+    o.제품명보조 = (["기타", "미분류", ""].indexOf(o.main_product_category) >= 0)
+                 ? 제품명보조(같은영상).slice(0, 2).join(", ") : "";
+    var c = 맥락[o.video_id] || {};
+    o.video_tags = c.video_tags || "";
+    o.video_description = c.video_description || "";
     return o;
   });
 }
 
-// 여러 축으로 내림차순 — 원본 `sort_values([...], ascending=False)`
+// ★ 원본 _pretty_name — 「화면에 데이터 값을 그대로 두지 않는다」 (sky 2026-08-20)
+function 이름고치기(v) {
+  var t = txt(v);
+  return (t === "" || t === "N/A" || t === "nan" || t === "none" || t === "None") ? "미상" : t;
+}
+
+// ★ 원본 _subject_rows — 이 카드의 파란 박스가 몇 줄을 쓰는가 (좌우 중 많은 쪽)
+function 주제줄수(o) {
+  return Math.max(o.제품군쪼갬.length || 1, o.브랜드쪼갬.length || 1);
+}
+
+// ★ 원본 _subject_html — 파란 박스. 왼쪽 제품군, 오른쪽 브랜드.
+//   「첫 줄이 주요, 그 아래로 나머지를 한 줄씩. 『그 외 N종』 은 무엇인지 알 수 없어 쓸모가 없었다」
+function 주제박스(o, 줄수) {
+  var 칸들 = [["주요 제품군", o.제품군쪼갬, true], ["주요 브랜드", o.브랜드쪼갬, false]]
+    .map(function (q) {
+      var 몸;
+      if (!q[1].length) {
+        몸 = '<div class="d60-subject-sub">판정되지 않음</div>';
+      } else {
+        몸 = q[1].map(function (p, i) {
+          var 글 = 이름고치기(p[0]);
+          if (i === 0 && q[2] && o.제품명보조) 글 += " (추정 " + o.제품명보조 + ")";
+          return '<div class="' + (i === 0 ? "d60-subject-main" : "d60-subject-sub") +
+            '" title="' + esc(글) + '">' + esc(글) + " " + num(p[1]) + "건</div>";
+        }).join("");
+      }
+      return '<div class="d60-subject-col"><div class="d60-subject-label">' + esc(q[0]) +
+        "</div>" + 몸 + "</div>";
+    }).join("");
+  // ★ 원본 셈 그대로 — 라벨 16 + 아래여백 4 + 줄 수 × 20 + 위아래 패딩 20 + 테두리 2
+  var 높이 = 42 + (줄수 || 주제줄수(o)) * 20;
+  return '<div class="d60-subject" style="min-height:' + 높이 + 'px">' + 칸들 + "</div>";
+}
+
+// ★ 원본 _render_video_detail — 「고른 영상 한 개를 읽을 수 있게 편다」
+function renderVideoDetail(목록, i) {
+  if (i === null || i === undefined || i < 0 || i >= 목록.length) {
+    return '<p class="sub">위 표에서 영상을 하나 고르면 그 영상의 제품군·브랜드와 태그·설명을 ' +
+      "여기서 읽습니다.</p>";
+  }
+  var o = 목록[i];
+  var h = "<h3>" + esc(o.video_title || o.video_id || "영상 미확인") + "</h3>";
+  // ★ 원본 — 「비율 옆에 건수를 같이 적는다. 카드와 같은 규칙이다」
+  h += '<p class="sub">댓글 ' + num(o.comment_count) + "건 · 부정 " + num(o.negative_count) +
+    "건 " + (o.negative_rate * 100).toFixed(1) + "% · 문의 " + num(o.inquiry_count) +
+    "건 " + (o.inquiry_rate * 100).toFixed(1) + "% · 긍정 " + num(o.positive_count) +
+    "건 " + (o.positive_rate * 100).toFixed(1) + "%</p>";
+  h += 주제박스(o);
+  h += "<hr>";
+  h += '<div class="row"><div class="d60-mini-card"><p><b>영상 설명</b></p><p>' +
+    esc(o.video_description || "기록된 설명이 없습니다.") + "</p></div>";
+  h += '<div class="d60-mini-card"><p><b>태그</b></p><p>' +
+    esc(o.video_tags || "기록된 태그가 없습니다.") + "</p></div></div>";
+  if (o.video_url) {
+    h += '<p><a class="d60-link" href="' + esc(o.video_url) + '" target="_blank" ' +
+      'rel="noopener">영상 열기</a></p>';
+  }
+  return h;
+}
+
+// ★ 원본 views/video.py 의 `video_columns` 순서와 `VIDEO_TABLE_HEADERS` 이름 그대로 열다섯 칸.
+//   원본 주석 — 「표에 쓸 한국어 칸이름. 봐야 할 것을 왼쪽에 두는 순서와 짝이다」
+function _쪼갠글(쌍들) {
+  // 원본 main_product_note / main_brand_note — " · " 로 이어 붙인 「이름 N건」
+  return 쌍들.map(function (p) { return p[0] + " " + num(p[1]) + "건"; }).join(" · ");
+}
+var VIDEO_TABLE = [
+  ["영상 제목", function (o) { return o.video_title; }],
+  ["댓글 수", function (o) { return num(o.comment_count); }],
+  ["부정 건수", function (o) { return num(o.negative_count); }],
+  ["부정률", function (o) { return (o.negative_rate * 100).toFixed(1) + "%"; }],
+  ["문의 건수", function (o) { return num(o.inquiry_count); }],
+  ["문의율", function (o) { return (o.inquiry_rate * 100).toFixed(1) + "%"; }],
+  ["긍정 건수", function (o) { return num(o.positive_count); }],
+  ["긍정률", function (o) { return (o.positive_rate * 100).toFixed(1) + "%"; }],
+  ["주요 제품군", function (o) { return o.main_product_category; }],
+  ["추정 제품", function (o) { return o.제품명보조; }],
+  ["제품군 구성", function (o) { return _쪼갠글(o.제품군쪼갬); }],
+  ["주요 브랜드", function (o) { return o.main_brand; }],
+  ["브랜드 구성", function (o) { return _쪼갠글(o.브랜드쪼갬); }],
+  ["링크", function (o) { return o.video_url; }],
+  ["영상 ID", function (o) { return o.video_id; }]
+];
+
 function sortBy(list, keys) {
   return list.slice().sort(function (a, b) {
     for (var i = 0; i < keys.length; i++) {
@@ -924,13 +1225,24 @@ function pctChart(list, metric, title, note) {
     "</div>";
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// 화면 ② 분석 영상 정보 — 원본 views/video.py
+//   ★ 2026-10-23 카드를 다시 썼다. 전에는 제목 + 한 줄 요약이었는데, 원본은
+//     **알약 배지 넷 + 주요 제품군·브랜드 파란 박스 + 「이 영상은 무엇을 다루나」
+//       접이식 + 영상 열기** 이고, 카드는 **두 칸씩** 놓인다.
+// ─────────────────────────────────────────────────────────────────────────
 function viewVideo(rows) {
-  var h = "<h2>분석 영상 정보</h2><p class=\"sub\">영상별 댓글 수, 긍정률, 부정률, 문의율을 집계합니다. " +
-    "문의율은 감성과 별도 축이라 <b>합이 100%를 넘을 수 있습니다.</b></p>";
+  var h = "<h2>분석 영상 정보</h2>";
+  h += '<p class="sub">영상별 댓글 수, 긍정률, 부정률, 문의율과 주요 제품군·브랜드를 ' +
+    "66컬럼 결과에서 집계합니다.</p>";
+  h += '<p class="sub">문의율은 감성(긍정/부정/중립)과 별도 축입니다. 부정적인 문의도 ' +
+    "가능하므로 긍정률+부정률+문의율 합산이 100%를 넘을 수 있습니다.</p>";
   var all = videoSummary(rows);
+  // ★ 원본은 `frame['video_id'].nunique()` 다 — 카드 수(제목·URL 까지 묶은 것)가 아니다.
+  //   한 video_id 에 제목이 둘이면 카드가 둘, 「영상 수」 는 하나다. 원본이 그렇게 센다.
   h += cardGrid([
     card("집계 Row", num(rows.length), "현재 필터 기준", "blue"),
-    card("영상 수", num(all.length), "video_id + 제목 + URL 묶음", "green")
+    card("영상 수", num(uniq(rows, "video_id")), "video_id 기준", "green")
   ]);
   if (!all.length) return h + '<p class="empty">이 조건에서 영상 집계가 없습니다.</p>';
 
@@ -981,35 +1293,72 @@ function viewVideo(rows) {
   var 정렬된 = sortBy(summary, VIDEO_SORTS[S.video_sort] || VIDEO_SORTS["부정률 높은 순"]);
   var 상위 = String(S.video_count) === "전체" ? 정렬된
              : 정렬된.slice(0, parseInt(S.video_count, 10) || 4);
-  var 설명 = S.video_sort + " " + 상위.length + "개 영상 / 전체 " + summary.length +
-    "개 · 막대는 각 그래프의 값이 큰 순";
 
-  h += sectionTitle("영상별 리스트 카드", 설명);
-  h += '<div class="vcards">' + 상위.map(function (o) {
-    var top = Object.keys(o.pc).sort(function (a, b) { return o.pc[b] - o.pc[a]; })[0] || "";
-    return '<div class="d60-mini-card"><b>' + esc(o.축이름) + "</b>" +
-      '<p class="sub">댓글 ' + num(o.comment_count) + "건 · 부정 " +
-      (o.negative_rate * 100).toFixed(1) + "% (" + num(o.neg) + "건) · 긍정 " +
-      (o.positive_rate * 100).toFixed(1) + "% · 문의 " +
-      (o.inquiry_rate * 100).toFixed(1) + "%" + (top ? " · " + esc(top) : "") + "</p>" +
-      (o.video_url ? '<p class="sub">' + esc(o.video_url) + "</p>" : "") + "</div>";
+  // ★ 원본 쪽말 그대로
+  h += sectionTitle("영상별 리스트 카드",
+    S.video_sort + " · " + 상위.length + "개 표시 / 전체 " + summary.length +
+    "개 · 카드 아래 줄은 그 영상 댓글에서 가장 많이 나온 제품군·브랜드");
+  // ★ 같은 행 두 카드의 파란 박스 줄 수를 맞춘다 (원본 subject_lines · 실측 238 vs 247 어긋남)
+  var 줄맞춤 = {};
+  for (var s = 0; s < 상위.length; s += 2) {
+    var 짝 = 상위.slice(s, s + 2);
+    var 같이 = Math.max.apply(null, 짝.map(주제줄수));
+    for (var t = 0; t < 짝.length; t++) 줄맞춤[s + t] = 같이;
+  }
+  h += '<div class="d60-card2">' + 상위.map(function (o, i) {
+    // ★ 원본 tone 규칙 그대로 — 부정 30% 이상 red → 긍정 30% green → 문의 30% purple → blue
+    var tone = o.negative_rate >= 0.3 ? "red" : o.positive_rate >= 0.3 ? "green"
+             : o.inquiry_rate >= 0.3 ? "purple" : "blue";
+    // ★ 「비율만 적으면 『부정 100%』 가 커 보이는데 실은 1건 중 1건일 수 있다.
+    //   건수를 앞에 같이 적는다」 (원본 주석 · sky 2026-08-20)
+    var 배지 = badge("댓글 " + num(o.comment_count) + "건") +
+      badge("긍정 " + num(o.positive_count) + "건 " + (o.positive_rate * 100).toFixed(1) + "%",
+            o.positive_rate ? "positive" : "neutral") +
+      badge("부정 " + num(o.negative_count) + "건 " + (o.negative_rate * 100).toFixed(1) + "%",
+            o.negative_rate ? "negative" : "neutral") +
+      badge("문의 " + num(o.inquiry_count) + "건 " + (o.inquiry_rate * 100).toFixed(1) + "%",
+            o.inquiry_rate ? "warning" : "neutral");
+    var 한장 = "<div>" + taskCard(o.축이름 || "영상 미확인", 배지, "", tone, 주제박스(o, 줄맞춤[i]));
+    // D-7 — 이 영상이 무엇을 다룬 영상인지. 댓글만 보면 맥락을 모른다 (원본 주석 · sky)
+    //   ★ 값이 없어도 접이식을 그린다 — 안 그리면 그 칸만 짧아져 다음 줄이 위로 당겨진다
+    한장 += "<details><summary>이 영상은 무엇을 다루나</summary>";
+    if (o.video_description) 한장 += "<p><b>영상 설명</b></p><p>" + esc(o.video_description) + "</p>";
+    if (o.video_tags) 한장 += "<p><b>태그</b></p><p>" + esc(o.video_tags) + "</p>";
+    if (!o.video_description && !o.video_tags) {
+      한장 += '<p class="sub">이 영상에는 기록된 설명·태그가 없습니다.</p>';
+    }
+    한장 += "</details>";
+    if (o.video_url) {
+      한장 += '<p><a class="d60-link" href="' + esc(o.video_url) +
+        '" target="_blank" rel="noopener">영상 열기</a></p>';
+    }
+    return 한장 + "</div>";
   }).join("") + "</div>";
 
   // ★ 비율 그림 셋 — 그리는 대상은 카드와 **같은 집합**이다 (원본 chart_frame = top_videos)
+  var 설명 = S.video_sort + " " + 상위.length + "개 영상 / 전체 " + summary.length +
+    "개 · 막대는 각 그래프의 값이 큰 순";
   h += pctChart(상위, "negative_rate", "영상별 부정률", 설명);
   h += pctChart(상위, "positive_rate", "영상별 긍정률", 설명);
   h += pctChart(상위, "inquiry_rate", "영상별 문의율", 설명);
 
   // 표는 **최소 댓글 수를 지난 전체**를 보여 준다 (원본 display = summary)
-  h += table(["영상", "video_id", "댓글 수", "긍정률", "부정률", "문의율", "주요 제품군"],
+  //   ★ 원본 주석 — 「봐야 할 칸을 왼쪽으로 옮기고, 행을 고르면 아래에서 상세를 읽는다.
+  //     video_id 는 사람이 읽는 값이 아니라 맨 뒤로 보낸다」
+  h += sectionTitle("영상별 집계 체크",
+    "행을 고르면 그 영상의 태그·설명과 대표 VoC 를 아래에서 읽습니다 · " +
+    "위 카드·그래프는 상위 몇 개만, 이 표는 " + summary.length + "개 전부");
+  window.__vidTableRows = 정렬된;
+  h += table(VIDEO_TABLE.map(function (c) { return c[0]; }),
              정렬된.map(function (o) {
-               var top = Object.keys(o.pc).sort(function (a, b) { return o.pc[b] - o.pc[a]; })[0] || "";
-               return [o.축이름, o.video_id, num(o.comment_count),
-                       (o.positive_rate * 100).toFixed(1) + "%",
-                       (o.negative_rate * 100).toFixed(1) + "%",
-                       (o.inquiry_rate * 100).toFixed(1) + "%", top];
-             }), "t-video");
-  h += '<p class="sub"><button class="dl" data-dl="t-video" data-name="영상별집계">영상별 집계 받기</button></p>';
+               return VIDEO_TABLE.map(function (c) { return c[1](o); });
+             }), "t-video", true, "vidDetail");
+  h += '<p class="sub"><button class="dl" data-dl="t-video" data-name="영상별집계">' +
+    "⬇ 영상별 집계 통째로 받기 (" + num(정렬된.length) + "행 · " + VIDEO_TABLE.length +
+    "칸)</button> — 지금 걸린 필터가 그대로 반영됩니다. " +
+    "사용자명·이메일·링크는 가려진 판본입니다.</p>";
+  h += '<div class="d60-mini-card">' + sectionTitle("영상 상세", "고른 영상의 제품군·브랜드와 맥락") +
+    '<div id="vidDetail">' + renderVideoDetail(정렬된, window.__vidDetail) + "</div></div>";
   return h;
 }
 
@@ -1065,6 +1414,8 @@ function render() {
   // ★ 영역 고르개는 「영역 필터만 뺀」 집합으로 그린다 (원본 D-1b) —
   //   지금 보는 영역만 그리면 다른 영역으로 옮겨갈 수가 없다
   var groupSource = applyFilters(all, {skip: "topic_group"});
+  // ★ 「Scope 제외 사유」 는 제외행이 살아 있는 자료가 필요하다 (원본 scope_source)
+  var scopeSource = applyFilters(all, {scope: true});
 
   document.getElementById("side").innerHTML = sidebar();
   document.getElementById("tabs").innerHTML = TABS.map(function (t) {
@@ -1096,17 +1447,13 @@ function render() {
   document.getElementById("seen").innerHTML = 글;
 
   var body = "";
-  if (S.tab === "voc") body = viewOverview(rows, groupSource);
+  if (S.tab === "voc") body = viewOverview(rows, groupSource, scopeSource);
   else if (S.tab === "improve") body = viewImprovement(rows);
   else if (S.tab === "inquiry") body = viewInquiry(rows);
   else if (S.tab === "pl") body = viewPl(rows);
   else if (S.tab === "video") body = viewVideo(rows);
   document.getElementById("body").innerHTML = body;
 
-  if (S.tab === "voc" && S.detail !== null) {
-    var d = document.getElementById("rowDetail");
-    if (d) d.innerHTML = renderRowDetail(rows, S.detail);
-  }
   wire(rows);
 }
 
@@ -1114,7 +1461,8 @@ function render() {
 function wire(rows) {
   document.querySelectorAll("#tabs button").forEach(function (b) {
     b.onclick = function () {
-      S.tab = b.dataset.tab; S.detail = null; window.__inqDetail = null;
+      S.tab = b.dataset.tab; S.detail = null;
+      window.__inqDetail = null; window.__vidDetail = null;
       render(); window.scrollTo(0, 0);
     };
   });
@@ -1165,18 +1513,36 @@ function wire(rows) {
       window.__inqDetail = null; render();
     };
   });
+  // ★ RootCause 등급·2차분리 거르개 — 자리 번호의 뜻이 달라지니 고른 행을 비운다
+  document.querySelectorAll("input[data-grade]").forEach(function (c) {
+    c.onchange = function () {
+      var v = c.dataset.grade, 고름 = (window.__grades || []).slice();
+      var i = 고름.indexOf(v);
+      if (c.checked && i < 0) 고름.push(v);
+      if (!c.checked && i >= 0) 고름.splice(i, 1);
+      window.__grades = 고름;
+      S.detail = null; render();
+    };
+  });
+  var so = document.getElementById("splitOnly");
+  if (so) so.onchange = function () {
+    window.__splitOnly = so.checked;
+    S.detail = null; render();
+  };
   var vm = document.getElementById("videoMin");
   if (vm) vm.onchange = function () {
     var v = parseInt(vm.value, 10);
     S.video_min = (isNaN(v) || v < 1) ? 1 : v;
-    render();
+    window.__vidDetail = null; render();
   };
   var vt = document.getElementById("videoThinOnly");
-  if (vt) vt.onchange = function () { S.video_thin_only = vt.checked; render(); };
+  if (vt) vt.onchange = function () {
+    S.video_thin_only = vt.checked; window.__vidDetail = null; render();
+  };
   var vs = document.getElementById("videoSort");
-  if (vs) vs.onchange = function () { S.video_sort = vs.value; render(); };
+  if (vs) vs.onchange = function () { S.video_sort = vs.value; window.__vidDetail = null; render(); };
   var vc = document.getElementById("videoCount");
-  if (vc) vc.onchange = function () { S.video_count = vc.value; render(); };
+  if (vc) vc.onchange = function () { S.video_count = vc.value; window.__vidDetail = null; render(); };
   var ro = document.getElementById("reviewOnly");
   if (ro) ro.onchange = function () { S.review_only = ro.checked; S.detail = null; render(); };
   var ra = document.getElementById("resetAll");
@@ -1191,9 +1557,17 @@ function wire(rows) {
   if (gr) gr.onclick = function () { S.topic_group = []; S.detail = null; render(); };
   // 막대를 누르면 그 영역만 — 원본 D-1b
   document.querySelectorAll("[data-pick]").forEach(function (g) {
-    g.onclick = function () {
+    g.onclick = function (e) {
       var k = g.dataset.pickkind, v = g.dataset.pick;
-      S[k] = (S[k].length === 1 && S[k][0] === v) ? [] : [v];
+      // ★ Shift+클릭 — 여러 영역을 함께 고른다 (원본 altair 선택과 같은 동작).
+      //   원본 주석대로 「전부 해제」 도 되어야 한다 — 고른 것을 다시 Shift+누르면 빠진다.
+      if (e && e.shiftKey) {
+        var 고름 = S[k].slice(), i = 고름.indexOf(v);
+        if (i >= 0) 고름.splice(i, 1); else 고름.push(v);
+        S[k] = 고름;
+      } else {
+        S[k] = (S[k].length === 1 && S[k][0] === v) ? [] : [v];
+      }
       S.detail = null; render();
     };
   });
@@ -1205,9 +1579,14 @@ function wire(rows) {
       if (어디 === "inqDetail") {
         window.__inqDetail = i;
         if (상자) 상자.innerHTML = renderInquiryDetail(window.__inqTableRows || [], i);
+      } else if (어디 === "vidDetail") {
+        window.__vidDetail = i;
+        if (상자) 상자.innerHTML = renderVideoDetail(window.__vidTableRows || [], i);
       } else {
         S.detail = i;
-        if (상자) 상자.innerHTML = renderRowDetail(rows, i);
+        // ★ 거르개(등급·2차분리)가 걸린 **표의 목록**으로 본다. 필터 전 rows 로 보면
+        //   고른 줄과 다른 행이 펼쳐진다.
+        if (상자) 상자.innerHTML = renderRowDetail(window.__vocTableRows || rows, i);
       }
       document.querySelectorAll("tr.pickable").forEach(function (x) { x.classList.remove("on"); });
       tr.classList.add("on");

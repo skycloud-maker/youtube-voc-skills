@@ -286,3 +286,174 @@ def test_문의_표의_열한_칸이_원본_순서까지_같다():
     assert 자리 == sorted(자리), ("문의 표 칸 순서가 원본과 다르다 — 원본 순서는 %s"
                                % [머리[c] for c in 칸들])
     assert len(칸들) == 11, "원본 문의 표가 %d칸으로 바뀌었다 — 화면도 같이 고친다" % len(칸들)
+
+
+def test_영상_카드_정렬_셋이_원본과_같다():
+    """② 분석 영상 정보 — VIDEO_CARD_SORTS 의 이름·정렬 칸이 화면에 그대로 있나."""
+    정렬 = _원본상수("video.py", "VIDEO_CARD_SORTS")
+    글 = _화면.read_text(encoding="utf-8")
+    assert len(정렬) == 3, "원본 영상 카드 정렬이 %d개로 바뀌었다" % len(정렬)
+    for 이름, 칸들 in 정렬.items():
+        assert '"%s"' % 이름 in 글, "영상 카드 정렬 「%s」 가 화면에 없다" % 이름
+        for c in 칸들:
+            assert '"%s"' % c in 글, "「%s」 의 정렬 칸 %s 가 화면에 없다" % (이름, c)
+
+
+def test_영상_표의_열다섯_칸이_원본_순서까지_같다():
+    """★ 원본 주석 — 「봐야 할 칸을 왼쪽으로 … video_id 는 맨 뒤로 보낸다」. 순서가 뜻이다.
+
+    ★ 원본은 칸 목록을 `render()` 안에서 짓는다(`video_columns`). 그래서 모듈 상수가 아니라
+      함수 안의 대입을 찾는다 — 「못 찾음」 이면 실패한다.
+    """
+    import ast                                                 # noqa: PLC0415
+
+    머리 = _원본상수("video.py", "VIDEO_TABLE_HEADERS")
+    원본길 = _엔진 / "src" / "dashboard60" / "views" / "video.py"
+    나무 = ast.parse(원본길.read_text(encoding="utf-8"))
+    칸들 = None
+    for 가지 in ast.walk(나무):
+        if (isinstance(가지, ast.Assign) and isinstance(가지.targets[0], ast.Name)
+                and 가지.targets[0].id == "video_columns"):
+            칸들 = ast.literal_eval(가지.value)
+    assert 칸들, "원본 video.py 에서 video_columns 를 못 찾았다"
+    assert len(칸들) == 15, "원본 영상 표가 %d칸으로 바뀌었다 — 화면도 같이 고친다" % len(칸들)
+    글 = _화면.read_text(encoding="utf-8")
+    덩이 = 글.split("var VIDEO_TABLE = [", 1)
+    assert len(덩이) == 2, "화면에 VIDEO_TABLE 이 없다 — 영상 표를 누가 지웠다"
+    우리 = 덩이[1].split(chr(10) + "];", 1)[0]
+    자리 = []
+    for c in 칸들:
+        이름 = 머리[c]
+        assert '"%s"' % 이름 in 우리, "영상 표에 「%s」 칸이 없다" % 이름
+        자리.append(우리.index('"%s"' % 이름))
+    assert 자리 == sorted(자리), ("영상 표 칸 순서가 원본과 다르다 — 원본 순서는 %s"
+                               % [머리[c] for c in 칸들])
+
+
+def _원본_함수안_상수(파일: str, 이름: str):
+    """원본이 `render()` 안에서 짓는 칸 목록을 꺼낸다 (모듈 상수가 아니다)."""
+    import ast                                                 # noqa: PLC0415
+
+    길 = _엔진 / "src" / "dashboard60" / "views" / 파일
+    assert 길.is_file(), "엔진 원본 %s 가 없다" % 길
+    나무 = ast.parse(길.read_text(encoding="utf-8"))
+    것 = None
+    for 가지 in ast.walk(나무):
+        if (isinstance(가지, ast.Assign) and isinstance(가지.targets[0], ast.Name)
+                and 가지.targets[0].id == 이름):
+            것 = ast.literal_eval(가지.value)
+    assert 것, "원본 %s 에서 %s 를 못 찾았다 — 「못 찾음」 은 통과가 아니다" % (파일, 이름)
+    return 것
+
+
+def test_현황표의_열아홉_칸이_원본_순서까지_같다():
+    """① VoC 현황 — `display_columns` 그대로. ★ 원본은 칸이름을 **바꾸지 않는다**.
+
+    원본은 source_run 을 2번, 2차분리를 4번 자리에 끼운다. 끼우는 자리가 바뀌면 순서가 깨진다.
+    """
+    칸들 = _원본_함수안_상수("overview.py", "display_columns")
+    assert len(칸들) == 18, "원본 현황 표 기본 칸이 %d개로 바뀌었다" % len(칸들)
+    글 = _화면.read_text(encoding="utf-8")
+    덩이 = 글.split("function 현황표칸() {", 1)
+    assert len(덩이) == 2, "화면에 현황표칸() 이 없다 — ① 표를 누가 지웠다"
+    우리 = 덩이[1].split(chr(10) + "}", 1)[0]
+    자리 = []
+    for c in 칸들:
+        assert '"%s"' % c in 우리, "현황 표에 %s 칸이 없다" % c
+        자리.append(우리.index('"%s"' % c))
+    assert 자리 == sorted(자리), "현황 표 칸 순서가 원본과 다르다 — 원본 순서는 %s" % 칸들
+    # 끼워 넣는 두 칸과 그 자리까지 본다
+    for 말 in ('splice(2, 0, "source_run")', 'splice(4, 0, "2차분리")'):
+        assert 말 in 우리, "원본이 끼우는 자리(%s)가 화면과 다르다" % 말
+    원본글 = (_엔진 / "src" / "dashboard60" / "views" / "overview.py").read_text(encoding="utf-8")
+    for 말 in ('insert(2, "source_run")', 'insert(4, "2차분리")'):
+        assert 말 in 원본글, "원본이 끼우는 자리가 바뀌었다(%s) — 화면도 같이 고친다" % 말
+
+
+def test_제외사유_일곱이_건수0까지_다_나온다():
+    """★ 원본 주석 — 「빠진 분류가 보이도록 건수 0 이어도 다 낸다」.
+
+    사유 이름은 **엔진에서 실어** 쓴다. 화면 코드에 베껴 적으면 두 벌이 된다.
+    """
+    import ast                                                 # noqa: PLC0415
+
+    길 = _엔진 / "src" / "dashboard60" / "data_contract.py"
+    나무 = ast.parse(길.read_text(encoding="utf-8"))
+    꺼낸것 = {}
+    for 가지 in 나무.body:
+        대상 = (가지.targets[0] if isinstance(가지, ast.Assign) else None)
+        if isinstance(대상, ast.Name) and 대상.id in (
+                "SCOPE_EXCLUSION_REASONS", "SCOPE_EXCLUSION_REASON_LABELS"):
+            꺼낸것[대상.id] = ast.literal_eval(가지.value)
+    사유 = 꺼낸것.get("SCOPE_EXCLUSION_REASONS")
+    이름 = 꺼낸것.get("SCOPE_EXCLUSION_REASON_LABELS")
+    assert 사유 and 이름, "엔진에서 제외 사유 상수를 못 꺼냈다"
+    assert len(사유) == 7, "원본 제외 사유가 %d가지로 바뀌었다" % len(사유)
+    # ① 화면이 그 사유를 **엔진에서 실어** 쓰는가 (화면 코드에 이름을 베끼지 않았는가)
+    글 = _화면.read_text(encoding="utf-8")
+    assert "K.제외사유" in 글 and "K.제외사유이름" in 글, "제외 사유를 엔진에서 싣지 않는다"
+    for v in 이름.values():
+        assert v not in 글, "제외 사유 이름 「%s」 를 화면 코드에 베껴 적었다 — 두 벌이 된다" % v
+    담기 = (_스킬 / "scripts" / "자료_담기.py").read_text(encoding="utf-8")
+    assert "SCOPE_EXCLUSION_REASONS" in 담기 and "scope_exclusion_reason" in 담기, (
+        "자료_담기 가 제외 사유 칸·상수를 싣지 않는다 — ① 의 그 섹션이 빈다")
+
+
+def test_RootCause_세_칸의_이름과_순서가_원본과_같다():
+    """★ 원본 주석 — 「데이터사전 정의 그대로 쓴다. 내가 지어낸 『무엇이/어디가/왜』 는
+    실제 내용과 어긋났다」 (sky 2026-08-19). **이름과 순서가 뜻이다.**
+    """
+    원본글 = (_엔진 / "src" / "dashboard60" / "views" / "overview.py").read_text(encoding="utf-8")
+    짝 = '(("문제 현상", problem), ("개선 대상", target), ("근본 원인", cause))'
+    assert 짝 in 원본글, "원본의 RootCause 세 칸이 바뀌었다 — 화면도 같이 고친다"
+    글 = _화면.read_text(encoding="utf-8")
+    자리 = [글.index('"문제 현상"'), 글.index('"개선 대상"'), 글.index('"근본 원인"')]
+    assert 자리 == sorted(자리), "화면의 RootCause 세 칸 순서가 원본과 다르다"
+    for 틀린것 in ('"무엇이"', '"어디가"', '"왜"'):
+        assert 틀린것 not in 글, "지어낸 라벨 %s 이 화면에 남아 있다" % 틀린것
+
+
+def test_화면_틀이_원본_머리와_같다():
+    """★ 원본 주석 — 「『VoC 65』 는 개발 중 컬럼 수를 딴 이름이었다. 실무자에게는 뜻이 없다」.
+
+    큰 제목·설명 글귀는 원본 app_operating.main() 에 있는 그대로여야 한다.
+    schema 는 최종본_앉히기 가 metadata.json 에 적는 값과 **같아야** 한다 — 두 벌이 어긋나면
+    대시보드는 「다른 자료」 로 읽는다.
+    """
+    만들개글 = _만들개.read_text(encoding="utf-8")
+    원본글 = (_엔진 / "src" / "dashboard60" / "app_operating.py").read_text(encoding="utf-8")
+    assert 'st.title("YouTube VoC 분석 대시보드")' in 원본글, "원본의 큰 제목이 바뀌었다"
+    assert '큰제목 = "YouTube VoC 분석 대시보드"' in 만들개글, "HTML 의 큰 제목이 원본과 다르다"
+    for 조각 in ("YouTube 영상 댓글을 분석해 개선 포인트를 찾는 화면입니다. ",
+                "제품군 · 이유 topic · 감성을 나누어 보고, RootCause 까지 이어 봅니다."):
+        assert 조각 in 원본글, "원본의 설명 글귀가 바뀌었다 — %s" % 조각
+        assert 조각 in 만들개글, "HTML 의 설명 글귀가 원본과 다르다 — %s" % 조각
+    assert "배포 커밋" in 만들개글, "원본에 있는 「배포 커밋」 줄이 HTML 에 없다"
+    앉히기 = (_스킬 / "scripts" / "최종본_앉히기.py").read_text(encoding="utf-8")
+    표시 = '"schema_version": "'
+    스키마 = 앉히기.split(표시, 1)[1].split('"', 1)[0]
+    assert '스키마판 = "%s"' % 스키마 in 만들개글, (
+        "HTML 의 schema 가 최종본_앉히기(%s)와 다르다" % 스키마)
+
+
+def test_탭_다섯이_원본_순서와_같다():
+    """원본 OPERATING_TABS 의 **순서**가 화면 탭과 같은가."""
+    import ast                                                 # noqa: PLC0415
+
+    길 = _엔진 / "src" / "dashboard60" / "app_operating.py"
+    글 = 길.read_text(encoding="utf-8")
+    나무 = ast.parse(글)
+    이름값 = {}
+    for 가지 in 나무.body:
+        대상 = (가지.targets[0] if isinstance(가지, ast.Assign) else None)
+        if isinstance(대상, ast.Name) and 대상.id.startswith("TAB_"):
+            이름값[대상.id] = ast.literal_eval(가지.value)
+    차례 = 글.split("OPERATING_TABS = [", 1)[1].split("]", 1)[0]
+    탭들 = [이름값[n.strip()] for n in 차례.split(",") if n.strip()]
+    assert len(탭들) == 5, "원본 탭이 %d개로 바뀌었다" % len(탭들)
+    우리 = _화면.read_text(encoding="utf-8").split("var TABS = [", 1)[1].split("];", 1)[0]
+    자리 = []
+    for t in 탭들:
+        assert '"%s"' % t in 우리, "탭 「%s」 가 화면에 없다" % t
+        자리.append(우리.index('"%s"' % t))
+    assert 자리 == sorted(자리), "탭 순서가 원본과 다르다 — 원본 순서는 %s" % 탭들

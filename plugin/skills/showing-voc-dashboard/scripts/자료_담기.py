@@ -32,6 +32,9 @@ from pathlib import Path
        "competitor_brand_display_tags", "competitor_brand_tags",
        "market_display", "market", "sentiment_dir", "cej", "cej_group")
 화면칸 = ("atomic_id", "topic", "inquiry_flag", "validity", "video_id", "video_title",
+       # ★ 2026-10-23 — 「Scope 제외 사유」 그림이 이 칸을 센다. 없어서 그 섹션이 아예 없었다.
+       #   제외행(status=scope_excluded)만 쓰는 칸이라 다른 화면은 보지 않는다.
+       "scope_exclusion_reason",
        "inquiry_type", "inquiry_type_display", "need_signal_type", "need_signal_type_display",
        "rootcause_summary", "source_run", "split_origin_atomic_id", "atomic_index",
        # ★ 2026-10-21 Codex 교차점검에서 「자료 자체가 없다」 고 짚힌 칸들을 더했다.
@@ -180,7 +183,43 @@ def 상수담기(계약) -> dict:
         것["니즈신호이름"] = {str(k): str(v) for k, v in NEED_SIGNAL_TYPE_LABELS.items()}
     except ImportError as 왜:
         print("  ! 문의 표시값 사전을 못 불렀습니다 — %s" % 왜)
+    # ★ Scope 제외 사유 — 일곱 가지를 **건수 0 이어도 다 낸다** (원본 주석: 「빠진 분류가
+    #   보이도록」). 순서와 한국어 이름을 엔진에서 그대로 꺼낸다.
+    것["제외사유"] = [str(x) for x in getattr(계약, "SCOPE_EXCLUSION_REASONS", ())]
+    것["제외사유이름"] = {str(k): str(v) for k, v in
+                    getattr(계약, "SCOPE_EXCLUSION_REASON_LABELS", {}).items()}
+    # ★ RootCause 등급 풀이 — 원본은 views/overview.py 에 둔다 (계약 파일이 아니다).
+    #   그 파일은 streamlit 을 불러오므로 **import 하지 않고 글자만 읽어** 꺼낸다.
+    것["등급풀이"] = _원본상수("views/overview.py", "ROOTCAUSE_GRADE_NOTE")
     return 것
+
+
+def _원본상수(어디: str, 이름: str) -> dict:
+    """엔진 파일 하나에서 상수를 **읽어서** 꺼낸다 (import 하지 않는다).
+
+    ★ 손으로 베껴 적으면 두 벌이 되고, 엔진이 바뀌어도 화면은 모른다 (공통 규칙 6).
+      못 꺼내면 빈 것을 돌려주고 그 자리를 쓰는 화면이 비게 된다 — 조용히 틀린 값을
+      쓰지 않는다.
+    """
+    import ast                                                        # noqa: PLC0415
+
+    길 = _찾기("engine") / "src" / "dashboard60" / 어디
+    if not 길.is_file():
+        print("  ! 엔진 원본을 못 찾았습니다 — %s" % 길)
+        return {}
+    try:
+        나무 = ast.parse(길.read_text(encoding="utf-8"))
+    except SyntaxError as 왜:
+        print("  ! 엔진 원본을 못 읽었습니다 — %s" % 왜)
+        return {}
+    for 가지 in 나무.body:
+        대상 = (가지.targets[0] if isinstance(가지, ast.Assign)
+              else getattr(가지, "target", None) if isinstance(가지, ast.AnnAssign) else None)
+        if isinstance(대상, ast.Name) and 대상.id == 이름:
+            것 = ast.literal_eval(가지.value)
+            return {str(k): str(v) for k, v in 것.items()}
+    print("  ! %s 에서 %s 를 못 찾았습니다" % (어디, 이름))
+    return {}
 
 
 def 맞춤값(표틀, pd, apply_filters, score_improvement_tasks, 계약=None) -> dict:

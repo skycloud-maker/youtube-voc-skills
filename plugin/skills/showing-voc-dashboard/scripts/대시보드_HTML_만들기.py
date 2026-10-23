@@ -128,6 +128,16 @@ def _원본꾸밈() -> str:
 /* ★ 대표 문의 카드 — 원본은 행마다 st.columns(2) 를 새로 만든다 (두 칸 격자가 같은 모양) */
 .d60-card2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:8px 0 18px}
 .d60-axis select{font:inherit;padding:3px 6px;border:1px solid var(--line,#e5e7eb);border-radius:6px}
+/* ★ ② 영상 — 고르개 줄과 「영상 열기」 (원본 st.columns + st.link_button) */
+.vopt{margin:10px 0 4px;display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.vopt label{display:inline-flex;gap:5px;align-items:center;font-size:14px}
+.vopt select,.vopt input[type=number]{font:inherit;padding:3px 6px;
+  border:1px solid var(--line,#e5e7eb);border-radius:6px}
+.vopt input[type=number]{width:84px}
+.vopt>p{flex:1 0 100%;margin:2px 0 0}
+.d60-link{display:inline-block;margin:6px 0;padding:5px 12px;border-radius:8px;
+  border:1px solid var(--line,#e5e7eb);text-decoration:none;color:inherit;font-size:14px}
+.d60-link:hover{background:#f8fafc}
 @media(max-width:700px){.d60-top3,.d60-card2{grid-template-columns:1fr}}
 
 *{box-sizing:border-box}
@@ -178,6 +188,35 @@ footer{border-top:1px solid var(--line,#e5e7eb);margin-top:30px;padding:16px 0;
 """
 
 
+# ★ 화면 틀 — 원본 app_operating.main() 의 머리와 같게 (2026-10-23).
+#   원본 주석 — 「『VoC 65』 는 개발 중 컬럼 수를 딴 이름이었다. 실무자에게는 뜻이 없다」
+#   (sky 2026-08-20). 그래서 큰 제목은 **파일 이름이 아니라** 늘 이 이름이다.
+큰제목 = "YouTube VoC 분석 대시보드"
+설명줄 = ("YouTube 영상 댓글을 분석해 개선 포인트를 찾는 화면입니다. "
+       "제품군 · 이유 topic · 감성을 나누어 보고, RootCause 까지 이어 봅니다.")
+# ★ 최종본_앉히기 가 metadata.json 에 적는 것과 **같은 값**이어야 한다
+#   (어긋나면 tests/test_대시보드html.py 가 잡는다)
+스키마판 = "voc-final-after-4th"
+읽개판 = "showing-voc-dashboard/대시보드_HTML_만들기"
+
+
+def _만든판() -> str:
+    """이 HTML 을 만든 코드의 판 — 원본의 「배포 커밋」 과 같은 자리.
+
+    ★ git 이 없거나 저장소가 아니면 「unknown」 이다. 원본도 그렇게 적는다.
+    """
+    import subprocess                                                  # noqa: PLC0415
+
+    try:
+        것 = subprocess.run(["git", "--no-optional-locks", "rev-parse", "--short", "HEAD"],
+                           cwd=str(Path(__file__).resolve().parents[3]),
+                           capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    값 = (것.stdout or "").strip()
+    return 값 if 것.returncode == 0 and 값 else "unknown"
+
+
 def 한장만들기(자료글: str, *, 제목: str, 머리말: str, 꼬리말: str) -> str:
     return ("<!doctype html>" + chr(10)
             + '<html lang="ko"><head><meta charset="utf-8">'
@@ -186,7 +225,12 @@ def 한장만들기(자료글: str, *, 제목: str, 머리말: str, 꼬리말: s
             # ★ 원본 CSS 를 먼저, 그 위에 뼈대 꾸밈
             + "<style>%s</style><style>%s</style></head><body>" % (_원본꾸밈(), 뼈대꾸밈)
             + '<div class="wrap"><aside id="side"></aside><main>'
-            + "<h1>%s</h1><p class=\"sub\">%s</p>" % (_h(제목), 머리말)
+            # ★ 원본과 같은 머리 넷 — 큰 제목 · 배포 커밋 · 설명 · schema/parser
+            + "<h1>%s</h1>" % _h(큰제목)
+            + '<p class="sub">배포 커밋: <code>%s</code></p>' % _h(_만든판())
+            + '<p class="sub">%s</p>' % _h(설명줄)
+            + '<p class="sub">schema=%s · parser=%s</p>' % (_h(스키마판), _h(읽개판))
+            + '<p class="sub">%s · %s</p>' % (_h(제목), 머리말)
             + '<div id="tabs"></div><div id="seen"></div><div id="selfcheck"></div>'
             + '<div id="body"></div>'
             + "<footer>%s</footer></main></div>" % 꼬리말
