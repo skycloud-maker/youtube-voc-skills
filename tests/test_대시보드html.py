@@ -217,3 +217,72 @@ def test_자기검사_글이_들어_있다(만든것):
         글 = 만든것[쪽][2]
         assert "selfCheck" in 글 and "selfcheck" in 글, "%s 에 자기검사가 없다" % 쪽
         assert "이 화면을 믿지 마십시오" in 글, "%s 에 어긋날 때의 말이 없다" % 쪽
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 원본 상수 대조 — 화면의 고르개가 **엔진 원본과 같은 이름·같은 정렬 칸**인가
+#   ★ 왜 (2026-10-23) — ④ 개선 방향성과 ③ 문의 속 니즈를 옮길 때 내가 정렬 축 이름과
+#     기준을 **지어냈다가** 원본과 달라졌다. 눈으로 대 보고 고쳤지만, 눈은 다음에 또 놓친다.
+#   ★ 우리 JS 에 베껴 적은 것이 아니라 **엔진 원본 파일을 그때그때 읽어** 댄다.
+#     그래서 원본이 바뀌어도, 우리가 빼먹어도 **둘 다** 잡힌다.
+# ─────────────────────────────────────────────────────────────────────────────
+_화면 = _스킬 / "scripts" / "화면_js.py"
+
+
+def _원본상수(파일: str, 이름: str):
+    """엔진 views/*.py 에서 상수 하나를 꺼낸다 (import 하지 않는다 — streamlit 이 필요하다)."""
+    import ast                                                 # noqa: PLC0415
+
+    길 = _엔진 / "src" / "dashboard60" / "views" / 파일
+    assert 길.is_file(), "엔진 원본 %s 가 없다 — 「못 찾음」 은 통과가 아니다" % 길
+    나무 = ast.parse(길.read_text(encoding="utf-8"))
+    for 가지 in 나무.body:
+        대상 = (가지.targets[0] if isinstance(가지, ast.Assign)
+              else 가지.target if isinstance(가지, ast.AnnAssign) else None)
+        if isinstance(대상, ast.Name) and 대상.id == 이름:
+            return ast.literal_eval(가지.value)
+    raise AssertionError("엔진 %s 에서 %s 를 못 찾았다" % (파일, 이름))
+
+
+def test_정렬축_넷이_원본_이름과_정렬칸까지_같다():
+    """④ 개선 방향성 — SORT_AXES 의 이름·정렬 칸·설명 글귀가 화면에 그대로 있나."""
+    축 = _원본상수("improvement.py", "SORT_AXES")
+    글 = _화면.read_text(encoding="utf-8")
+    assert len(축) == 4, "원본 정렬 축이 %d개로 바뀌었다 — 화면도 같이 고친다" % len(축)
+    for 이름, (칸들, 오름, 설명) in 축.items():
+        assert '"%s"' % 이름 in 글, "정렬 축 이름 「%s」 가 화면에 없다" % 이름
+        assert 설명 in 글, "정렬 축 「%s」 의 설명 글귀가 화면과 다르다" % 이름
+        for c in 칸들:
+            assert '"%s"' % c in 글, "정렬 축 「%s」 의 정렬 칸 %s 가 화면에 없다" % (이름, c)
+    # 오름/내림을 뒤집으면 순서가 거꾸로 된다 — 축마다 몇 개인지까지 센다
+    for 이름, (칸들, 오름, _설명) in 축.items():
+        assert len(칸들) == len(오름), "원본 %s 의 칸 수와 오름차순 수가 어긋났다" % 이름
+
+
+def test_문의_카드_정렬_셋이_원본과_같다():
+    """③ 문의 속 니즈 — INQUIRY_CARD_SORTS 의 이름·정렬 칸이 화면에 그대로 있나."""
+    정렬 = _원본상수("inquiry.py", "INQUIRY_CARD_SORTS")
+    글 = _화면.read_text(encoding="utf-8")
+    assert len(정렬) == 3, "원본 카드 정렬 기준이 %d개로 바뀌었다" % len(정렬)
+    for 이름, 칸들 in 정렬.items():
+        assert '"%s"' % 이름 in 글, "카드 정렬 기준 「%s」 가 화면에 없다" % 이름
+        for c in 칸들:
+            assert '"%s"' % c in 글, "「%s」 의 정렬 칸 %s 가 화면에 없다" % (이름, c)
+
+
+def test_문의_표의_열한_칸이_원본_순서까지_같다():
+    """★ 원본 주석 — 「주제를 왼쪽으로 올리고 식별자는 맨 뒤로 보낸다」. 순서가 뜻이다."""
+    칸들 = _원본상수("inquiry.py", "INQUIRY_TABLE_COLUMNS")
+    머리 = _원본상수("inquiry.py", "INQUIRY_TABLE_HEADERS")
+    글 = _화면.read_text(encoding="utf-8")
+    덩이 = 글.split("var INQUIRY_TABLE = [", 1)
+    assert len(덩이) == 2, "화면에 INQUIRY_TABLE 이 없다 — 문의 표를 누가 지웠다"
+    우리 = 덩이[1].split("];", 1)[0]
+    자리 = []
+    for c in 칸들:
+        이름 = 머리[c]
+        assert '"%s"' % 이름 in 우리, "문의 표에 「%s」 칸이 없다" % 이름
+        자리.append(우리.index('"%s"' % 이름))
+    assert 자리 == sorted(자리), ("문의 표 칸 순서가 원본과 다르다 — 원본 순서는 %s"
+                               % [머리[c] for c in 칸들])
+    assert len(칸들) == 11, "원본 문의 표가 %d칸으로 바뀌었다 — 화면도 같이 고친다" % len(칸들)

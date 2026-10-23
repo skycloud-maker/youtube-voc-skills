@@ -260,11 +260,12 @@ function barChart(pairs, title, note, map, onclick) {
 }
 
 // 표 — 정렬 · 찾기 · 행 고르기
-function table(head, rows, id, pickable) {
+function table(head, rows, id, pickable, detailId) {
   if (!rows.length) return '<p class="empty">이 조건에서는 담을 것이 없습니다.</p>';
   var th = head.map(function (c, i) { return '<th data-i="' + i + '">' + esc(c) + "</th>"; }).join("");
   var tb = rows.map(function (r, ri) {
-    return '<tr' + (pickable ? ' data-row="' + ri + '" class="pickable"' : "") + ">" +
+    return '<tr' + (pickable ? ' data-row="' + ri + '"' +
+      (detailId ? ' data-detail="' + detailId + '"' : "") + ' class="pickable"' : "") + ">" +
       r.map(function (v) { return "<td>" + esc(v) + "</td>"; }).join("") + "</tr>";
   }).join("");
   return '<input class="find" data-for="' + id + '" placeholder="이 표에서 찾기">' +
@@ -437,46 +438,234 @@ function improvementTasks(rows, includeCompetitors) {
     .map(function (pair) { return pair[0]; });
 }
 
+// ★ 정렬 축 넷 — 원본 views/improvement.py:33 SORT_AXES 를 그대로 옮겼다 (이름·순서·설명까지).
+//   우리가 지어내면 「건수축/심각도축」 같은 말이 원본과 달라진다.
+var SORT_AXES = [
+  ["우선순위 점수 (기존)", ["priority_score", "rc_coverage", "n"], [0, 0, 0],
+   "|평균 부정강도| x 부정 건수 → RC커버리지 → 볼륨"],
+  ["종합 (두 축 순위합)", ["combined_rank", "priority_score"], [1, 0],
+   "건수축 순위 + 심각도축 순위가 작은 것부터. 두 축 모두에서 위쪽인 것이 앞에 온다"],
+  ["건수축", ["volume_rank"], [1],
+   "부정 건수가 많은 것부터. 넓게 퍼진 문제"],
+  ["심각도축", ["severity_rank"], [1],
+   "화난 사람의 평균 강도가 큰 것부터. 건수를 보지 않는다 — 깊게 아픈 문제"]
+];
+
+// ★ 원본 scoring.top_negative_vocs — 군집의 대표 **부정** VoC.
+//   부정강도 오름차순(= 더 화난 것 먼저) · rootcause_problem 내림차순 · 같은 말은 한 번만.
+function topNegativeVocs(rows, pc, topic, k) {
+  var sub = rows.filter(function (r) {
+    if (txt(r.status) === "scope_excluded") return false;
+    if (EXCLUDED_TOPICS.indexOf(txt(r.topic)) >= 0) return false;
+    var role = txt(r.entity_role) || "unknown";
+    if (IMPROVEMENT_ROLES.indexOf(role) < 0) return false;
+    return txt(r.product_category) === txt(pc) && txt(r.topic) === txt(topic);
+  });
+  sub.forEach(function (r) {
+    r.__neg = Math.min(numOr(r.tee_emotion_score, 0), numOr(r.tee_success_score, 0), 0);
+  });
+  sub = sub.map(function (x, i) { return [x, i]; })
+    .sort(function (a, b) {
+      return (a[0].__neg - b[0].__neg) ||
+             txt(b[0].rootcause_problem).localeCompare(txt(a[0].rootcause_problem), "ko") ||
+             (a[1] - b[1]);
+    })
+    .map(function (pair) { return pair[0]; });
+  // ★ 원본 _representative_key — 같은 말을 두 번 보여 주지 않는다
+  var seen = {}, out = [];
+  for (var i = 0; i < sub.length && out.length < (k || 3); i++) {
+    var key = txt(sub[i].atomic_voc) || txt(sub[i].original_voc);
+    if (seen[key]) continue;
+    seen[key] = 1;
+    out.push(sub[i]);
+  }
+  return out;
+}
+
+// ★ 원본 ui_cards.badge — 톤 이름까지 그대로. 없어서 개선 방향성 화면이 터졌다 (2026-10-23).
+//   「있겠지」 하고 부른 내 잘못이다. 원본에 있는 것은 원본대로 옮긴다.
+var BADGE_TONE = {"긍정": "positive", "부정": "negative", "중립": "neutral",
+                  warning: "warning", negative: "negative", positive: "positive",
+                  neutral: "neutral"};
+function badge(label, tone) {
+  return '<span class="d60-badge ' + (BADGE_TONE[tone] || "neutral") + '">' + esc(label) + "</span>";
+}
+
+// ★ 원본 views/improvement.py:_score_badges — 배지 일곱. 글귀·자릿수까지 그대로.
+function scoreBadges(x) {
+  return [
+    badge("볼륨 " + num(x.n) + "건"),
+    badge("부정 " + num(x.neg_count) + "건", x.neg_count ? "negative" : "neutral"),
+    badge("부정률 " + (x.neg_ratio * 100).toFixed(1) + "%", x.neg_ratio ? "negative" : "neutral"),
+    badge("평균 부정강도 " + x.mean_neg.toFixed(2), x.mean_neg < 0 ? "negative" : "neutral"),
+    badge("RC 커버리지 " + (x.rc_coverage * 100).toFixed(1) + "%"),
+    badge("우선점수 " + x.priority_score.toFixed(2), "warning"),
+    badge("건수축 " + x.volume_rank + "위 · 심각도축 " + x.severity_rank + "위 · 종합 " + x.combined_rank,
+          "neutral")
+  ].join("");
+}
+
+// ★ 원본 ui_cards.task_card_html — 클래스를 그대로 써야 원본 CSS 가 먹는다
+function taskCard(title, badgesHtml, preview, tone) {
+  // ★ 원본 ui_cards.TONE_CLASS — 여섯 가지 그대로
+  var TONE = {blue: "tone-blue", green: "tone-green", orange: "tone-orange",
+              purple: "tone-purple", red: "tone-red", gray: "tone-gray"};
+  var cls = TONE[tone] || TONE.blue;
+  return '<div class="d60-task-card ' + cls + '">' +
+    '<div class="d60-task-title">' + esc(title) + "</div>" +
+    '<div class="d60-task-meta">' + badgesHtml + "</div>" +
+    (preview ? '<div class="d60-preview">' + esc(preview) + "</div>" : "") +
+    "</div>";
+}
+
 // ─────────────────────────────────────────────────────────────────────────
-// 화면 ② 개선 방향성 — 원본 views/improvement.py
+// 화면 ② 개선 방향성 — 원본 views/improvement.py 를 구조째 옮겼다
+//   ★ 2026-10-23 다시 썼다. 전에는 지표 카드 3 + 막대 둘 + 표였는데, 원본은
+//     **정렬 축 라디오 4 · 먼저 볼 것 Top 3 카드 · 개선과제 후보 카드 10 · 대표 부정 VoC** 다.
+//   ★ 「AI 서술 생성」 토글은 **넣지 않는다** — LLM 을 부르므로 서버가 있어야 한다.
+//     원본도 기본 OFF 이고, 켜도 L1 점수와 순위는 바뀌지 않는다고 적혀 있다.
 // ─────────────────────────────────────────────────────────────────────────
 function viewImprovement(rows) {
-  var h = "<h2>개선 방향성</h2><p class=\"sub\">건수와 부정 강도 <b>두 축</b>으로 매긴 개선과제입니다. " +
-    "점수는 원본 <code>scoring.score_improvement_tasks</code> 와 같은 공식입니다 — " +
-    "<code>priority_score = |평균 부정강도| × 부정 건수</code>.</p>";
+  var h = "<h2>개선 방향성</h2>";
+  h += '<p class="sub">L1 결정론 스코어링입니다. 군집은 product_category × topic, ' +
+    "우선순위는 |평균 부정강도| × 부정 건수이며 LLM 호출 없이 계산됩니다.</p>";
+  h += '<p class="sub">RC 커버리지 = 군집 VoC 중 Root Cause가 정의된 비율입니다. ' +
+    "높을수록 원인/대상이 드러나 실행 가능한 개선과제로 전환하기 쉽다는 뜻입니다.</p>";
   var list = improvementTasks(rows);
   if (!list.length) return h + '<p class="empty">현재 필터 조건에서 개선과제 후보 군집이 없습니다.</p>';
-  h += cardGrid([
-    card("개선과제 군집", num(list.length), "제품군 × topic", "blue"),
-    card("부정 건수 합", num(list.reduce(function (a, b) { return a + b.neg_count; }, 0)),
-         "min(감정,성공,0) < 0 인 행", "orange"),
-    card("봐야 할 것", num(list.filter(function (x) { return x.watch_axis; }).length),
-         "어느 축으로든 상위 20", "purple")
-  ]);
-  var byVol = list.slice().sort(function (a, b) { return a.volume_rank - b.volume_rank; });
-  var bySev = list.slice().sort(function (a, b) { return a.severity_rank - b.severity_rank; });
-  h += '<div class="row">';
-  h += barChart(byVol.slice(0, 15).map(function (x) { return [x.topic, x.volume_score]; }),
-                "축 A — 건수", "얼마나 많은 사람이 말했나 (부정 건수) · 상위 15개");
-  h += barChart(bySev.slice(0, 15).map(function (x) { return [x.topic, x.severity_score]; }),
-                "축 B — 심각도", "화난 사람은 얼마나 화났나 (부정 행만의 평균) · 상위 15개");
+
+  // 정렬 축 — 고른 것을 기억한다 (원본은 session_state 로 기억한다)
+  var axIdx = window.__improveAxis || 0;
+  h += '<div class="d60-axis"><b>정렬 축</b> ';
+  SORT_AXES.forEach(function (a, i) {
+    h += '<label><input type="radio" name="improveAxis" value="' + i + '"' +
+      (i === axIdx ? " checked" : "") + "> " + esc(a[0]) + "</label>";
+  });
   h += "</div>";
+  var ax = SORT_AXES[axIdx];
+  h += '<p class="sub">정렬: ' + esc(ax[0]) + " — " + esc(ax[3]) + "</p>";
+
+  // ★ 원본과 같은 다중 키 정렬 (오름/내림을 축마다 따로 준다 · 안정 정렬)
+  var sorted = list.map(function (x, i) { return [x, i]; }).sort(function (a, b) {
+    for (var k = 0; k < ax[1].length; k++) {
+      var c = ax[1][k], asc = ax[2][k];
+      var d = (a[0][c] - b[0][c]) * (asc ? 1 : -1);
+      if (d) return d;
+    }
+    return a[1] - b[1];
+  }).map(function (p) { return p[0]; });
+
+  h += sectionTitle("먼저 볼 것 Top 3", ax[3]);
+  h += '<div class="d60-top3">';
+  sorted.slice(0, 3).forEach(function (x, i) {
+    var ex = topNegativeVocs(rows, x.pc, x.topic, 1);
+    h += taskCard("#" + (i + 1) + " " + x.pc + " × " + x.topic, scoreBadges(x),
+                  ex.length ? txt(ex[0].original_voc) : "",
+                  i === 0 ? "red" : i === 1 ? "orange" : "purple");
+  });
+  h += "</div>";
+
+  h += sectionTitle("개선과제 후보 카드", "상위 10개 · 대표 부정 VoC preview");
+  sorted.slice(0, 10).forEach(function (x, rank) {
+    var ex = topNegativeVocs(rows, x.pc, x.topic, 3);
+    h += '<div class="d60-mini-card">';
+    h += taskCard("#" + (rank + 1) + " " + x.pc + " × " + x.topic, scoreBadges(x),
+                  ex.length ? txt(ex[0].original_voc) : "대표 부정 VoC 없음",
+                  rank < 3 ? "red" : "blue");
+    // D-4 — 카드 겉면에 「무엇을 고칠까」 를 한 줄 (라벨과 건수만 보이면 현업이 못 움직인다 · sky)
+    var head = ex.length ? txt(ex[0].rootcause_problem) : "";
+    h += head ? "<p><b>고칠 것</b> &nbsp; " + esc(head) + "</p>"
+              : '<p class="sub">이 묶음의 대표 VoC 에는 RootCause 가 없습니다.</p>';
+    if (ex.length) {
+      h += "<details><summary>대표 부정 VoC " + ex.length + "건 · 문제·대상·원인</summary>";
+      ex.forEach(function (e, o) {
+        if (o) h += "<hr>";
+        h += '<p class="sub">대표 VoC ' + (o + 1) + " · 부정강도 " + (e.__neg || 0).toFixed(1) + "</p>";
+        [["문제", "rootcause_problem"], ["대상", "rootcause_target"], ["원인", "rootcause_cause"]]
+          .forEach(function (q) {
+            var v = txt(e[q[1]]);
+            if (v) h += "<p><b>" + q[0] + "</b> &nbsp; " + esc(v) + "</p>";
+          });
+        h += '<div class="d60-preview">' + esc(txt(e.original_voc)) + "</div>";
+      });
+      h += "</details>";
+    }
+    h += "</div>";
+  });
+
+  h += sectionTitle("전체 개선과제 후보",
+                    list.length + "개 · 내려받아서 봅니다 (화면 카드는 상위 10개)");
+  h += '<p class="sub">지금 정렬축 「' + esc(ax[0]) + '」 기준입니다. ' +
+    "<b>정렬축을 바꾸면 Top 10 도 바뀝니다.</b> 사이드바 필터도 그대로 반영됩니다.</p>";
   h += table(["제품군", "topic", "n", "부정 건수", "부정 비율", "평균 부정강도", "RC 커버리지",
               "우선순위 점수", "건수 순위", "심각도 순위", "종합", "봐야 할 축"],
-             list.map(function (x) {
+             sorted.map(function (x) {
                return [x.pc, x.topic, num(x.n), num(x.neg_count),
                        (x.neg_ratio * 100).toFixed(1) + "%", x.mean_neg.toFixed(3),
                        (x.rc_coverage * 100).toFixed(1) + "%", x.priority_score.toFixed(3),
                        x.volume_rank, x.severity_rank, x.combined_rank, x.watch_axis];
              }), "t-improve");
-  h += '<p class="sub"><button class="dl" data-dl="t-improve" data-name="개선과제">개선과제 전체 받기</button>' +
-    " — 건수가 적다고 목록에서 내리지 않습니다.</p>";
+  h += '<p class="sub"><button class="dl" data-dl="t-improve" data-name="개선과제후보">' +
+    "⬇  전체 개선과제 후보 " + list.length + "개 내려받기 (CSV)</button>" +
+    " — 건수가 적다고 목록에서 내리지 않습니다. 순서만 달라집니다.</p>";
   return h;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// 화면 ③ 문의 속 니즈 — 원본 views/inquiry.py (카드 3 · 그림 2)
+// 화면 ③ 문의 속 니즈 — 원본 views/inquiry.py 를 구조째 옮겼다
+//   ★ 2026-10-23 다시 썼다. 전에는 지표 카드 3 + 막대 2 + 네 칸 표였는데, 원본은
+//     **카드 정렬 기준 · 표시 개수 · 대표 문의 카드 · 문의 유형 거르개 ·
+//       열한 칸 표 · 행 고르면 문의 상세** 까지 있다.
 // ─────────────────────────────────────────────────────────────────────────
+
+// ★ 원본 inquiry.py:44 INQUIRY_CARD_SORTS — 이름·순서·정렬 칸까지 그대로.
+//   원본 주석 — 「전에는 정렬이 아예 없었다 … 기준을 새로 지어내지 않고, 대시보드가
+//   대표 VoC 를 고를 때 이미 쓰는 축(review_queue·topic_score)을 그대로 가져왔다」 (sky 2026-08-20)
+var INQUIRY_CARD_SORTS = [
+  ["우선 검토 순", ["review_queue", "topic_score"]],
+  ["VoC 총점 높은 순", ["voc_total_score", "topic_score"]],
+  ["Topic 점수 높은 순", ["topic_score", "voc_total_score"]]
+];
+var INQUIRY_CARD_COUNTS = ["6", "12", "20", "전체"];
+// 원본 INQUIRY_TABLE_COLUMNS · INQUIRY_TABLE_HEADERS — 열한 칸, 순서까지 그대로.
+//   ★ 원본 주석 — 「주제를 왼쪽으로 올리고 식별자는 맨 뒤로 보낸다」 (sky 2026-08-20)
+//   ★ `원문` 칸은 **공유용에서는 비어 있다** — `original_voc` 는 공유용에서 빼는 칸이다
+//     (`자료_담기.py` 의 `공유용_빼는칸`). 꼬리말이 무엇을 뺐는지 적는다.
+var INQUIRY_TABLE = [
+  ["문의 유형", "inquiry_type", "문의유형이름"], ["니즈 신호 유형", "need_signal_type", "니즈신호이름"],
+  ["Atomic 요약", "atomic_voc_summary", null], ["제품군", "product_category", null],
+  ["이유 Topic", "topic", null], ["CEJ", "cej", null], ["감성", "sentiment_dir", null],
+  ["신뢰도", "confidence_rating", null], ["사람검토", "review_required", null],
+  ["원문", "original_voc", null], ["source_id", "source_id", null]
+];
+
+function 문의유형표시(r) {
+  return (K.문의유형이름 && K.문의유형이름[txt(r.inquiry_type)]) || txt(r.inquiry_type) || "해당없음";
+}
+
+// ★ 원본 _render_inquiry_detail — 「원문은 표 안에서 못 읽는다. 가로로 긴 칸이기 때문이다」
+function renderInquiryDetail(목록, i) {
+  if (i === null || i === undefined || i < 0 || i >= 목록.length) {
+    return '<p class="sub">위 표에서 행을 하나 고르면 그 문의의 원문과 판정 근거를 여기서 읽습니다.</p>';
+  }
+  var r = 목록[i];
+  var h = "<h3>" + esc(txt(r.topic) || "Topic 미확인") + "</h3>";
+  h += '<p class="sub">' + esc(txt(r.product_category) || "제품군 미확인") + " · " +
+    esc(txt(r.cej) || "CEJ 미확인") + " · 신뢰도 " +
+    esc(txt(r.confidence_rating) || "미확인") + "</p>";
+  var 요약 = txt(r.atomic_voc_summary);
+  if (요약) h += '<div class="d60-preview">' + esc(요약) + "</div>";
+  h += "<hr>";
+  h += '<div class="row"><div class="d60-mini-card"><p><b>문의 유형</b></p><p>' +
+    esc(문의유형표시(r)) + "</p></div>";
+  h += '<div class="d60-mini-card"><p><b>니즈 신호 유형</b></p><p>' +
+    esc((K.니즈신호이름 && K.니즈신호이름[txt(r.need_signal_type)]) ||
+        txt(r.need_signal_type) || "해당없음") + "</p></div></div>";
+  h += "<details><summary>원문 보기</summary><p>" +
+    esc(txt(r.original_voc) || "원문이 없습니다.") + "</p></details>";
+  return h;
+}
+
 function viewInquiry(rows) {
   var total = rows.length;
   var inq = rows.filter(function (r) { return txt(r.inquiry_flag).toUpperCase() === "Y"; });
@@ -487,7 +676,7 @@ function viewInquiry(rows) {
     card("문의 제품군 수", num(uniq(inq, "product_category")), "product_category", "blue"),
     card("문의 Topic 수", num(uniq(inq, "topic")), "reason topic", "green")
   ]);
-  if (!inq.length) return h + '<p class="empty">이 조건에서 문의형 VoC 가 없습니다.</p>';
+  if (!inq.length) return h + '<p class="empty">현재 필터 조건에서 문의형 VoC가 없습니다.</p>';
   // ★ 2026-10-22 Codex 교차점검 — 원본의 **핵심 두 분포를 다른 것으로 바꿔** 놓았다.
   //   원본(inquiry.py:167-204)이 그리는 둘은 「문의 유형」 과 「니즈 신호 유형」 이고,
   //   둘 다 **원시 코드값을 한국어 표시값으로 바꾼 뒤** 센다 (`_display_label`).
@@ -500,11 +689,84 @@ function viewInquiry(rows) {
   h += barChart(countByLabel(inq, "need_signal_type", K.니즈신호이름),
                 "니즈 신호 유형", "고객이 원하는 것의 유형");
   h += "</div>";
-  h += table(["atomic_id", "topic", "CEJ", "요약문"],
-             inq.map(function (r) {
-               return [r.atomic_id, r.topic, r.cej,
-                       (r.atomic_voc_summary || r.atomic_voc || "").slice(0, 70)];
-             }), "t-inq");
+
+  // ─── 대표 문의 카드 — 원본 inquiry.py:207-262 ──────────────────────────────
+  var sIdx = window.__inqSort || 0, cIdx = window.__inqCount || 0;
+  h += '<div class="d60-axis"><b>카드 정렬 기준</b> <select id="inqSort">';
+  INQUIRY_CARD_SORTS.forEach(function (a, i) {
+    h += '<option value="' + i + '"' + (i === sIdx ? " selected" : "") + ">" + esc(a[0]) + "</option>";
+  });
+  h += '</select> &nbsp; <b>표시 개수</b> <select id="inqCount">';
+  INQUIRY_CARD_COUNTS.forEach(function (c, i) {
+    h += '<option value="' + i + '"' + (i === cIdx ? " selected" : "") + ">" + esc(c) + "</option>";
+  });
+  h += "</select></div>";
+  // ★ 원본은 `ascending=False` — 두 칸 **모두 내림차순**, 안정 정렬 (pandas 기본)
+  var 정렬칸 = INQUIRY_CARD_SORTS[sIdx][1];
+  var ordered = inq.map(function (x, i) { return [x, i]; }).sort(function (a, b) {
+    for (var k = 0; k < 정렬칸.length; k++) {
+      var c = 정렬칸[k];
+      var d = numOr(b[0][c] === true ? 1 : b[0][c] === false ? 0 : b[0][c], 0) -
+              numOr(a[0][c] === true ? 1 : a[0][c] === false ? 0 : a[0][c], 0);
+      if (d) return d;
+    }
+    return a[1] - b[1];
+  }).map(function (p) { return p[0]; });
+  var 개수 = INQUIRY_CARD_COUNTS[cIdx];
+  var preview = 개수 === "전체" ? ordered : ordered.slice(0, parseInt(개수, 10));
+  h += sectionTitle("대표 문의 카드",
+    INQUIRY_CARD_SORTS[sIdx][0] + " · " + preview.length + "개 표시 / 문의형 전체 " +
+    inq.length + "건 · 카드 하나가 VoC 「한 건」 이다 (같은 주제를 묶은 것이 아님)");
+  h += '<div class="d60-card2">';
+  preview.forEach(function (r) {
+    h += taskCard(txt(r.topic) || "N/A",
+      badge(txt(r.product_category) || "제품군 미확인") +
+      badge(txt(r.cej) || "CEJ 미확인") +
+      badge(txt(r.confidence_rating) || "confidence 미확인"),
+      txt(r.atomic_voc_summary) || txt(r.original_voc) || "", "purple");
+  });
+  h += "</div>";
+
+  // ─── 문의형 VoC 체크 — 원본 inquiry.py:264-303 ─────────────────────────────
+  h += sectionTitle("문의형 VoC 체크",
+    "행을 고르면 그 문의의 원문과 판정 근거를 아래에서 읽습니다 · 위 카드는 고른 기준으로 " +
+    "몇 건만, 이 표는 " + inq.length + "건 전부");
+  var 유형들 = [];
+  inq.forEach(function (r) {
+    var v = 문의유형표시(r);
+    if (유형들.indexOf(v) < 0) 유형들.push(v);
+  });
+  유형들.sort(function (a, b) { return a.localeCompare(b, "ko"); });
+  var 고른유형 = window.__inqTypes || [];
+  h += '<div class="d60-axis"><b>문의 유형으로 거르기</b> ';
+  유형들.forEach(function (v) {
+    h += ' <label><input type="checkbox" data-inqtype="' + esc(v) + '"' +
+      (고른유형.indexOf(v) >= 0 ? " checked" : "") + "> " + esc(v) + "</label>";
+  });
+  h += ' <span class="d60-note">비워 두면 전부 봅니다.</span></div>';
+  var 표행 = 고른유형.length
+    ? inq.filter(function (r) { return 고른유형.indexOf(문의유형표시(r)) >= 0; })
+    : inq;
+  if (고른유형.length) {
+    h += '<p class="sub">' + num(표행.length) + "건 / 문의형 전체 " + num(inq.length) + "건</p>";
+  }
+  // ★ 고른 행을 다시 그릴 때 쓴다 — 거르개·정렬을 바꾸면 자리 번호의 뜻이 달라지므로 비운다
+  window.__inqTableRows = 표행;
+  h += table(INQUIRY_TABLE.map(function (c) { return c[0]; }),
+             표행.map(function (r) {
+               return INQUIRY_TABLE.map(function (c) {
+                 if (c[2]) return (K[c[2]] && K[c[2]][txt(r[c[1]])]) || txt(r[c[1]]) || "해당없음";
+                 return txt(r[c[1]]);
+               });
+             }), "t-inq", true, "inqDetail");
+  // ★ 원본 render_table_download 의 글귀 그대로. 「화면에서 숨긴 칸도」 한 마디는 **뺀다** —
+  //   우리 표에는 칸 숨기기가 없다 (Streamlit 전용 고르개였다).
+  h += '<p class="sub"><button class="dl" data-dl="t-inq" data-name="문의형VoC">' +
+    "⬇ 문의형 VoC 통째로 받기 (" + num(표행.length) + "행 · " + INQUIRY_TABLE.length +
+    "칸)</button> — 지금 걸린 사이드바 필터와 「문의 유형으로 거르기」 가 그대로 반영됩니다. " +
+    "사용자명·이메일·링크는 가려진 판본입니다.</p>";
+  h += '<div class="d60-mini-card">' + sectionTitle("문의 상세", "고른 행의 원문과 판정 근거") +
+    '<div id="inqDetail">' + renderInquiryDetail(표행, window.__inqDetail) + "</div></div>";
   return h;
 }
 
@@ -851,7 +1113,10 @@ function render() {
 // ── 누름 처리 ─────────────────────────────────────────────────────────────
 function wire(rows) {
   document.querySelectorAll("#tabs button").forEach(function (b) {
-    b.onclick = function () { S.tab = b.dataset.tab; S.detail = null; render(); window.scrollTo(0, 0); };
+    b.onclick = function () {
+      S.tab = b.dataset.tab; S.detail = null; window.__inqDetail = null;
+      render(); window.scrollTo(0, 0);
+    };
   });
   document.querySelectorAll('input[data-filter]').forEach(function (c) {
     c.onchange = function () {
@@ -870,6 +1135,34 @@ function wire(rows) {
       if (c.checked && i < 0) S.confidence.push(v);
       if (!c.checked && i >= 0) S.confidence.splice(i, 1);
       S.detail = null; render();
+    };
+  });
+  // ★ 정렬 축 — 누르면 Top 3 · 후보 카드 10 · 표가 **다 다시 정렬된다** (원본 radio).
+  document.querySelectorAll('input[name="improveAxis"]').forEach(function (r) {
+    r.onchange = function () {
+      window.__improveAxis = parseInt(r.value, 10) || 0;
+      S.detail = null; render();
+    };
+  });
+  // ★ 문의 카드 — 정렬 기준·표시 개수를 바꾸면 자리 번호의 뜻이 달라지므로 고른 행을 비운다
+  var iq = document.getElementById("inqSort");
+  if (iq) iq.onchange = function () {
+    window.__inqSort = parseInt(iq.value, 10) || 0;
+    window.__inqDetail = null; render();
+  };
+  var ic = document.getElementById("inqCount");
+  if (ic) ic.onchange = function () {
+    window.__inqCount = parseInt(ic.value, 10) || 0;
+    window.__inqDetail = null; render();
+  };
+  document.querySelectorAll("input[data-inqtype]").forEach(function (c) {
+    c.onchange = function () {
+      var v = c.dataset.inqtype, 고름 = (window.__inqTypes || []).slice();
+      var i = 고름.indexOf(v);
+      if (c.checked && i < 0) 고름.push(v);
+      if (!c.checked && i >= 0) 고름.splice(i, 1);
+      window.__inqTypes = 고름;
+      window.__inqDetail = null; render();
     };
   });
   var vm = document.getElementById("videoMin");
@@ -906,8 +1199,16 @@ function wire(rows) {
   });
   document.querySelectorAll("tr.pickable").forEach(function (tr) {
     tr.onclick = function () {
-      S.detail = +tr.dataset.row;
-      document.getElementById("rowDetail").innerHTML = renderRowDetail(rows, S.detail);
+      // ★ 표마다 자세히 펼칠 자리가 다르다 — 문의 표는 `inqDetail`, 나머지는 `rowDetail`
+      var i = +tr.dataset.row, 어디 = tr.dataset.detail || "rowDetail";
+      var 상자 = document.getElementById(어디);
+      if (어디 === "inqDetail") {
+        window.__inqDetail = i;
+        if (상자) 상자.innerHTML = renderInquiryDetail(window.__inqTableRows || [], i);
+      } else {
+        S.detail = i;
+        if (상자) 상자.innerHTML = renderRowDetail(rows, i);
+      }
       document.querySelectorAll("tr.pickable").forEach(function (x) { x.classList.remove("on"); });
       tr.classList.add("on");
     };

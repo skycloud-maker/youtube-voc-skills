@@ -119,6 +119,17 @@ def _원본꾸밈() -> str:
 
 # ── 뼈대 꾸밈 — 원본에 없는 것만 (사이드바 · 탭 · 표 · 접이식) ──────────────────
 뼈대꾸밈 = """
+/* ★ 개선 방향성 — 정렬 축 줄과 Top 3 배치 (2026-10-23 · 원본 st.radio + st.columns(3)) */
+.d60-axis{margin:10px 0 4px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.d60-axis label{display:inline-flex;gap:5px;align-items:center;cursor:pointer;font-size:14px}
+.d60-top3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:8px 0 18px}
+.d60-mini-card details{margin-top:8px}
+.d60-mini-card details>summary{cursor:pointer;color:var(--sub,#6b7280);font-size:13px;padding:4px 0}
+/* ★ 대표 문의 카드 — 원본은 행마다 st.columns(2) 를 새로 만든다 (두 칸 격자가 같은 모양) */
+.d60-card2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:8px 0 18px}
+.d60-axis select{font:inherit;padding:3px 6px;border:1px solid var(--line,#e5e7eb);border-radius:6px}
+@media(max-width:700px){.d60-top3,.d60-card2{grid-template-columns:1fr}}
+
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg,#fff);color:var(--fg,#111827);
   font:15px/1.6 -apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif}
