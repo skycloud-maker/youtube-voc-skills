@@ -29,6 +29,10 @@ from paths import REPO, SHARED  # noqa: E402
 옛경로 = re.compile(r"(?i)\b[a-z]:(?:\\\\|\\|/)+codex|codex_live_merge")
 # 옛 경로 검사의 예외 — (파일, 줄 내용) 이 **둘 다** 맞아야 한다. 늘릴 때는 sky 에게 묻고 이유를 적는다.
 옛경로_예외 = {
+    # ★ 옛 저장소 **자리를 한 곳에서만 정하는** 줄이다 (2026-10-23 · 결정 0004).
+    #   부르는 것이 아니라 **읽기만** 할 때 쓰는 자리다. 여기 없으면 시험마다 경로를 박게 된다.
+    ("plugin/shared/paths.py",
+     'or r"C:\\codex\\outputs\\voc_secondary")'),
     # sky 2026-09-18 「원문 그대로 + 검사 예외」 — 기준서 원문의 금지 문구다. 옛 폴더를 부르지 않는다.
     ("plugin/shared/standards/9_택소노미_2차확장.md",
      "하지 않는 것   C:\\codex_live_merge\\src\\voc_rebuild\\schema.py 수정"),

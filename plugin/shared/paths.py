@@ -38,3 +38,10 @@ EVAL_ROOT = Path(os.environ.get("VOC_EVAL_ROOT") or r"C:\voc_시험격리")
 #     `dashboard_run_state.json` · `exact_reanalysis/`). 저장소 안에서 돌리면 엔진 지문검사가 깨진다.
 #     다른 컴퓨터에서는 VOC_대시보드자리 로 가리킨다.
 DASHBOARD_ROOT = Path(os.environ.get("VOC_대시보드자리") or r"C:\voc_대시보드")
+
+# 옛 저장소(변화 0) — **읽기만** 한다. 우리가 무엇을 옮겼는지 대볼 때만 쓴다 (결정 0004).
+#   ★ 고치지 않는다 · 돌리지 않는다 · zip 도 풀지 않는다 (결정 0001).
+#   ★ 받는 사람 컴퓨터에는 없다. 없으면 그 시험은 건너뛴다 — 거기선 확인할 것이 없다.
+#     다른 컴퓨터에서는 VOC_옛저장소 로 가리킨다.
+옛저장소 = Path(os.environ.get("VOC_옛저장소")
+              or r"C:\codex\outputs\voc_secondary")
