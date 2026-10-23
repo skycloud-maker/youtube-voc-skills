@@ -12,13 +12,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
 _여기 = Path(__file__).resolve().parent
+_뿌리 = _여기.parent
 sys.path.insert(0, str(_여기.parent / "plugin" / "shared"))
 sys.path.insert(0, str(_여기 / "baseline"))
 from paths import BASELINE  # noqa: E402
@@ -250,3 +253,135 @@ def test_허용한_칸만_빼고_나머지는_잡는다():
                           {"brand_display"}, {})
     # 행 수가 다르면 다름이다
     assert 맞대기_mod._칸다름("x.xlsx", "raw_voc", 가, 나[:2], {"brand_display"}, {})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 사람 결정이 든 4차 — **옛 최종 결과 그 자체**와 댄다 (2026-10-23 · 결정 0005 의 빈 칸)
+#
+# sky 2026-10-23 — 「이 패키지로 나온 최종 아웃풋이 첨부한 『★ 2판_최최종_아웃풋번들』 이
+#   나오도록 돌아가는 skill 이 맞는지」
+#
+# ★ 다른 얼린 기준과 **다른 방식**이다. 다른 것들은 「옛 도구 사본을 돌려 만든 정답」 과 대지만,
+#   이것은 **옛 저장소가 실제로 낸 최종 번들**과 댄다. 더 센 대조다 — 사람 결정 683칸이 든 판이다.
+#   그 번들은 `원본사본/2판/_판독패키지/_결과/master_final/` 에 이미 복사돼 있다 (2026-09 복사).
+#   `★ 2판_최최종_아웃풋번들.xlsx` 와 **같은 파일**임을 지문으로 확인했다 (결정 0005).
+#
+# ★ 옛 저장소는 **읽지도 않는다** — 기준 자리의 사본만 쓴다 (결정 0001 · 변화 0).
+#   (옛 자리의 경로는 `paths.py` 한 곳에만 둔다 — 2026-10-23 검사가 이 줄을 잡았다)
+# ★ 값으로 댄다 (`data_only=True`). 색·너비 같은 꾸밈은 `번들꾸미기` 얼린 기준이 따로 지킨다.
+# ─────────────────────────────────────────────────────────────────────────────
+_옛번들지문 = "6e07c2281953a8c29a0d38ec7c1f499bd9a61d77b5a549c77734854cb7be0c3f"
+# 4차_반영 이 읽는 입력 — 어느 자리에서 읽는지는 도구 안에 적혀 있다
+_4차입력 = [
+    "_판독패키지/_결과/master_final/raw_voc.csv",
+    "_판독패키지/_결과/master_final/분리제안.csv",
+    "_판독패키지/_결과/master_final/수정로그_오류확정.csv",
+    "_판독패키지/_결과/master_final/수정로그_재검토필요.csv",
+    "_판독패키지/_결과/master_final/편향검사.csv",
+    "_판독패키지/_결과/master_final/구조적결함.csv",
+    "_판독패키지/_결과/master_final/기준서개정후보.csv",
+    "_판독패키지/_결과/master_final/판정불일치.csv",
+    "s15_master/raw_voc.csv",
+    "s15_master/사람이볼목록.csv",
+    "_인계/보정요청.csv",
+]
+_옛번들 = "_판독패키지/_결과/master_final/voc_dashboard_export_bundle_2차시험본.xlsx"
+
+
+def _시트값(길: Path, 이름: str) -> list:
+    """시트 한 장을 값만 읽는다 — 꼬리 빈 줄은 뺀다."""
+    import openpyxl                                            # noqa: PLC0415
+
+    책 = openpyxl.load_workbook(길, read_only=True, data_only=True)
+    try:
+        줄들 = [tuple("" if c is None else str(c) for c in 행)
+              for 행 in 책[이름].iter_rows(values_only=True)]
+    finally:
+        책.close()
+    while 줄들 and not any(줄들[-1]):
+        줄들.pop()
+    return 줄들
+
+
+def test_사람결정이_든_4차가_옛_최종번들을_그대로_낸다():
+    """★ 결정 0005 의 빈 칸 하나를 메운다.
+
+    우리 총괄 스킬이 차린 자리에 **옛 4차 입력**(사람 결정이 든 것)을 얹어
+    우리 `4차_반영.py` 를 돌리면, 옛 저장소가 낸 최종 번들과 **시트 17장이 값까지 같아야** 한다.
+    """
+    원본 = BASELINE / "원본사본" / "2판"
+    assert 원본.is_dir(), "기준 자리의 옛 2판 사본이 없다 — %s" % 원본
+    옛번들길 = 원본 / _옛번들
+    assert 옛번들길.is_file(), "옛 최종 번들이 없다 — %s" % 옛번들길
+    assert _sha(옛번들길) == _옛번들지문, (
+        "옛 최종 번들이 바뀌었다 — 이것은 대조의 **기준**이다. 결정 0005 를 다시 본다.")
+    for r in _4차입력:
+        assert (원본 / r).is_file(), "옛 4차 입력이 없다 — %s" % r
+
+    그릇 = BASELINE / "시험실행" / "4차_사람결정"
+    if 그릇.exists():
+        shutil.rmtree(그릇)
+    그릇.mkdir(parents=True)
+
+    # ① 우리 스킬로 자리를 차린다 (옛 폴더 모양은 스킬이 만든다)
+    차리개 = _뿌리 / "plugin" / "skills" / "coordinating-voc-pipeline" / "scripts" / "총괄자리_차리기.py"
+    r = subprocess.run([sys.executable, "-X", "utf8", str(차리개), str(그릇), "2판"],
+                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+    assert r.returncode == 0, r.stdout + r.stderr
+    판 = 그릇 / "2판"
+    assert (판 / "4차_반영.py").is_file(), "차린 자리에 4차_반영.py 가 없다"
+
+    # ② 옛 4차 입력을 얹는다 (**복사만** — 기준 자리의 사본에서 읽는다)
+    for rel in _4차입력:
+        q = 판 / rel
+        q.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(원본 / rel, q)
+
+    # ③ 우리 4차_반영 을 돌린다
+    env = dict(os.environ, VOC_ENGINE=str(판 / "engine"),
+               PYTHONDONTWRITEBYTECODE="1", PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    r = subprocess.run([sys.executable, "-B", str(판 / "4차_반영.py")], cwd=str(판),
+                       env=env, capture_output=True, text=True, encoding="utf-8",
+                       errors="replace")
+    (그릇 / "실행기록.txt").write_text(
+        "종료코드: %d\n\n--- stdout ---\n%s\n--- stderr ---\n%s\n"
+        % (r.returncode, r.stdout, r.stderr), encoding="utf-8")
+    assert r.returncode == 0, (r.stdout + r.stderr)[-3000:]
+
+    # ④ 옛 최종 번들과 **시트 17장을 값까지** 댄다
+    import openpyxl                                            # noqa: PLC0415
+
+    낸것 = 판 / _옛번들
+    assert 낸것.is_file(), "번들을 못 냈다 — %s" % 낸것
+    책옛 = openpyxl.load_workbook(옛번들길, read_only=True, data_only=True)
+    책새 = openpyxl.load_workbook(낸것, read_only=True, data_only=True)
+    try:
+        옛시트, 새시트 = list(책옛.sheetnames), list(책새.sheetnames)
+    finally:
+        책옛.close()
+        책새.close()
+    assert 새시트 == 옛시트, ("시트 이름·순서가 다르다\n  옛 %s\n  새 %s" % (옛시트, 새시트))
+    assert len(옛시트) == 17, "옛 번들 시트가 %d장으로 바뀌었다" % len(옛시트)
+    다름 = []
+    for s in 옛시트:
+        a, b = _시트값(옛번들길, s), _시트값(낸것, s)
+        if a == b:
+            continue
+        첫 = None
+        for i in range(min(len(a), len(b))):
+            for j in range(max(len(a[i]), len(b[i]))):
+                x = a[i][j] if j < len(a[i]) else ""
+                y = b[i][j] if j < len(b[i]) else ""
+                if x != y:
+                    첫 = "%d행 %d칸 — 옛 %r / 새 %r" % (i + 1, j + 1, x[:60], y[:60])
+                    break
+            if 첫:
+                break
+        다름.append("[%s] 행 옛 %d / 새 %d · %s" % (s, len(a), len(b), 첫 or "행 수만 다르다"))
+    assert not 다름, "옛 최종 번들과 다른 시트 %d장:\n%s" % (len(다름), "\n".join(다름))
+
+    # ⑤ 데이터는 건드리지 않았는지 — 4차_반영 은 raw_voc 를 고치지 않아야 한다
+    #   (분리 승인이 없고 묶음이 이미 맞으므로. 여기서 바뀌면 둘 중 하나가 깨진 것이다)
+    assert _sha(판 / "_판독패키지/_결과/master_final/raw_voc.csv") == _sha(
+        원본 / "_판독패키지/_결과/master_final/raw_voc.csv"), (
+        "4차_반영 이 raw_voc 를 고쳤다 — 옛 판에서는 고칠 것이 없었다")

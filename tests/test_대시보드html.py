@@ -40,6 +40,11 @@ def _칸들() -> list[str]:
     return list(자료_담기.담을칸)
 
 
+def _밑id(i: int) -> str:
+    """유튜브 댓글 id 와 **같은 꼴**. 7행은 6행과 같은 댓글의 둘째 조각이다."""
+    return "Ugz6w2UmZgOaWpFs1qN%03dAaABAg" % (6 if i == 7 else i)
+
+
 def _시험표(자리: Path, 행수: int = 12) -> Path:
     """작은 CSV 하나 — ★ URL 뒤에 **공백과 한글**이 오는 칸을 일부러 둔다."""
     칸 = _칸들()
@@ -96,9 +101,15 @@ def _시험표(자리: Path, 행수: int = 12) -> Path:
                 #   따옴표를 넘어 다음 칸·다음 행까지 먹었다. 그 꼴로 둔다.
                 값.append("https://www.youtube.com/watch?v=abc%d" % i)
             elif c == "source_id":
-                값.append("src%d" % i)
+                # ★ **실제 꼴로** 둔다 (2026-10-23). 전에는 "src3" 이라 공유용 가명화를
+                #   시험해도 「유튜브 id 가 새지 않았다」 가 **그냥 참**이었다 — 무력한 시험이다.
+                값.append(_밑id(i))
             elif c == "atomic_id":
-                값.append("a%d" % i)
+                값.append(_밑id(i) + ("-02" if i == 7 else "-01"))
+            elif c == "split_origin_atomic_id":
+                # ★ 2차 분리 짝 하나 — 6행과 7행이 같은 댓글에서 나뉜 것으로 둔다.
+                #   가명으로 바꿔도 **형제 관계가 살아 있는지** 보는 자리다.
+                값.append(_밑id(6) + "-01" if i in (6, 7) else "")
             elif c in ("tee_emotion_score", "tee_success_score", "topic_score",
                        "voc_total_score", "tee_time_score", "tee_effort_score"):
                 값.append("-2" if i % 3 == 1 else "1")
@@ -457,3 +468,64 @@ def test_탭_다섯이_원본_순서와_같다():
         assert '"%s"' % t in 우리, "탭 「%s」 가 화면에 없다" % t
         자리.append(우리.index('"%s"' % t))
     assert 자리 == sorted(자리), "탭 순서가 원본과 다르다 — 원본 순서는 %s" % 탭들
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 공유용의 식별자 — **가명**이어야 하고, 셈은 그대로여야 한다
+#   sky 2026-10-23 「공유용은 가명으로 바꿔주세요」
+#   ★ 지우지 않는 까닭 — source_id 는 영상별 댓글 수의 분모이고,
+#     atomic_id·split_origin_atomic_id 는 2차 분리 관계를 셈한다. 지우면 그 셈이 깨진다.
+#     그래서 한 대 한으로 바꾼다. 이 시험이 **둘 다** 지킨다.
+# ─────────────────────────────────────────────────────────────────────────────
+_유튜브id = re.compile(r"Ug[A-Za-z0-9_.-]{15,}")
+_가명 = re.compile(r"^댓글#\d+(-\d+)?$")
+
+
+def test_공유용에는_유튜브_댓글id가_없다(만든것):
+    살글 = 만든것["살펴보기"][2]
+    공글 = 만든것["공유용"][2]
+    # ★ 먼저 **시험이 무력하지 않은지** 본다 — 살펴보기에는 있어야 한다
+    assert _유튜브id.search(살글), (
+        "시험 자료에 유튜브 id 꼴이 없다 — 이 시험이 무력하다 (_밑id 를 확인한다)")
+    남음 = _유튜브id.findall(공글)
+    assert not 남음, "공유용에 유튜브 댓글 id 가 %d번 남았다 — %s" % (len(남음), 남음[:3])
+
+
+def test_공유용_식별자가_가명_꼴이다(만든것):
+    행 = 만든것["공유용"][1]["행"]
+    for c in ("source_id", "atomic_id", "split_origin_atomic_id"):
+        값들 = [str(r.get(c) or "").strip() for r in 행]
+        있는것 = [v for v in 값들 if v]
+        assert 있는것, "공유용에 %s 값이 하나도 없다 — 셈이 깨진다" % c
+        틀린것 = [v for v in 있는것 if not _가명.match(v)]
+        assert not 틀린것, "공유용 %s 에 가명이 아닌 값 %d개 — %s" % (c, len(틀린것), 틀린것[:3])
+
+
+def test_가명으로_바꿔도_셈이_그대로다(만든것):
+    """★ 가명화가 지켜야 하는 것 — 같은 id 는 같은 가명, 다른 id 는 다른 가명.
+
+    그래야 영상별 댓글 수(source_id 가 있는 행)와 2차 분리 형제 수가 바뀌지 않는다.
+    """
+    def 셈(자료):
+        행 = 자료["행"]
+        있는source = [str(r.get("source_id") or "").strip() for r in 행]
+        있는source = [v for v in 있는source if v]
+        묶 = {}
+        for r in 행:
+            v = str(r.get("split_origin_atomic_id") or "").strip()
+            if v:
+                묶[v] = 묶.get(v, 0) + 1
+        return {"행수": len(행), "source있는행": len(있는source),
+                "source고유": len(set(있는source)), "형제묶음": sorted(묶.values())}
+
+    살 = 셈(만든것["살펴보기"][1])
+    공 = 셈(만든것["공유용"][1])
+    assert 살["형제묶음"], "시험 자료에 2차 분리 행이 없다 — 형제 셈을 못 본다"
+    assert 살 == 공, "가명으로 바꾸자 셈이 달라졌다 — 살 %s / 공 %s" % (살, 공)
+
+
+def test_영상집계_숫자가_두_장에서_같다(만든것):
+    """댓글 수는 source_id 가 있는 행을 센다 — 가명화가 이것을 깨면 ② 화면이 틀린다."""
+    살 = {v["video_id"]: v["comment_count"] for v in 만든것["살펴보기"][1]["맞춤값"]["영상집계"]}
+    공 = {v["video_id"]: v["comment_count"] for v in 만든것["공유용"][1]["맞춤값"]["영상집계"]}
+    assert 살 and 살 == 공, "영상별 댓글 수가 두 장에서 다르다 — 살 %s / 공 %s" % (살, 공)
