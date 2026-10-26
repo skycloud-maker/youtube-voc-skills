@@ -298,9 +298,12 @@ python 3.11 이상   —  python --version 으로 확인
 ## ② 파이썬 꾸러미
 
 보기만 할 때 (보고서 · 대시보드 HTML) —
+★ `pyyaml` 은 **대시보드 HTML** 에 필요합니다 — 엔진의 계산 모듈이 설정 yaml 을 읽습니다.
+  2026-10-26 빈 환경에서 밟아 보고 알았습니다 (전에는 둘만 적혀 있어 **빈 컴퓨터에서 막혔습니다**).
+  보고서만 만들 때는 `pandas` · `openpyxl` 둘로 됩니다.
 
 ```bash
-python -m pip install pandas openpyxl
+python -m pip install pandas openpyxl pyyaml
 ```
 
 1차까지 돌릴 때 — 깔 목록이 꾸러미에 **들어 있습니다** —
@@ -338,7 +341,7 @@ codex      Codex CLI        2차 판독 한 자리 · 3차 감독 한 자리
 ## 갖췄는지 확인하는 법
 
 ```bash
-python -c "import pandas, openpyxl; print('보기 준비됨')"
+python -c "import pandas, openpyxl, yaml; print('보기 준비됨')"
 python -c "import streamlit, altair, pydantic; print('대시보드 준비됨')"
 python -c "import os; print('키', [k for k in ('YOUTUBE_API_KEY','OPENAI_API_KEY') if os.environ.get(k)])"
 ```

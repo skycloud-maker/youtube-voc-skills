@@ -84,7 +84,10 @@ def 엔진_불러오기():
     except ImportError as e:
         print("  ✗ 엔진의 계산 모듈을 못 불렀습니다 — %s" % e)
         print("     이 도구는 대시보드와 **같은 계산**을 씁니다 (따로 세지 않습니다).")
-        print("     필요한 것: pandas · openpyxl   (python -m pip install pandas openpyxl)")
+        # ★ 2026-10-26 빈 환경 시험이 잡았다 — `pyyaml` 이 빠져 있었다. 엔진의 계산 모듈이
+        #   설정 yaml 을 읽어서 필요하다. 셋을 다 적지 않으면 받는 사람이 빈 컴퓨터에서 막힌다.
+        print("     필요한 것: pandas · openpyxl · pyyaml")
+        print("       python -m pip install pandas openpyxl pyyaml")
         return None
     return pd, materialize_dashboard_columns, apply_filters, score_improvement_tasks, _계약
 

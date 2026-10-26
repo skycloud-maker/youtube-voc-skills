@@ -79,7 +79,8 @@ description: 유튜브 가전 VoC 분석의 최종 산출물로 대시보드를 
 
 ```
 python 3.11+
-pandas · openpyxl            최종 엑셀을 읽는다 (HTML 만들기에 필요)
+pandas · openpyxl · pyyaml   최종 엑셀을 읽고 엔진과 같은 계산을 쓴다 (HTML 만들기에 필요)
+                             ★ pyyaml 은 2026-10-26 빈 환경 시험에서 빠진 것을 찾았다
 streamlit                    3번(화면 띄우기)에만 필요하다. HTML 만들기에는 필요 없다
 ```
 
