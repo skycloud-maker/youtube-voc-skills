@@ -36,6 +36,8 @@ from paths import BASELINE, PLUGIN  # noqa: E402
     "입력없음_멈춤": ["아무것도 만들지 않았다", "무엇이 필요한지 알렸다"],
     "HTML_만들기": ["살펴보기용·공유용 두 장이 있다", "탭 다섯이 다 있다",
                  "바깥 자원(CDN)이 0개다", "공유용에 원문 전량이 없다",
+                 # ★ 2026-10-26 sky 결정 — 식별자를 지우지 않고 **가명**으로 바꾼다
+                 "공유용의 유튜브 댓글 id 가 가명이다",
                  "치운 건수와 다시 훑은 결과를 적었다"],
     "최종본을_앉힌다": ["한 겹 자리에 voc_dashboard_dataset.csv 가 있다", "metadata.json 이 있다",
                   "행 수가 원본과 같다", "저장소를 더럽히지 않았다"],
@@ -118,7 +120,7 @@ def 채점(그릇: Path) -> dict:
         봄("바깥 자원(CDN)이 0개다",
           all(not re.search(r'(?:src|href)="https?://', g) for g in 글들))
         공유 = [g for p, g in zip(html들, 글들) if "공유" in p.name]
-        # ★ 꼬리말이 「원문 전량과 식별자를 뺐습니다(original_voc · …)」 로 **뺀 칸 이름을 적는다**.
+        # ★ 꼬리말이 「원문 전량을 뺐습니다(original_voc · …)」 로 **뺀 칸 이름을 적는다**.
         #   그 글자를 원문으로 세면 거짓 반려가 된다 (2026-10-20 실측). 표의 **칸 머리**를 본다.
         def _표머리에_원문이(글: str) -> bool:
             import re as _re
@@ -127,6 +129,18 @@ def 채점(그릇: Path) -> dict:
         봄("공유용에 원문 전량이 없다",
           bool(공유) and not any(_표머리에_원문이(g) for g in 공유),
           "공유용 %d장" % len(공유))
+        # ★ 공유용의 유튜브 댓글 id 는 **가명**이어야 한다 (sky 2026-10-26).
+        #   ★ 「살펴보기에는 있나」 를 먼저 본다 — 자료에 id 가 없으면 이 항목은 **그냥 참**이 되어
+        #     아무것도 지키지 않는다 (2026-10-23 에 기계 시험에서 그 함정을 겪었다).
+        유튜브id = re.compile(r"Ug[A-Za-z0-9_.-]{15,}")
+        살펴 = [g for p, g in zip(html들, 글들) if "공유" not in p.name]
+        봄("공유용의 유튜브 댓글 id 가 가명이다",
+          bool(공유) and bool(살펴) and any(유튜브id.search(g) for g in 살펴)
+          and not any(유튜브id.search(g) for g in 공유)
+          and all("댓글#" in g for g in 공유),
+          "살펴보기 id %d곳 · 공유용 id %d곳"
+          % (sum(len(유튜브id.findall(g)) for g in 살펴),
+             sum(len(유튜브id.findall(g)) for g in 공유)))
         봄("치운 건수와 다시 훑은 결과를 적었다",
           bool(공유) and all("다시 훑은" in g for g in 공유))
     elif 시험 == "최종본을_앉힌다":
