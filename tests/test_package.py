@@ -270,3 +270,29 @@ def test_안내서가_가리키는_그림이_다_있다(차린폴더):
                 없음.append("%s → %s" % (안내.name, g))
     assert 모두 >= 6, "안내서가 가리키는 그림을 못 찾았다 (무늬가 안 맞나) — %d개" % 모두
     assert not 없음, "안내서가 가리키는 그림이 없다 — %s" % 없음[:5]
+
+
+def test_플러그인_판번호가_변경이력_맨_위와_같다():
+    """★ 2026-10-26 — 2.0.0 동결 때 `plugin.json` 을 **안 고쳤다.** 판 번호가 `1.0.0` 그대로였고
+    설명에 든 스킬도 **다섯**이었다 (대시보드가 빠졌다). 지키는 시험이 없어 아무도 몰랐다.
+
+    `plugin.json` 은 Claude Code 가 이 꾸러미를 **알아보는 자리**다. 거기 적힌 판 번호가
+    변경 이력의 맨 위와 다르면, 받은 사람은 옛 판을 쓰면서 새 판이라고 믿는다.
+    """
+    d = json.loads((REPO / "plugin" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    줄들 = (REPO / "CHANGELOG.md").read_text(encoding="utf-8").split(chr(10))
+    맨위 = next((s for s in 줄들 if s.startswith("## ")), "")
+    번호 = 맨위[3:].split(" ")[0].strip()
+    assert 번호, "CHANGELOG 맨 위에서 판 번호를 못 읽었다 — %r" % 맨위
+    assert d.get("version") == 번호, (
+        "plugin.json 판 번호 %r 가 변경 이력 맨 위 %r 와 다르다" % (d.get("version"), 번호))
+
+
+def test_플러그인_설명이_든_스킬을_하나도_빠뜨리지_않는다():
+    """설명은 사람이 「무엇이 들었나」 를 보는 자리다. 빠지면 그 스킬은 없는 셈이 된다."""
+    d = json.loads((REPO / "plugin" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    설명 = d.get("description", "")
+    있는스킬 = sorted(p.name for p in (REPO / "plugin" / "skills").iterdir()
+                  if p.is_dir() and (p / "SKILL.md").is_file())
+    빠진것 = [s for s in 있는스킬 if s not in 설명]
+    assert not 빠진것, "plugin.json 설명에 빠진 스킬 — %s" % 빠진것
