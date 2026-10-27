@@ -873,6 +873,38 @@ def _키이름들() -> tuple:
     모 = _일차돌리개()
     return tuple(getattr(모, "키들", ())) if 모 is not None else ()
 
+_필요꾸러미 = ("pandas", "openpyxl", "yaml")
+귀띔: list = []          # ★ 멈출 일은 아니지만 **매번 크게** 적을 것
+_핍이름들 = {"pandas": "pandas", "openpyxl": "openpyxl", "yaml": "pyyaml"}
+
+
+def _없는꾸러미(파이썬: Path) -> list | None:
+    """그 파이썬에 **직접 물어본다** — 없는 것만 돌려준다. 못 물어보면 `None`.
+
+    ★ `find_spec` 으로 본다 — **불러오지 않는다.** 불러오면 yaml 이 없는 자리에서
+      엔진 꾸러미가 줄줄이 터져 「무엇이 없는지」 가 가려진다.
+    """
+    글 = (
+        "import importlib.util as u" + chr(10)
+        + "out = []" + chr(10)
+        + "for n in %r:" % (_필요꾸러미,) + chr(10)
+        + "    try:" + chr(10)
+        + "        있나 = u.find_spec(n) is not None" + chr(10)
+        + "    except Exception:" + chr(10)
+        + "        있나 = False" + chr(10)
+        + "    if not 있나: out.append(n)" + chr(10)
+        + "print(' '.join(out))"
+    )
+    try:
+        r = subprocess.run([str(파이썬), "-I", "-c", 글], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=120)
+    except Exception:
+        return None
+    if r.returncode != 0:
+        return None
+    return r.stdout.split()
+
+
 def 갖춤새_점검(끝난: list, *, 사차: bool = False) -> list[str]:
     """★ **돌리기 전에** 갖춤새를 본다 — 못 갖춘 것을 글로 돌려준다 (2026-10-22).
 
@@ -888,12 +920,12 @@ def 갖춤새_점검(끝난: list, *, 사차: bool = False) -> list[str]:
     안된것 = []
 
     # ① 파이썬 꾸러미 — 번들 읽기·보고서 만들기가 이것 없이는 안 된다
-    for 꾸러미 in ("pandas", "openpyxl"):
+    for 꾸러미 in _필요꾸러미:
         try:
             __import__(꾸러미)
         except ImportError:
             안된것.append("파이썬 꾸러미 `%s` 가 없습니다 "
-                       "— python -m pip install pandas openpyxl" % 꾸러미)
+                       "— python -m pip install %s" % (꾸러미, " ".join(_핍이름들)))
 
     # ② AI 명령 — **이번에 부를 쪽만** 본다
     부를것 = []
@@ -911,6 +943,36 @@ def 갖춤새_점검(끝난: list, *, 사차: bool = False) -> list[str]:
         if not shutil.which(명령):
             안된것.append("`%s` 명령이 이 컴퓨터에 없습니다 — 띄울 수 없는 자리: %s"
                        % (명령, " · ".join(자리들)))
+
+    # ②-2 ★ Codex 내장 파이썬 — **판독자·감독자가 실제로 쓰는 파이썬**이다 (2026-10-27)
+    #   왜 — 2026-10-09 에 pandas 때문에 이 파이썬을 PATH 앞에 놓았다 (`_코덱스파이썬_먼저`).
+    #   그런데 이 파이썬에는 pandas · openpyxl 은 있고 **yaml 이 없다.**
+    #   그래서 2026-10-27 깨끗한 판 1 에서 판독B(codex) 가 XLSX 번들과 계약·제출 검사를
+    #   못 만들고 CSV 만 내놓았고, 칸 검수도 눈먼 길로 떨어졌다.
+    #   총괄 파이썬만 보면 이것을 영원히 못 본다 — **돌리는 자리에서** 본다 (공통 규칙).
+    #   ★ 이것은 **멈출 일이 아니라 알릴 일**이다 — yaml 이 없어도 CSV 번들은 나왔고
+    #     2차·3차는 그 CSV 로 갔다 (2026-10-27 실측). 여기서 하드로 막으면 받은 사람은
+    #     흐름이 되는데도 0단계에서 멈춘다. 그래서 `귀띔` 으로 매번 크게 적는다.
+    귀띔[:] = []
+    코덱스쪽 = [자리 for 자리, 누구 in 부를것 if 누구.split(":", 1)[0] == "codex"]
+    if 코덱스쪽:
+        exe = _코덱스파이썬 / "python.exe"
+        if not exe.is_file():
+            귀띔.append("Codex 내장 파이썬을 못 찾았습니다 (%s) — 자리: %s "
+                      "(못 찾음은 「없음」 이 아닙니다 · pandas 로 막힐 수 있습니다)"
+                      % (exe, " · ".join(코덱스쪽)))
+        else:
+            없는것 = _없는꾸러미(exe)
+            if 없는것 is None:
+                귀띔.append("Codex 내장 파이썬에 무엇이 있는지 못 물어봤습니다 (%s) "
+                          "— 못 찾음은 「없음」 이 아닙니다" % exe)
+            elif 없는것:
+                귀띔.append("Codex 내장 파이썬에 꾸러미가 없습니다 — %s · 자리: %s"
+                          % (" · ".join(없는것), " · ".join(코덱스쪽))
+                          + chr(10) + '       넣기 — "%s" -m pip install %s'
+                          % (exe, " ".join(_핍이름들.get(x, x) for x in 없는것))
+                          + chr(10) + "       안 넣으면 — codex 쪽 판독자는 XLSX 번들과 "
+                            "계약·제출 검사를 못 만듭니다 (CSV 는 나옵니다)")
 
     # ③ 키 — 1차를 돌릴 때만. **이름만** 본다
     if not 사차 and "1차" not in 끝난:
@@ -932,13 +994,18 @@ def 갖춤새_점검(끝난: list, *, 사차: bool = False) -> list[str]:
 
 
 def 갖춤새_말하기(안된것: list) -> None:
-    """갖춘 것은 한 줄로, 못 갖춘 것은 **하나씩** 말한다."""
+    """갖춘 것은 한 줄로, 못 갖춘 것은 **하나씩** 말한다.
+
+    ★ `귀띔` 은 멈추지 않지만 **갖춘 때에도** 적는다 — 조용히 넘어가면 못 본다.
+    """
     if not 안된것:
         print("  갖춤새 — 다 됐습니다 (꾸러미 · 명령 · 키)")
-        return
-    print("  ✗ 갖춤새 — %d 가지가 모자랍니다" % len(안된것))
-    for x in 안된것:
-        print("     · %s" % x)
+    else:
+        print("  ✗ 갖춤새 — %d 가지가 모자랍니다" % len(안된것))
+        for x in 안된것:
+            print("     · %s" % x)
+    for x in 귀띔:
+        print("  ! %s" % x)
 
 
 def main() -> int:

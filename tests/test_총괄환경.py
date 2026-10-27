@@ -769,3 +769,116 @@ def test_스킬_문서들이_결합기준서를_가리킨다():
     # 1차 작업 폴더에도 같이 놓이는가
     자리글 = (_뿌리 / "plugin" / "shared" / "lib" / "일차자리.py").read_text(encoding="utf-8")
     assert "키워드결합_OR_AND_기준.md" in 자리글, "1차 자리에 기준서를 놓지 않는다"
+
+
+# ── ⑫ yaml 이 없는 파이썬 (2026-10-27 · 깨끗한 판 1 실측) ──────────────────────
+#   ★ 찾은 구멍 둘 — 2026-10-09 에 pandas 때문에 **Codex 내장 파이썬**을 PATH 앞에 놓았다.
+#     그 파이썬에는 pandas 3.0.1 · openpyxl 3.1.5 는 있고 **yaml 이 없다.**
+#     ① `check_selfcheck._일차가_내놓는가()` 가 `from src.voc_rebuild import schema` 로
+#        꾸러미를 불러왔고, 그 `__init__.py` → `.engine` → `config.py` → `yaml` 로 내려가
+#        import 가 터졌다. 그래서 눈먼 길(`return True`)로 떨어져, 1차가 애초에 안 내놓는
+#        `video_tags`·`video_description` 을 「번들에서 빠진 칸 ✗」 으로 **잘못 반려**했다.
+#        VOC_ENGINE 을 줘도 막히지 않는다 — 가리키는 것과 **불러오는 것**이 다른 일이다.
+#     ② 갖춤새 점검은 **총괄 파이썬**만 봤다. 돌리는 자리의 파이썬을 안 봐서
+#        판독B 가 XLSX 번들과 계약·제출 검사를 못 만든 것을 미리 알릴 길이 없었다.
+def _yaml_가리고(일하기):
+    """yaml import 를 막은 채로 일을 시킨다 — Codex 내장 파이썬 흉내."""
+    import builtins
+    참 = builtins.__import__
+
+    def 가짜(name, *a, **k):
+        if name == "yaml" or name.startswith("yaml."):
+            raise ImportError("No module named 'yaml'")
+        return 참(name, *a, **k)
+
+    지운것 = {k: v for k, v in sys.modules.items() if k == "yaml" or k.startswith("yaml.")}
+    for k in 지운것:
+        del sys.modules[k]
+    builtins.__import__ = 가짜
+    try:
+        return 일하기()
+    finally:
+        builtins.__import__ = 참
+        sys.modules.update(지운것)
+
+
+def test_yaml_이_없어도_칸을_가른다():
+    """★ ① 의 진짜 값 — yaml 없는 파이썬에서도 「1차가 안 내놓는 칸」 을 안다."""
+    import check_selfcheck
+    총괄._엔진_가리키기()
+
+    def 보기():
+        return [check_selfcheck._일차가_내놓는가(c)
+                for c in ("video_tags", "video_description", "atomic_id")]
+
+    assert _yaml_가리고(보기) == [False, False, True],         "yaml 이 없으면 칸을 가르지 못한다 — 안 깨진 번들을 깨졌다고 반려한다"
+
+
+def test_엔진_schema_는_꾸러미를_안_불러온다():
+    """`schema.py` **하나만** 읽는다 — 꾸러미를 불러오면 yaml 까지 끌려 온다."""
+    import check_selfcheck
+    총괄._엔진_가리키기()
+    모 = _yaml_가리고(check_selfcheck._엔진_schema)
+    assert 모 is not None, "yaml 없이 schema 를 못 읽었다"
+    assert len(getattr(모, "TARGET_COLUMNS", [])) == 66,         "66칸 계약이 아니다 — %r" % (len(getattr(모, "TARGET_COLUMNS", [])),)
+
+
+def test_엔진을_못_보면_눈먼길이라고_적는다(monkeypatch, tmp_path):
+    """★ 일부러 엔진을 치운다 — 「못 봤다」 를 **조용히** 넘기지 않는지 본다 (공통 규칙 4)."""
+    import check_selfcheck
+    monkeypatch.delenv("VOC_ENGINE", raising=False)
+    monkeypatch.setattr(check_selfcheck, "BASE", str(tmp_path))
+    monkeypatch.setattr(check_selfcheck, "_HERE", str(tmp_path))
+    가짜 = dict(sys.modules)
+    sys.modules["src"] = None
+    sys.modules["src.voc_rebuild"] = None
+    sys.modules["src.voc_rebuild.schema"] = None
+    check_selfcheck.눈먼길[:] = []
+    try:
+        assert check_selfcheck._일차가_내놓는가("video_tags") is True,             "엔진을 못 보는데도 가른다 — 이 시험이 지키는 것이 없다"
+        assert check_selfcheck.눈먼길, "엔진을 못 봤는데 아무 말도 안 남겼다"
+    finally:
+        sys.modules.clear()
+        sys.modules.update(가짜)
+
+
+def test_갖춤새가_yaml_을_본다(monkeypatch):
+    """번들 엑셀·계약 검사가 yaml 로 돌아간다 — 꾸러미 목록에 들어 있어야 한다."""
+    assert "yaml" in 총괄._필요꾸러미, "yaml 을 안 본다 — XLSX 번들이 조용히 안 나온다"
+    assert 총괄._핍이름들.get("yaml") == "pyyaml", "pip 이름이 pyyaml 이 아니다"
+
+
+def test_갖춤새가_돌리는_자리의_파이썬을_본다(monkeypatch):
+    """★ ② — **총괄 파이썬이 아니라** codex 쪽 파이썬에 없는 것을 말한다."""
+    monkeypatch.setattr(총괄.shutil, "which", lambda n: "/시험/" + n)
+    for k in 총괄._키이름들():
+        monkeypatch.setenv(k, "시험용-값-아님")
+    monkeypatch.setattr(총괄, "_없는꾸러미", lambda _: ["yaml"])
+    monkeypatch.setattr(총괄.Path, "is_file", lambda self: True)
+    안된것 = 총괄.갖춤새_점검([])
+    붙은 = chr(10).join(총괄.귀띔)
+    assert "yaml" in 붙은, "codex 파이썬에 yaml 이 없는데 말하지 않았다 — %r" % (총괄.귀띔,)
+    assert "pip install pyyaml" in 붙은, "넣는 명령을 주지 않았다 — %r" % (총괄.귀띔,)
+    for 자리 in ("판독B", "감독1"):
+        assert 자리 in 붙은, "어느 자리가 막히는지 말하지 않았다 (%s)" % 자리
+    # ★ **멈추지는 않는다** — yaml 이 없어도 CSV 번들은 나왔다 (2026-10-27 실측)
+    assert not [x for x in 안된것 if "yaml" in x],         "yaml 없음으로 흐름을 막았다 — 되는 흐름을 0단계에서 세운다: %r" % (안된것,)
+
+
+def test_코덱스_파이썬에_무엇이_있는지_못_물어보면_그렇다고_한다(monkeypatch):
+    """「못 찾음」 을 「없음」 으로 돌려주지 않는다 (공통 규칙 4)."""
+    monkeypatch.setattr(총괄.shutil, "which", lambda n: "/시험/" + n)
+    for k in 총괄._키이름들():
+        monkeypatch.setenv(k, "시험용-값-아님")
+    monkeypatch.setattr(총괄, "_없는꾸러미", lambda _: None)
+    monkeypatch.setattr(총괄.Path, "is_file", lambda self: True)
+    총괄.갖춤새_점검([])
+    assert [x for x in 총괄.귀띔 if "못 물어봤습니다" in x],         "못 물어봤는데 조용히 넘어갔다 — %r" % (총괄.귀띔,)
+
+
+def test_없는꾸러미는_불러오지_않고_본다():
+    """`find_spec` 으로 본다 — 불러오면 yaml 없는 자리에서 줄줄이 터져 가려진다."""
+    글 = Path(총괄.__file__).read_text(encoding="utf-8")
+    몸 = 글.split("def _없는꾸러미", 1)[1].split(chr(10) + "def ", 1)[0]
+    assert "find_spec" in 몸, "find_spec 으로 보지 않는다"
+    assert "__import__" not in 몸 and "importlib.import_module" not in 몸,         "꾸러미를 실제로 불러온다 — 없는 것이 가려진다"

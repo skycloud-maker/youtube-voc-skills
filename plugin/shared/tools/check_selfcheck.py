@@ -589,20 +589,64 @@ def check_competitor(rows):
     else:
         ok('경쟁사 얘기가 자사 행에 섞이지 않았다')
 
+눈먼길 = []          # ★ 엔진 칸 목록을 못 봤다면 여기 적는다. 조용히 넘어가지 않는다
+
+
+def _엔진_schema():
+    """엔진의 `schema.py` **하나만** 읽어 온다 — 꾸러미 전체를 불러오지 않는다.
+
+    ★ 2026-10-27 에 실제 흐름에서 드러난 일 —
+      전에는 `from src.voc_rebuild import schema` 였다. 그 꾸러미의 `__init__.py` 가
+      `.engine` 을 불러오고, 그것이 `config.py` → `yaml` 로 내려간다.
+      **Codex 내장 파이썬에는 yaml 이 없다** (pandas 3.0.1 · openpyxl 3.1.5 는 있다).
+      2026-10-09 에 pandas 때문에 그 파이썬을 PATH 앞에 놓았으므로, 판독자·감독자는
+      바로 그 파이썬을 쓴다. 그래서 import 가 터지고 아래 `return True` 눈먼 길로 떨어져,
+      1차가 애초에 안 내놓는 `video_tags`·`video_description` 을
+      「번들에서 빠진 칸 ✗」 으로 보고 **안 깨진 번들을 깨졌다고** 반려했다
+      (실측 — 2026-10-27 깨끗한 판 1 의 판독B).
+      `schema.py` 자체는 json · typing 만 쓴다. **파일 자리로 바로 읽으면 yaml 이 필요 없다.**
+
+    ★ 한 곳만 보면 꾸러미를 푼 자리에서 그냥 넘어간다 — S-16 과 같은 교훈이라 여러 자리를 본다.
+    """
+    import importlib.util as _u
+    자리들 = []
+    _env = os.environ.get('VOC_ENGINE')
+    if _env:
+        자리들.append(_env)
+    for _d in (BASE, _HERE, os.path.dirname(BASE)):
+        자리들 += [os.path.join(_d, 'engine'), _d]
+    for _c in 자리들:
+        _p = os.path.join(_c, 'src', 'voc_rebuild', 'schema.py')
+        if not os.path.isfile(_p):
+            continue
+        try:
+            _spec = _u.spec_from_file_location('_voc_schema_only', _p)
+            _m = _u.module_from_spec(_spec)
+            _spec.loader.exec_module(_m)
+            return _m
+        except Exception:
+            continue
+    # 옛 길 — 되돌림으로 남긴다 (파일 자리로 못 읽은 자리에서도 한 번 더 본다)
+    import sys as _sys
+    for _c in 자리들:
+        if os.path.isdir(_c) and _c not in _sys.path:
+            _sys.path.insert(0, _c)
+    try:
+        from src.voc_rebuild import schema as _s
+        return _s
+    except Exception:
+        return None
+
+
 def _일차가_내놓는가(칸):
     """1차 엔진의 출력 칸에 이 칸이 있는가 (2026-08-22).
 
     없으면 판독자가 만들어 낼 수 없다. 그걸 반려하면 영원히 못 지나간다.
     """
-    import sys as _sys
-    for _cand in (os.environ.get('VOC_ENGINE'),):
-        if _cand and os.path.isdir(_cand):
-            if _cand not in _sys.path:
-                _sys.path.insert(0, _cand)
-            break
-    try:
-        from src.voc_rebuild import schema as _s
-    except Exception:
+    _s = _엔진_schema()
+    if _s is None:
+        if '엔진' not in 눈먼길:
+            눈먼길.append('엔진')
         return True                      # 엔진을 못 보면 예전대로 반려한다
     칸들 = (getattr(_s, 'TARGET_COLUMNS', None)
             or getattr(_s, 'OUTPUT_COLUMNS', None) or [])
@@ -648,6 +692,12 @@ def check_columns(rows):
         #   판독자가 없는 칸을 만들어 낼 수는 없다 — 물으면 안 되는 것이다.
         원본없음 = [c for c in gone if not _일차가_내놓는가(c)]
         진짜잃음 = [c for c in gone if c not in 원본없음]
+        if 눈먼길:
+            # ★ 못 본 것을 「없음」 으로 돌려주지 않는다 (공통 규칙 4)
+            warn('엔진 칸 목록을 못 봤습니다 — 「번들에서 잃은 칸」 과 '
+                 '「1차가 애초에 안 내놓는 칸」 을 가르지 못했습니다')
+            print('       * 아래 ✗ 는 그대로 믿지 마십시오. VOC_ENGINE 에 엔진 폴더를 주거나')
+            print('         이 스크립트 옆에 engine/ 이 오게 두십시오')
         if 진짜잃음:
             bad('번들에서 빠진 칸 %d — %s' % (len(진짜잃음), ' / '.join(진짜잃음)))
             print('       * 엔진 스키마를 손댄 사람이 있다. 커밋 안 된 변경부터 본다')
