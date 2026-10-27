@@ -219,10 +219,13 @@ def claude_명령(누구: str, *, 깨끗: bool = True) -> list[str]:
     return 명령
 
 
-def _쓴것(그릇: Path) -> list[tuple[str, str, dict]]:
-    """아이가 **쓴** 것 — ("claude", 도구이름, 입력) · ("codex", 것의 종류, {})."""
+def 쓴것_기록에서(길: Path) -> list[tuple[str, str, dict]]:
+    """기록 파일 하나에서 **쓴** 것을 뽑는다 — 한 줄 흐름의 `기록/*.jsonl` 도 이 꼴이다.
+
+    ★ 시험 그릇이 아니라 **기록 파일**을 받는다. 그래야 실제 흐름(`tools/시험환경_보기.py --판`)도
+      같은 눈으로 볼 수 있다 — 재는 자리를 두 벌로 만들지 않는다 (공통 규칙 6).
+    """
     낸것 = []
-    길 = 그릇 / "대화.jsonl"
     if not 길.is_file():
         return 낸것
     for l in 길.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -238,6 +241,10 @@ def _쓴것(그릇: Path) -> list[tuple[str, str, dict]]:
         if e.get("type") == "item.completed":
             낸것.append(("codex", it.get("type") or "", {}))
     return 낸것
+
+
+def _쓴것(그릇: Path) -> list[tuple[str, str, dict]]:
+    return 쓴것_기록에서(그릇 / "대화.jsonl")
 
 
 # codex 가 쓰는 것 — 2026-10-27 에 25그릇 전량에서 나온 네 가지 + 오류 (플러그인·MCP 는 없었다)
@@ -266,19 +273,14 @@ def 밖의것을_썼나(그릇: Path) -> tuple[bool, str]:
     return (not 걸림), "; ".join(sorted(set(걸림))[:3])
 
 
-def 아이가_본것(그릇: Path) -> dict:
-    """기록 첫 `init` 사건에서 **아이에게 보였던 것**을 뽑는다 (claude 만 이 사건을 낸다).
+def 본것_기록에서(길: Path) -> dict:
+    """기록 파일 하나의 첫 `init` 사건에서 **아이에게 보였던 것**을 뽑는다 (claude 만 이 사건을 낸다).
 
     ★ 「못 찾음」 을 「없음」 으로 돌려주지 않는다 — `확인됨` 이 False 면 채점은 **실패**다.
+    ★ 기록 파일을 받는다 — 한 줄 흐름의 `기록/*.jsonl` 도 같은 꼴이라 같은 눈으로 본다.
     """
     낸것 = {"확인됨": False, "훅돌았나": False, "스킬수": None, "우리스킬": [], "남의스킬": [],
           "MCP": [], "플러그인": [], "모델": "", "깃발": [], "누구": ""}
-    시 = 그릇 / "시험.json"
-    if 시.is_file():
-        정보 = json.loads(시.read_text(encoding="utf-8")) or {}
-        낸것["깃발"] = list(정보.get("깃발") or [])
-        낸것["누구"] = str(정보.get("누구") or "")
-    길 = 그릇 / "대화.jsonl"
     if not 길.is_file():
         return 낸것
     for l in 길.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -295,6 +297,17 @@ def 아이가_본것(그릇: Path) -> dict:
                      남의스킬=[s for s in 스 if not s.startswith(우리스킬머리)],
                      MCP=[str(m.get("name")) for m in (e.get("mcp_servers") or [])],
                      플러그인=[str(p.get("name")) for p in (e.get("plugins") or [])])
+    return 낸것
+
+
+def 아이가_본것(그릇: Path) -> dict:
+    """시험 그릇 하나 — 기록에서 본 것 + `시험.json` 의 「누가 · 어떤 깃발로」."""
+    낸것 = 본것_기록에서(그릇 / "대화.jsonl")
+    시 = 그릇 / "시험.json"
+    if 시.is_file():
+        정보 = json.loads(시.read_text(encoding="utf-8")) or {}
+        낸것["깃발"] = list(정보.get("깃발") or [])
+        낸것["누구"] = str(정보.get("누구") or "")
     return 낸것
 
 

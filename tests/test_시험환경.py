@@ -197,6 +197,41 @@ def test_격리_마치기가_깃발을_적는다():
         "시험.json 에 깃발을 안 적으면 그릇이 「어떻게 돌았나」 를 말할 수 없다")
 
 
+def _판자리(자리: Path, *, 더럽게: bool) -> Path:
+    """한 줄 흐름이 남기는 꼴의 `기록/*.jsonl` 을 흉내 낸다 (claude 하나 · codex 하나)."""
+    (자리 / "기록").mkdir(parents=True)
+    (자리 / "상태.json").write_text(json.dumps({"끝난단계": ["1차", "2차준비"]},
+                                            ensure_ascii=False), encoding="utf-8")
+    줄들 = []
+    if 더럽게:
+        줄들.append(json.dumps({"type": "system", "subtype": "hook_started",
+                              "hook_name": "SessionStart:startup"}, ensure_ascii=False))
+    줄들.append(json.dumps({
+        "type": "system", "subtype": "init", "model": "claude-opus-5",
+        "skills": ["youtube-voc:reading-voc-comments"] + (["building-skills"] if 더럽게 else ["dataviz"]),
+        "mcp_servers": [{"name": "드라이브"}] if 더럽게 else [],
+        "plugins": [{"name": "youtube-voc"}]}, ensure_ascii=False))
+    (자리 / "기록" / "판독A.jsonl").write_text("\n".join(줄들) + "\n", encoding="utf-8")
+    (자리 / "기록" / "판독B.jsonl").write_text(json.dumps(
+        {"type": "item.completed", "item": {"type": "command_execution"}}) + "\n", encoding="utf-8")
+    return 자리
+
+
+@pytest.mark.parametrize("더럽게,바람", [(True, 1), (False, 0)])
+def test_실제_흐름도_같은_눈으로_본다(tmp_path, 더럽게, 바람):
+    """★ 시험만 깨끗하고 실제 흐름이 더러우면 재 본 뜻이 없다 (`tools/시험환경_보기.py --판`).
+
+    ★ 기록 자리가 아예 없으면 **실패**로 끝나야 한다 — 「못 찾음」 은 통과가 아니다.
+    """
+    sys.path.insert(0, str(_뿌리 / "tools"))
+    import 시험환경_보기 as 보기  # noqa: PLC0415
+    판 = _판자리(tmp_path / ("더러운판" if 더럽게 else "깨끗한판"), 더럽게=더럽게)
+    assert 보기.판보기(판) == 바람, "판보기가 %s 를 못 가렸다" % ("더러운 판" if 더럽게 else "깨끗한 판")
+    없는자리 = tmp_path / "없는판"
+    없는자리.mkdir()
+    assert 보기.판보기(없는자리) == 1, "기록이 없는데 통과로 끝냈다"
+
+
 def test_한줄흐름과_시험이_같은_깃발을_쓴다():
     """★ 같은 값이 두 벌 있다 — 한 줄 돌리개는 **낱개로 꾸려도 돌아야** 해서 시험 하네스를
     불러올 수 없다. 그래서 사본을 두고 **검사기가 원본과 대 본다** (공통 규칙 6).
