@@ -160,7 +160,7 @@ _Ver2_읽어주세요 = """# Ver2 — 한 줄 흐름. **이 꾸러미 하나만*
           ↓
         1차 → 2차 판독 둘 → 총괄 검수 → 3차 감독 둘 → 3차 마무리
           ↓
-아웃풋 1  회의에서 정할 것 (사람이볼목록 · 보정요청 · 분리제안 · 총괄 소견)
+아웃풋 1  회의에서 정할 것 (사람이볼목록 · 보정요청 · 분리제안 · 감독_분리제안 · 총괄 소견)
           ↓
 인풋 2  회의에서 정한 값
           ↓
@@ -324,7 +324,7 @@ python <스킬>/scripts/한줄_돌리기.py <판자리> --조건 "…" --승인
    `--확인만` 이 매번 「! Codex 내장 파이썬에 꾸러미가 없습니다 — yaml」 로 알리고 넣는 명령을 줍니다:
 
    ```
-   "%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m pip install pyyaml
+   "%USERPROFILE%\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe" -m pip install pyyaml
    ```
 
    ★ **멈추지는 않습니다.** 안 넣어도 흐름은 CSV 로 끝까지 갑니다.
