@@ -45,7 +45,7 @@ from paths import BASELINE, PLUGIN  # noqa: E402
                 "도구·기준을 고치지 않았다 (지문검사)"],
 }
 for _목록 in 기대항목.values():
-    _목록.append("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다")
+    _목록.extend(공통.공통항목)
 
 
 def _해시(d: Path) -> dict:
@@ -68,10 +68,7 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
     # AI 부르기 — 판독 시험 도구와 같은 방식, 스킬만 바꿔 싣는다
     공통.스킬 = 스킬
     if 누구.startswith("claude"):
-        명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
-              "--dangerously-skip-permissions"]
-        if 누구 == "claude":
-            명령 += ["--plugin-dir", str(PLUGIN)]
+        명령 = 공통.claude_명령(누구)
     else:
         if 누구 == "codex":
             d = 그릇 / ".agents"
@@ -150,8 +147,7 @@ def 채점(그릇: Path) -> dict:
                                   ("_판독패키지/_결과/master_final", "_최종결과", "s15_master")))
     됨, 까닭 = 공통._지문(작업) if (작업 / "스크립트").is_dir() else (False, "폴더가 없다")
     봄("도구·기준을 고치지 않았다 (지문검사)", 됨, 까닭)
-    됨, 까닭 = 공통.밖을_봤나(그릇)
-    봄("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다", 됨, 까닭)
+    공통.공통채점(그릇, 봄)
     본것 = {x["항목"] for x in 결과}
     for 항목 in 기대항목[시험]:
         if 항목 not in 본것:

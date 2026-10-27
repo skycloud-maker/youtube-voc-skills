@@ -14,6 +14,9 @@
                  그 폴더(공통 파일 · 엔진이 스킬 안에 들어 있다)를 claude 는 `작업/.claude/skills/<스킬>/` 에,
                  codex 는 `그릇/.agents/skills/<스킬>/` 에 둔다. 플러그인은 주지 않는다.
     claude-없이 · codex-없이   스킬 없이 같은 과제 (빈틈 재기)
+★ **깨끗한 자리에서 돌린다** (2026-10-27 · 결정 0006) — `claude` 는 내 컴퓨터 설정(전역 CLAUDE.md ·
+  훅 · 남의 스킬 · MCP)을 그대로 물려받는다. 그래서 `깨끗한깃발` 로 끄고 띄우고, 어떤 깃발로
+  돌렸는지 `시험.json` 에 적는다. claude 를 띄우는 자리는 `claude_명령()` **한 곳**이다.
 ★ 채점은 evals.json 의 expectations 를 기계로 확인한 것이다. 못 본 것은 「못 봄」 이지 통과가 아니다.
 ★ 시험마다 볼 항목을 `기대항목` 에 못박아 둔다 (2026-09-21). 앞 단계가 없어 확인하지 못한 항목은
   「못 봄」 **실패**로 남는다 — 전에는 항목 자체가 안 만들어져 9/9 처럼 후하게 보였다.
@@ -44,6 +47,12 @@ from 맞대기 import 맞대기  # noqa: E402
 시험들 = {e["id"]: e for e in json.loads((스킬 / "evals" / "evals.json").read_text(encoding="utf-8"))["evals"]}
 차리기 = 스킬 / "scripts" / "판독폴더_차리기.py"
 
+# ── 시험 여섯이 **다 같이** 보는 항목 — 한 자리에서 정한다 (공통 규칙 6) ───────────────
+# ★ 2026-10-27 까지는 첫 줄 하나뿐이었고, 그것도 돌리개 여섯 곳에 **같은 글자로 박혀** 있었다.
+공통항목 = ("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다",
+        "우리 스킬 밖의 것을 쓰지 않았다 (남의 스킬·MCP·웹·서브에이전트)",
+        "시험 자리가 깨끗했다 (내 훅·MCP·전역 규칙이 안 들어갔다)")
+
 # 시험마다 반드시 채점해야 하는 항목 — 하나라도 빠지면 「못 봄」 실패로 채운다
 기대항목 = {
     "빈폴더_엑셀없음": ["폴더를 차렸다", "판독을 시작하지 않았다", "데이터를 지어내지 않았다",
@@ -56,7 +65,7 @@ from 맞대기 import 맞대기  # noqa: E402
                  "check_selfcheck ✗ 0건", "보정요청서가 있다", "도구·기준을 고치지 않았다 (지문검사)"],
 }
 for _목록 in 기대항목.values():
-    _목록.append("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다")
+    _목록.extend(공통항목)
 
 
 def 격리_준비(그릇이름: str) -> tuple[Path, Path]:
@@ -79,7 +88,8 @@ def 격리_마치기(그릇: Path, 최종: Path, r, 정보: dict) -> Path:
     (그릇 / "stderr.txt").write_text(r.stderr, encoding="utf-8")
     최종.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(그릇), str(최종))
-    정보 = dict(정보, 종료코드=r.returncode, 돌린자리=str(그릇))
+    # ★ 어떤 깃발로 돌렸는지 **그릇 자신이** 말하게 적는다 (2026-10-27 · `claude_명령`).
+    정보 = dict(정보, 종료코드=r.returncode, 돌린자리=str(그릇), 깃발=list(돌린깃발))
     (최종 / "시험.json").write_text(json.dumps(정보, ensure_ascii=False), encoding="utf-8")
     return 최종
 
@@ -118,6 +128,10 @@ def 밖을_봤나(그릇: Path) -> tuple[bool, str]:
     정보 = json.loads((그릇 / "시험.json").read_text(encoding="utf-8"))
     자기 = str(정보.get("돌린자리") or 그릇).replace("/", "\\").lower()
     집 = str(Path.home()).lower()
+    # ★ 공통 작업규칙 자리를 **면제할지**는 그 규칙을 **줬느냐**에 달렸다 (2026-10-27).
+    #   깨끗한 깃발로 돌리면 아이에게 그 규칙을 주지 않는다 — 그런데도 그 자리를 열었다면
+    #   그것은 **밖을 본 것**이다. 깃발 없이 돌린 옛 그릇에서는 지시의 출처였다 (아래 주석).
+    규칙자리_면제 = any(x for x in 깨끗한깃발 if x and x not in (정보.get("깃발") or []))
     # 시스템 자리는 윈도 환경변수에서 — 절대경로를 코드에 박지 않는다 (paths.py 규칙)
     시스템 = [os.environ.get(k, "").lower() for k in ("SystemRoot", "ProgramFiles", "ProgramFiles(x86)", "ProgramData")]
     허용 = [자기, str(PLUGIN).lower(), *[x for x in 시스템 if x], 집 + "\\.claude",
@@ -149,7 +163,8 @@ def 밖을_봤나(그릇: Path) -> tuple[bool, str]:
             #   실측 — 대시보드 시험 둘이 `cat …/_공통_작업규칙/손대지말것_전역.txt` 로 걸렸다.
             #   받는 사람 컴퓨터엔 그 규칙이 없으니 거기선 일어나지 않는다.
             #   ★ 폴더 **이름**으로 거른다 — 절대경로를 코드에 박지 않는다 (paths.py 규칙).
-            if "_공통_작업규칙" in 경로:
+            #   ★ 2026-10-27 — 이 면제는 **그 규칙을 준 시험에서만** 산다 (`규칙자리_면제`).
+            if 규칙자리_면제 and "_공통_작업규칙" in 경로:
                 continue
             걸림.append(경로[:100])
         if re.search(r"채점\.json|입력해시\.json|(?<![\w가-힣])시험\.json", c2):
@@ -160,6 +175,161 @@ def 밖을_봤나(그릇: Path) -> tuple[bool, str]:
         #     외딴 자리 덕에 올라가도 보이는 것은 자기 그릇뿐이고, 옆 자리는 대개 절대경로로 열어 위에서 걸린다.
     return (not 걸림), "; ".join(sorted(set(걸림))[:3])
 
+
+# ── 아이가 **무엇을 물려받았나** — 시험 자리가 깨끗한가 ───────────────────────────────
+# ★ 왜 (sky 2026-10-27) — 「지금 여기서는 순수하게 skill 만으로 돌아가는지 모르지 않나요?」
+#   몰랐다. 그래서 쟀다. claude 시험은 **내 컴퓨터 설정을 그대로 물려받아** 돌고 있었다 —
+#     · 전역 CLAUDE.md(공통 작업규칙)가 들어가 있었다. 아이에게 물으니
+#       「예비로 남긴 옛 저장소는 변화 0」 · 「축약 금지」 ·
+#       「변경마다 먼저 세 줄을 적는다 — 건드림 / 안 건드림 / 확인할 것」 을
+#       **문장째로 옮겨 적었다.** 자기 보고가 아니라 내용으로 댄 것이다.
+#     · 내 훅이 돌았다 — 모든 claude 기록의 **첫 사건이 `SessionStart` 훅**이다.
+#     · 보인 것이 스킬 50개(우리 것 6 + 남의 것 44) · 슬래시 87개 · 플러그인 3개 · 한때 MCP 2개.
+#   받는 사람 컴퓨터엔 그 규칙도 훅도 없다. 그러니 그 시험은 **받는 사람 자리보다 후했다.**
+#   ※ 쓴 것은 깨끗했다 — 73그릇 전량에서 남의 스킬·MCP·웹·서브에이전트 호출이 0이었다.
+#     보인 것과 쓴 것은 다르다. 그래서 아래 둘로 **갈라** 본다.
+#   ※ codex 쪽은 이미 깨끗했다 — `~/.codex/AGENTS.md` 가 0바이트이고, 25그릇에서 쓴 것이
+#     셸 · 메시지 · 파일바꿈 · 할일 네 가지뿐이었다 (2026-10-27 확인).
+#
+# ★ 깃발 셋을 **한 턴씩 실제로 돌려** 재 봤다 (2026-10-27) —
+#     (그대로)                                    스킬 50 · 훅 돌았다 · 전역 규칙 들어갔다
+#     --safe-mode                                 **우리 스킬이 0개** 가 된다 — 쓸 수 없다
+#     --setting-sources "" --strict-mcp-config    스킬 27(우리 6 그대로) · 훅 0 · MCP 0 ·
+#                                                 전역 규칙을 물으니 「없음」
+#   그래서 셋째를 쓴다. 남는 21개는 Claude Code 에 **원래 들어 있는** 스킬이라
+#   받는 사람 컴퓨터에도 똑같이 있다 — 뺄 수 없고, 뺄 이유도 없다.
+깨끗한깃발 = ("--setting-sources", "", "--strict-mcp-config")
+우리스킬머리 = "youtube-voc:"
+
+# ★ claude 를 띄우는 자리는 **여기 한 곳**이다 (공통 규칙 6). 2026-10-27 까지는 돌리개
+#   여섯 곳에 같은 줄이 박혀 있었다 — 깃발 하나를 더하려면 여섯 곳을 고쳐야 했다.
+#   짠 깃발은 `시험.json` 에 적는다. 그래야 **그릇 자신이** 어떻게 돌았는지 말한다.
+#   ※ 한 번에 한 시험만 돌린다(이 파일 머리말) — 그래서 모듈에 하나 두어도 섞이지 않는다.
+돌린깃발: list[str] = []
+
+
+def claude_명령(누구: str, *, 깨끗: bool = True) -> list[str]:
+    명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
+          "--dangerously-skip-permissions"]
+    if 깨끗:
+        명령 += list(깨끗한깃발)
+    if 누구 == "claude":
+        명령 += ["--plugin-dir", str(PLUGIN)]
+    돌린깃발[:] = 명령[1:]
+    return 명령
+
+
+def _쓴것(그릇: Path) -> list[tuple[str, str, dict]]:
+    """아이가 **쓴** 것 — ("claude", 도구이름, 입력) · ("codex", 것의 종류, {})."""
+    낸것 = []
+    길 = 그릇 / "대화.jsonl"
+    if not 길.is_file():
+        return 낸것
+    for l in 길.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            e = json.loads(l)
+        except ValueError:
+            continue
+        if e.get("type") == "assistant":
+            for c in (e.get("message") or {}).get("content") or []:
+                if c.get("type") == "tool_use":
+                    낸것.append(("claude", c.get("name") or "", c.get("input") or {}))
+        it = e.get("item") or {}
+        if e.get("type") == "item.completed":
+            낸것.append(("codex", it.get("type") or "", {}))
+    return 낸것
+
+
+# codex 가 쓰는 것 — 2026-10-27 에 25그릇 전량에서 나온 네 가지 + 오류 (플러그인·MCP 는 없었다)
+_코덱스쓰는것 = ("command_execution", "agent_message", "reasoning", "todo_list", "file_change", "error")
+
+
+def 밖의것을_썼나(그릇: Path) -> tuple[bool, str]:
+    """우리 스킬 **밖의** 것을 실제로 **썼나** — 남의 스킬 · MCP · 웹 · 서브에이전트.
+
+    ★ 보인 것과 쓴 것은 다르다. 여기서는 **쓴 것**만 본다 (보인 것은 `자리가_깨끗했나`).
+    """
+    걸림 = []
+    for 쪽, 이름, 입 in _쓴것(그릇):
+        if 쪽 == "codex":
+            if 이름 and 이름 not in _코덱스쓰는것:
+                걸림.append("codex 가 쓴 낯선 것 — %s" % 이름)
+            continue
+        if 이름.startswith("mcp__"):
+            걸림.append("MCP 도구 — %s" % 이름)
+        elif 이름 in ("Task", "WebFetch", "WebSearch", "Artifact"):
+            걸림.append(이름)
+        elif 이름 == "Skill":
+            s = str(입.get("skill") or "?")
+            if not s.startswith(우리스킬머리):
+                걸림.append("남의 스킬 — %s" % s)
+    return (not 걸림), "; ".join(sorted(set(걸림))[:3])
+
+
+def 아이가_본것(그릇: Path) -> dict:
+    """기록 첫 `init` 사건에서 **아이에게 보였던 것**을 뽑는다 (claude 만 이 사건을 낸다).
+
+    ★ 「못 찾음」 을 「없음」 으로 돌려주지 않는다 — `확인됨` 이 False 면 채점은 **실패**다.
+    """
+    낸것 = {"확인됨": False, "훅돌았나": False, "스킬수": None, "우리스킬": [], "남의스킬": [],
+          "MCP": [], "플러그인": [], "모델": "", "깃발": [], "누구": ""}
+    시 = 그릇 / "시험.json"
+    if 시.is_file():
+        정보 = json.loads(시.read_text(encoding="utf-8")) or {}
+        낸것["깃발"] = list(정보.get("깃발") or [])
+        낸것["누구"] = str(정보.get("누구") or "")
+    길 = 그릇 / "대화.jsonl"
+    if not 길.is_file():
+        return 낸것
+    for l in 길.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            e = json.loads(l)
+        except ValueError:
+            continue
+        if e.get("hook_name"):
+            낸것["훅돌았나"] = True
+        if e.get("subtype") == "init" and not 낸것["확인됨"]:
+            스 = [str(x) for x in (e.get("skills") or [])]
+            낸것.update(확인됨=True, 스킬수=len(스), 모델=str(e.get("model") or ""),
+                     우리스킬=[s for s in 스 if s.startswith(우리스킬머리)],
+                     남의스킬=[s for s in 스 if not s.startswith(우리스킬머리)],
+                     MCP=[str(m.get("name")) for m in (e.get("mcp_servers") or [])],
+                     플러그인=[str(p.get("name")) for p in (e.get("plugins") or [])])
+    return 낸것
+
+
+def 자리가_깨끗했나(그릇: Path) -> tuple[bool, str]:
+    """내 컴퓨터 설정(훅 · MCP · 전역 CLAUDE.md)이 **안 들어갔나.**
+
+    ★ codex 는 `init` 사건을 내지 않는다. 대신 codex 쪽은 물려받을 글이 없다
+      (`~/.codex/AGENTS.md` 0바이트 · 2026-10-27 확인) — 그래서 codex 는 **쓴 것**으로만 본다.
+    """
+    본것 = 아이가_본것(그릇)
+    누구 = 본것["누구"]
+    if not 누구:
+        return False, "누가 돌렸는지 시험.json 에 적혀 있지 않다 — 못 봄은 통과가 아니다"
+    if not 누구.startswith("claude"):
+        return True, "codex — 물려받을 글이 없다 (AGENTS.md 0바이트)"
+    흠 = []
+    if not 본것["확인됨"]:
+        흠.append("무엇이 보였는지 확인할 수 없다 (init 사건이 없다)")
+    if 본것["훅돌았나"]:
+        흠.append("내 훅이 돌았다 (SessionStart 등)")
+    if 본것["MCP"]:
+        흠.append("MCP 가 붙어 있었다 — %s" % ", ".join(본것["MCP"]))
+    빠진 = [x for x in 깨끗한깃발 if x and x not in 본것["깃발"]]
+    if 빠진:
+        흠.append("깨끗한 깃발 없이 돌렸다 (없는 것 — %s)" % " ".join(빠진))
+    if not 본것["우리스킬"] and 누구 == "claude":
+        흠.append("우리 스킬이 아이에게 **안 보였다** — 플러그인이 안 실렸다")
+    return (not 흠), "; ".join(흠[:3])
+
+
+def 공통채점(그릇: Path, 봄) -> None:
+    """시험 여섯이 **다 같이** 보는 항목 — 한 자리에서 본다 (공통 규칙 6)."""
+    for 이름, 보기 in zip(공통항목, (밖을_봤나, 밖의것을_썼나, 자리가_깨끗했나)):
+        됨, 까닭 = 보기(그릇)
+        봄(이름, 됨, 까닭)
 
 
 def _env(뿌리: Path | None = None) -> dict:
@@ -208,11 +378,8 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
         shutil.copyfile(BASELINE / f, 작업 / Path(f).name)
     if 누구.startswith("claude"):
         # ★ 프롬프트는 표준입력으로 — 윈도에서 claude 는 .cmd 라 인자로 주면 한글이 깨질 수 있다
-        명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
-              "--dangerously-skip-permissions"]
-        if 누구 == "claude":
-            명령 += ["--plugin-dir", str(PLUGIN)]
-        elif 누구 == "claude-낱개":
+        명령 = claude_명령(누구)
+        if 누구 == "claude-낱개":
             # ★ 낱개 스킬 폴더 하나만 — Claude Code 는 작업 폴더의 .claude/skills/ 를 읽는다
             shutil.copytree(_낱개폴더(스킬.name), 작업 / ".claude" / "skills" / 스킬.name)
         r = subprocess.run(명령, input=시험["prompt"], cwd=작업, capture_output=True, text=True,
@@ -317,8 +484,7 @@ def 채점(그릇: Path) -> dict:
         봄("보정요청서가 있다", (작업 / "_인계" / "보정요청.csv").is_file())
     됨, 까닭 = _지문(작업) if (작업 / "스크립트").is_dir() else (False, "폴더가 없다")
     봄("도구·기준을 고치지 않았다 (지문검사)", 됨, 까닭)
-    됨, 까닭 = 밖을_봤나(그릇)
-    봄("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다", 됨, 까닭)
+    공통채점(그릇, 봄)
     본것 = {x["항목"] for x in 결과}
     for 이름 in 기대항목[시험]:
         if 이름 not in 본것:

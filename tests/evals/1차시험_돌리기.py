@@ -43,7 +43,7 @@ from paths import BASELINE, PLUGIN, REPO  # noqa: E402
                  "행 수를 알렸다", "설정이 먹었다 (헛호출 경고 0)", "엔진을 고치지 않았다"],
 }
 for _목록 in 기대항목.values():
-    _목록.append("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다")
+    _목록.extend(공용.공통항목)
 
 
 def _환경(시험: dict, 누구: str) -> dict:
@@ -63,11 +63,8 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
     작업 = 그릇 / "작업"
     환경 = _환경(시험, 누구)
     if 누구.startswith("claude"):
-        명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
-              "--dangerously-skip-permissions"]
-        if 누구 == "claude":
-            명령 += ["--plugin-dir", str(PLUGIN)]
-        else:
+        명령 = 공용.claude_명령(누구)
+        if 누구 != "claude":
             shutil.copytree(공용._낱개폴더(스킬.name), 작업 / ".claude" / "skills" / 스킬.name)
         r = subprocess.run(명령, input=시험["prompt"], cwd=작업, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=환경, timeout=5400)
@@ -184,8 +181,7 @@ def 채점(그릇: Path) -> dict:
     if 시험 in ("승인전_멈춤", "작은규모_끝까지"):
         됨, 까닭 = _엔진_고쳤나(자리)
         봄("엔진을 고치지 않았다", 됨, 까닭)
-    됨, 까닭 = 공용.밖을_봤나(그릇)
-    봄("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다", 됨, 까닭)
+    공용.공통채점(그릇, 봄)
 
     본것 = {x["항목"] for x in 결과}
     for 이름 in 기대항목[시험]:

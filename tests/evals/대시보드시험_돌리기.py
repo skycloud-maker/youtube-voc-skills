@@ -43,7 +43,7 @@ from paths import BASELINE, PLUGIN  # noqa: E402
                   "행 수가 원본과 같다", "저장소를 더럽히지 않았다"],
 }
 for _목록 in 기대항목.values():
-    _목록.append("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다")
+    _목록.extend(공용.공통항목)
 
 링크 = re.compile(r"https?://\S+")
 탭이름 = ("VoC 현황", "개선 방향성", "문의 속 니즈", "PL Issue", "분석 영상 정보")
@@ -62,11 +62,8 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
             받.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(원, 받)
     if 누구.startswith("claude"):
-        명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
-              "--dangerously-skip-permissions"]
-        if 누구 == "claude":
-            명령 += ["--plugin-dir", str(PLUGIN)]
-        else:
+        명령 = 공용.claude_명령(누구)
+        if 누구 != "claude":
             shutil.copytree(공용._낱개폴더(스킬.name), 작업 / ".claude" / "skills" / 스킬.name)
         r = subprocess.run(명령, input=시험["prompt"], cwd=작업, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=공용._env(), timeout=3600)
@@ -164,7 +161,7 @@ def 채점(그릇: Path) -> dict:
         봄("행 수가 원본과 같다", 같나)
         봄("저장소를 더럽히지 않았다", 밖안봄, 걸린것)
 
-    봄("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다", 밖안봄, 걸린것)
+    공용.공통채점(그릇, 봄)
     통과 = sum(1 for x in 결과 if x["통과"])
     점수 = {"시험": 시험, "누구": 정보.get("누구"), "통과": 통과, "전체": len(결과), "항목": 결과}
     (그릇 / "채점.json").write_text(json.dumps(점수, ensure_ascii=False, indent=1), encoding="utf-8")

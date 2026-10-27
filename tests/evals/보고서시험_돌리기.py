@@ -39,7 +39,7 @@ from paths import BASELINE, PLUGIN  # noqa: E402
                    "치운 건수를 숫자로 알렸다"],
 }
 for _목록 in 기대항목.values():
-    _목록.append("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다")
+    _목록.extend(공용.공통항목)
 
 
 def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
@@ -49,11 +49,8 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
     for f in 시험["files"]:
         shutil.copyfile(BASELINE / f, 작업 / Path(f).name)
     if 누구.startswith("claude"):
-        명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
-              "--dangerously-skip-permissions"]
-        if 누구 == "claude":
-            명령 += ["--plugin-dir", str(PLUGIN)]
-        else:
+        명령 = 공용.claude_명령(누구)
+        if 누구 != "claude":
             shutil.copytree(공용._낱개폴더(스킬.name), 작업 / ".claude" / "skills" / 스킬.name)
         r = subprocess.run(명령, input=시험["prompt"], cwd=작업, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", env=공용._env(), timeout=3600)
@@ -114,8 +111,7 @@ def 채점(그릇: Path) -> dict:
         # 0 이 아니었다는 것을 **숫자로** 말해야 한다 (65 §3 「했다」 가 아니라 「확인했다」)
         수 = re.findall(r"링크\s*(\d+)", 답 + 글)
         봄("치운 건수를 숫자로 알렸다", any(int(x) > 0 for x in 수), "찾은 숫자 %s" % 수[:4])
-    됨, 까닭 = 공용.밖을_봤나(그릇)
-    봄("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다", 됨, 까닭)
+    공용.공통채점(그릇, 봄)
 
     본것 = {x["항목"] for x in 결과}
     for 이름 in 기대항목[시험]:

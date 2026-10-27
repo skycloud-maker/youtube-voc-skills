@@ -79,6 +79,20 @@ def _옆스킬(이름: str) -> Path:
 상태이름 = "상태.json"
 소견이름 = "소견.md"
 
+# ── 「순수하게 스킬만으로 되나」 를 **확인할 때만** 쓰는 깃발 (2026-10-27 · 결정 0006) ──────
+# ★ 왜 (sky 2026-10-27) — 「순수하게 skill 만으로 돌아가는지 모르지 않나요?」
+#   `claude` 는 띄운 컴퓨터의 설정을 그대로 물려받는다. 내 컴퓨터에서 돌리면 전역 작업규칙
+#   (`_공통_작업규칙/CLAUDE.md`)과 훅이 **판독자 머리에 먼저 들어간다** — 실측으로 확인했다.
+#   그러면 「스킬만 줘도 되는가」 를 재는 것이 아니게 된다.
+# ★ **평소에는 끄지 않는다.** 받는 사람의 CLAUDE.md·훅은 그 사람 것이고, 그 사람 자리에서
+#   도는 것이 실제 모습이다. 이 깃발은 **확인용**이다 — `--깨끗`.
+# ★ codex 에는 같은 깃발이 없다. 대신 물려받을 글이 없다 (`~/.codex/AGENTS.md` 0바이트).
+# ★ 같은 값이 `tests/evals/스킬시험_돌리기.py` 에도 있다 — 이 파일은 **낱개로 꾸려도 돌아야**
+#   하므로 시험 하네스를 불러올 수 없다. 두 벌이 어긋나지 않게
+#   `tests/test_시험환경.py::test_한줄흐름과_시험이_같은_깃발을_쓴다` 가 대 본다 (공통 규칙 6).
+깨끗한깃발 = ("--setting-sources", "", "--strict-mcp-config")
+깨끗하게 = False
+
 
 def 상태읽기(판: Path) -> dict:
     p = 판 / 상태이름
@@ -136,6 +150,8 @@ def AI돌리기(누구: str, 작업: Path, 프롬프트: str, 기록자리: Path
     if 누구.startswith("claude"):
         명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
               "--dangerously-skip-permissions", "--plugin-dir", str(스킬.parents[1])]
+        if 깨끗하게:
+            명령 += list(깨끗한깃발)
         모델 = 누구.split(":", 1)[1] if ":" in 누구 else ""
         if 모델:
             명령 += ["--model", 모델]
@@ -934,7 +950,13 @@ def main() -> int:
     p.add_argument("--되감기", default="")
     p.add_argument("--승인", action="store_true")
     p.add_argument("--4차반영", dest="사차", action="store_true")
+    p.add_argument("--깨끗", action="store_true",
+                   help="내 컴퓨터 설정(전역 CLAUDE.md · 훅 · 남의 스킬 · MCP)을 끄고 띄운다 — 확인용")
     a = p.parse_args()
+    if a.깨끗:
+        global 깨끗하게
+        깨끗하게 = True
+        print("  ★ 깨끗한 자리로 돌립니다 — %s" % " ".join(x or '""' for x in 깨끗한깃발))
     판 = Path(a.판자리).resolve()
     상태 = 상태읽기(판)
     조건 = _조건풀기(a.조건 or 상태.get("조건글", ""), 판)

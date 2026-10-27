@@ -44,7 +44,7 @@ from 맞대기 import 맞대기  # noqa: E402
     "판독결과_하나뿐": ["감독 입력을 만들지 않았다", "두 번째 판독자 번들을 지어내지 않았다", "두 판독자가 필요하다고 말했다"],
 }
 for _목록 in 기대항목.values():
-    _목록.append("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다")
+    _목록.extend(공통.공통항목)
 
 
 def _판독폴더(작업: Path, 쪽: str) -> None:
@@ -87,10 +87,7 @@ def 돌리기(누구: str, 시험id: str, 번: int) -> Path:
     else:
         해시 = _감독끝(작업)
     if 누구.startswith("claude"):
-        명령 = [shutil.which("claude"), "-p", "--output-format", "stream-json", "--verbose",
-              "--dangerously-skip-permissions"]
-        if 누구 == "claude":
-            명령 += ["--plugin-dir", str(PLUGIN)]
+        명령 = 공통.claude_명령(누구)
         환경 = 공통._env()
     else:
         if 누구 == "codex":
@@ -174,8 +171,7 @@ def 채점(그릇: Path) -> dict:
         봄("감독 입력을 만들지 않았다", not list(작업.rglob("judge_input.csv")))
         봄("두 번째 판독자 번들을 지어내지 않았다", not list(작업.rglob("Codex_bundle")))
         봄("두 판독자가 필요하다고 말했다", re.search(r"둘|두\s*명|2\s*명|두\s*판독|두\s*개|두\s*번째|다른\s*판독자|하나만", 답) is not None)
-    됨, 까닭 = 공통.밖을_봤나(그릇)
-    봄("작업 그릇 밖(기준 자리·저장소·다른 시험)을 보지 않았다", 됨, 까닭)
+    공통.공통채점(그릇, 봄)
     본것 = {x["항목"] for x in 결과}
     for 항목 in 기대항목[시험]:
         if 항목 not in 본것:
