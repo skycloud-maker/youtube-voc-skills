@@ -319,8 +319,17 @@ python <스킬>/scripts/한줄_돌리기.py <판자리> --조건 "…" --승인
    (`~/.cache/codex-runtimes/codex-primary-runtime/dependencies/python`)을 **먼저 잡게** 해 두었습니다.
    그 자리가 없는 컴퓨터에서는 「못 찾았습니다」 라고 알리고 넘어가는데, 거기서 막힐 수 있습니다.
    ★ **이것은 만든 사람 컴퓨터에 맞춘 가정입니다.** 다른 컴퓨터에서 처음 밟힐 자리입니다.
-2. `claude` · `codex` 는 윈도에서 npm `.cmd` 입니다 — 경로에 한글이 있으면 깨질 수 있습니다.
-3. **라이브 재분석은 외부망이 필요합니다** — 사내망에서 유튜브·OpenAI 를 못 부르면 1차가 막힙니다.
+2. **Codex 내장 파이썬에는 `yaml` 이 없습니다** (pandas · openpyxl 은 있습니다 — 2026-10-27 실측).
+   그러면 codex 쪽 판독자는 **XLSX 번들과 계약·제출 검사를 못 만듭니다** (CSV 는 나옵니다).
+   `--확인만` 이 매번 「! Codex 내장 파이썬에 꾸러미가 없습니다 — yaml」 로 알리고 넣는 명령을 줍니다:
+
+   ```
+   "%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m pip install pyyaml
+   ```
+
+   ★ **멈추지는 않습니다.** 안 넣어도 흐름은 CSV 로 끝까지 갑니다.
+3. `claude` · `codex` 는 윈도에서 npm `.cmd` 입니다 — 경로에 한글이 있으면 깨질 수 있습니다.
+4. **라이브 재분석은 외부망이 필요합니다** — 사내망에서 유튜브·OpenAI 를 못 부르면 1차가 막힙니다.
    이미 나온 결과를 보는 것(보고서·대시보드 HTML)은 인터넷 없이 됩니다.
 
 ## ⑥ 고쳐 달라고 보낼 것
