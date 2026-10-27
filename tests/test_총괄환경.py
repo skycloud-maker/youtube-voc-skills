@@ -882,3 +882,84 @@ def test_없는꾸러미는_불러오지_않고_본다():
     몸 = 글.split("def _없는꾸러미", 1)[1].split(chr(10) + "def ", 1)[0]
     assert "find_spec" in 몸, "find_spec 으로 보지 않는다"
     assert "__import__" not in 몸 and "importlib.import_module" not in 몸,         "꾸러미를 실제로 불러온다 — 없는 것이 가려진다"
+
+
+# ── ⑬ 3차 감독을 **이어** 돌릴 때 (2026-10-27 · Codex 한도로 반쪽이 됐다) ──────────
+#   ★ 찾은 구멍 — 건너뛰기 검사가 `감독결과_*.md` 가 **하나라도** 있으면 「이미 끝났다」 였다.
+#     감독자는 회차마다 하나씩 낸다 (`s13_judge/judge_NN_ids.txt` 수만큼). 깨끗한 판 1 에서
+#     감독1 이 judge_01(145행)만 내고 judge_02 중간에 멈췄다. 그대로 이어 돌리면
+#     **남은 145행을 건너뛴 채** 3차마무리로 가서 반쪽 감독으로 최종 데이터가 만들어진다.
+def _감독판(tmp_path, 낸수: dict, 회차: int = 2):
+    """감독 폴더 둘을 차려 둔다 — `낸수` 는 폴더별로 이미 낸 감독결과 수."""
+    판 = tmp_path / "판"
+    조건 = {"이름": "판_시험"}
+    (판 / "기록").mkdir(parents=True)
+    for 번, (이름, _누구) in enumerate(총괄.감독자, start=1):
+        자리 = 판 / "총괄" / 조건["이름"] / "_감독폴더" / ("3차 감독%d" % 번)
+        (자리 / "s13_judge").mkdir(parents=True)
+        for r in range(1, 회차 + 1):
+            (자리 / "s13_judge" / ("judge_%02d_ids.txt" % r)).write_text("x", encoding="utf-8")
+        결과 = 자리 / "_판독패키지" / "_결과"
+        결과.mkdir(parents=True)
+        (자리 / ".agents").mkdir()          # copytree 로 안 가게
+        for r in range(1, 낸수.get(이름, 0) + 1):
+            (결과 / ("감독결과_%02d_시험.md" % r)).write_text("판정", encoding="utf-8")
+    return 판, 조건
+
+
+def _감독_가로채기(monkeypatch, 낸것을_더함: int = 0):
+    """AI돌리기 를 가로채 **누구를 어떤 말로 띄웠나**를 적어 둔다."""
+    불린것 = []
+
+    def 가짜(누구, 자리, 말, 기록):
+        불린것.append((Path(자리).name, 누구, 말))
+        결과 = Path(자리) / "_판독패키지" / "_결과"
+        있는수 = len(list(결과.glob("감독결과_*.md")))
+        for r in range(있는수 + 1, 있는수 + 1 + 낸것을_더함):
+            (결과 / ("감독결과_%02d_시험.md" % r)).write_text("판정", encoding="utf-8")
+        return 0, "했습니다"
+
+    monkeypatch.setattr(총괄, "AI돌리기", 가짜)
+    monkeypatch.setattr(총괄.subprocess, "run", lambda *a, **k: None)
+    return 불린것
+
+
+def test_반쪽만_낸_감독은_건너뛰지_않는다(monkeypatch, tmp_path):
+    """★ 이 시험이 지키는 것 — 145행이 조용히 사라지지 않는다."""
+    판, 조건 = _감독판(tmp_path, {"감독1": 1})
+    불린것 = _감독_가로채기(monkeypatch, 낸것을_더함=2)
+    총괄.단계_3차감독(판, {}, 조건, False)
+    불린자리 = [x[0] for x in 불린것]
+    assert "3차 감독1" in 불린자리, "회차 2 가운데 1 만 낸 감독을 건너뛰었다 — %r" % (불린것,)
+    말 = [x[2] for x in 불린것 if x[0] == "3차 감독1"][0]
+    assert "다시 하지 마시고" in 말, "이미 낸 회차를 또 하라고 보냈다 — %r" % 말
+    assert "감독결과_01_시험.md" in 말, "어느 회차가 끝났는지 알려주지 않았다 — %r" % 말
+
+
+def test_회차를_다_낸_감독은_건너뛴다(monkeypatch, tmp_path):
+    """돈을 두 번 쓰지 않는다 (sky 「토큰을 최소화하며」) — 2026-10-09 고침을 지킨다."""
+    판, 조건 = _감독판(tmp_path, {"감독1": 2, "감독2": 2})
+    불린것 = _감독_가로채기(monkeypatch)
+    총괄.단계_3차감독(판, {}, 조건, False)
+    assert 불린것 == [], "다 끝난 감독을 또 띄웠다 — %r" % (불린것,)
+
+
+def test_회차를_덜_내고_끝나면_멈춘다(monkeypatch, tmp_path):
+    """★ 일부러 모자라게 낸다 — 반쪽으로 3차마무리에 넘기지 않는다."""
+    판, 조건 = _감독판(tmp_path, {})
+    _감독_가로채기(monkeypatch, 낸것을_더함=1)      # 회차 2 인데 1 만 낸다
+    with pytest.raises(총괄.멈춤) as 터짐:
+        총괄.단계_3차감독(판, {}, 조건, False)
+    assert "1/2" in str(터짐.value), "몇 개 가운데 몇 개인지 말하지 않았다 — %s" % 터짐.value
+
+
+def test_실제_멈춘_판에서도_감독1을_이어_돌린다():
+    """★ 만든 표가 아니라 **실제로 멈춘 판**을 본다 (공통 규칙 4 — 안 돌려 본 자리부터)."""
+    자리 = Path("C:/voc_깨끗판1/총괄/판_20261027_1533/_감독폴더/3차 감독1")
+    if not 자리.is_dir():
+        pytest.skip("이 컴퓨터에 깨끗한 판 1 이 없다")
+    회차수 = len(list((자리 / "s13_judge").glob("judge_*_ids.txt")))
+    낸것 = list(자리.rglob("감독결과_*.md"))
+    assert 회차수 == 2, "회차가 2 가 아니다 — %d" % 회차수
+    assert len(낸것) == 1, "실제 판의 상태가 바뀌었다 — 낸 것 %d" % len(낸것)
+    assert len(낸것) < 회차수, "이 판을 「이미 끝났다」 로 본다 — 145행이 사라진다"
