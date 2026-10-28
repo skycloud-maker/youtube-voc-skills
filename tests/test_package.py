@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -168,7 +169,7 @@ def test_감독폴더에_정답지와_감독입력을_만들지_않는다(감독
     assert not list(감독폴더.rglob("*_bundle")), "2차 번들이 들어갔다"
 
 
-def test_감독폴더_안내문은_옛_꾸러미와_편향검사_한_줄과_새_판_한_줄만_다르다(감독폴더):
+def test_감독폴더_안내문은_옛_꾸러미와_적어_둔_것만_다르다(감독폴더):
     옛 = BASELINE / "원본사본" / "꾸러미" / "VoC_3_3차감독" / "0_먼저_읽으십시오.md"
     assert 옛.is_file(), "옛 감독 꾸러미 사본을 못 찾았다 — %s" % 옛
     a = 옛.read_text(encoding="utf-8").splitlines()
@@ -181,8 +182,19 @@ def test_감독폴더_안내문은_옛_꾸러미와_편향검사_한_줄과_새_
     # 섹션 7a ③ — 안내서 63 이 가리키는 그림 6개를 안내서 옆에 넣었다 (옛 꾸러미부터 빠져 깨져 있었다)
     그림줄 = [x for x in b if "가이드/캡쳐/" in x]
     assert len(그림줄) == 6, 그림줄
+    # ★ 2026-10-29 — 네 번째로 밝힌 차이. 글이 다른 이름으로 가리키는 자리를 안내문 끝에 적는다
+    #   (판독A 가 실제 판독에서 걸렸다 · test_안내문이_이름_어긋난_자리를_다_밝힌다 가 속을 지킨다).
+    #   시험 이름을 「한 줄과 한 줄만」 에서 「적어 둔 것만」 으로 바꿨다 — 차이가 이미 넷이다.
+    #   ★ 줄 내용으로 빼면 안 된다 — 빈 줄과 ``` 는 앞쪽에도 있다. **자리로** 자른다.
+    머리 = "## ★ 글이 다른 이름으로 가리키는 자리"
+    assert b.count(머리) == 1, "그 절이 하나가 아니다"
+    끊은자리 = b.index(머리)
+    assert len(b) - 끊은자리 >= 8, b[끊은자리:]
+    앞쪽 = b[:끊은자리]
+    if 앞쪽 and 앞쪽[-1] == "":
+        앞쪽 = 앞쪽[:-1]          # 머리글 앞의 빈 줄 하나 — 마크다운이 그래야 한다
     옛것 = [x for x in a if "편향검사.py" not in x and not x.strip().startswith("engine/")]
-    assert 옛것 == [x for x in b if x not in 새판 and x not in 그림줄
+    assert 옛것 == [x for x in 앞쪽 if x not in 새판 and x not in 그림줄
                   and not x.strip().startswith("engine/")]
 
 
@@ -325,6 +337,97 @@ def test_안내서가_가리키는_그림이_다_있다(차린폴더):
                 없음.append("%s → %s" % (안내.name, g))
     assert 모두 >= 6, "안내서가 가리키는 그림을 못 찾았다 (무늬가 안 맞나) — %d개" % 모두
     assert not 없음, "안내서가 가리키는 그림이 없다 — %s" % 없음[:5]
+
+
+# ── 글이 다른 이름으로 가리키는 자리 (2026-10-29) ──────────────────────────────
+_낱말 = "A-Za-z0-9가-힣_"
+_가리키는무늬 = re.compile(
+    "(?<![" + _낱말 + "./-])"
+    "([" + _낱말 + "][" + _낱말 + "-]{1,30})/"
+    "([" + _낱말 + "./-]{1,60}[.](?:json|csv|md|py|xlsx|txt|docx|png))")
+
+
+def _어긋난이름(폴더: Path) -> set:
+    """폴더의 글이 가리키는 자리 가운데 **그 파일이 다른 폴더 이름으로 들어 있는 것**.
+
+    ★ 일부러 `꾸러미.이름대응()` 을 부르지 않는다 — 같은 함수로 재면 자기 답을 자기가 채점한다.
+      여기서 따로 센 것이 안내문에 **다 적혀 있는지**만 본다.
+    """
+    있는것: dict = {}
+    for q in 폴더.rglob("*"):
+        if q.is_file() and "__pycache__" not in q.parts:
+            있는것.setdefault(q.name, []).append(q.relative_to(폴더).as_posix())
+    본것 = set()
+    for 글 in sorted(폴더.rglob("*.md")):
+        if 글.relative_to(폴더).parts[:1] == ("engine",):
+            continue
+        for m in _가리키는무늬.finditer(글.read_text(encoding="utf-8", errors="replace")):
+            말한자리, 뒤 = m.group(1), m.group(2)
+            if (폴더 / 말한자리 / 뒤).is_file() or (글.parent / 말한자리 / 뒤).is_file():
+                continue
+            자리들 = 있는것.get(뒤.rsplit("/", 1)[-1])
+            if not 자리들:
+                continue
+            본것.add((말한자리, 자리들[0].rsplit("/", 1)[0]))
+    return 본것
+
+
+def _이름절(폴더: Path) -> str:
+    글 = (폴더 / "0_먼저_읽으십시오.md").read_text(encoding="utf-8")
+    i = 글.find("## ★ 글이 다른 이름으로 가리키는 자리")
+    assert i >= 0, "안내문에 「글이 다른 이름으로 가리키는 자리」 절이 없다"
+    return 글[i:]
+
+
+@pytest.mark.parametrize("스킬이름", ["reading-voc-comments", "supervising-voc-disagreements"])
+def test_스킬이_이름대응_절을_읽으라고_시킨다(스킬이름):
+    """★ 2026-10-29 — 이름 대응을 안내문에 **적어 놓기만 하면 장식이다.**
+
+    판독·감독 스킬의 `SKILL.md` 는 단계 3 에서 `판독패키지/0_최신결정_먼저.md` 를,
+    단계 4 에서 프롬프트를 읽으라고 한다. `0_먼저_읽으십시오.md` 는 **읽으라고 하지 않았다** —
+    그러니 판독자 AI 가 그 절을 볼 길이 없었다. 적어 놓고 안 읽히면 ③ 은 고쳐진 것이 아니다.
+    그래서 단계 3-2 를 넣었고, 이 시험이 **그 단계가 사라지지 않게** 지킨다.
+    ★ 절 이름은 안내문을 만드는 `꾸러미.readme()` 가 쓰는 것과 **같은 글자**여야 한다 —
+      한쪽만 바뀌면 스킬이 없는 절을 가리킨다.
+    """
+    글 = (PLUGIN / "skills" / 스킬이름 / "SKILL.md").read_text(encoding="utf-8")
+    절이름 = "★ 글이 다른 이름으로 가리키는 자리"
+    assert "0_먼저_읽으십시오.md" in 글, "안내문을 읽으라는 말이 없다"
+    assert 절이름 in 글, "가리킬 절 이름이 없다 — %s" % 절이름
+    # 안내문을 만드는 쪽이 정말 그 이름으로 적는가 (두 자리가 어긋나면 없는 절을 가리킨다)
+    만든것 = 꾸러미.readme("2_2차판독", 꾸러미.SPEC["2_2차판독"], ["보기.md"],
+                       [("s9_group", "대장", ["topic_group_map.json"])])
+    assert ("## " + 절이름) in 만든것, "안내문이 그 이름으로 절을 적지 않는다"
+
+
+@pytest.mark.parametrize("어느", ["판독", "감독"])
+def test_안내문이_이름_어긋난_자리를_다_밝힌다(차린폴더, 감독폴더, 어느):
+    """★ 2026-10-29 — 작게 한 번 돌려 보고 나왔다. 판독A(claude)가 **실제 판독 중에** 걸렸다.
+
+    기준 문서 셋이 대장을 `s9_group/topic_group_map.json` 으로 가리키는데 꾸러미에 들어가는
+    자리는 `대장/topic_group_map.json` 이다. 그 어긋남으로 반려 1건과 계약 위반 24행이 났고,
+    판독자는 자기가 맞춰도 될지 sky 에게 물어야 했다.
+
+    원문은 고치지 않고(공통 규칙 7) 사본도 만들지 않고(공통 규칙 6) **안내문에 대응을 적는** 길을
+    골랐으므로, 이 시험이 그 안내문이 **빠짐없이** 적혔는지 지킨다.
+    ★ 하나도 못 찾으면 그것도 실패다 — 「못 찾음」 은 「없음」 이 아니다.
+    """
+    폴더 = 차린폴더 if 어느 == "판독" else 감독폴더
+    찾은것 = _어긋난이름(폴더)
+    assert len(찾은것) >= 3, "어긋난 이름을 못 찾았다 (무늬가 안 맞나) — %s" % sorted(찾은것)
+    절 = _이름절(폴더)
+    안적힌것 = [(ㄱ, ㄴ) for ㄱ, ㄴ in sorted(찾은것)
+              if ("%s/" % ㄱ) not in 절 or ("%s/" % ㄴ if ㄴ else "./") not in 절]
+    assert not 안적힌것, "안내문이 안 밝힌 이름 어긋남 — %s" % 안적힌것
+    assert "s9_group/" in 절 and "대장/" in 절, "판독A 가 걸렸던 그 어긋남이 안 적혔다"
+    # ★ 가리킨 쪽이 **정말 있는지**도 본다 — 없는 자리를 적으면 안내문이 거짓말을 한다
+    for 줄 in 절.splitlines():
+        if "->" not in 줄:
+            continue
+        오른쪽 = 줄.split("->", 1)[1].strip().rstrip("/")
+        if 오른쪽 in ("", "."):
+            continue
+        assert (폴더 / 오른쪽).is_dir(), "안내문이 없는 자리를 가리킨다 — %s" % 오른쪽
 
 
 def test_플러그인_판번호가_변경이력_맨_위와_같다():

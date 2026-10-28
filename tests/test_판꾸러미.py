@@ -164,6 +164,74 @@ def test_zip_맨위에_꾸러미_폴더_하나(꾸러미):
                 "%s.zip 에 plugin.json 이 없다 — Claude Code 가 플러그인으로 못 읽는다" % 이름
 
 
+def test_Ver2는_플러그인으로_등록할_수_있다(꾸러미):
+    """★ 2026-10-29 — 꾸러미에 `plugin/.claude-plugin/plugin.json` 은 있는데 **마켓플레이스
+    쪽(`.claude-plugin/marketplace.json`)이 없어** `claude plugin marketplace add` 가 안 됐다.
+
+    그래서 받는 사람은 **명령 한 줄로만** 돌릴 수 있고, 새 채팅방에서 **말로 시키는 길이
+    막혀** 있었다 — 업무를 스킬로 넘긴 뜻의 절반이 빠진다.
+    ★ Ver1 에는 담지 않는다. Ver1 은 동결 태그에서 꺼내므로 안내문이 이 길을 모른다.
+    """
+    자리, 표 = 꾸러미
+    장터 = "..claude-plugin/marketplace.json".replace("..", ".")
+    브 = 표["판"]["Ver2_한줄흐름"].get("덧붙인것") or {}
+    assert 장터 in 브, "Ver2 차림표에 마켓플레이스 쪽이 안 적혔다 — %s" % sorted(브)
+    assert 장터 not in (표["판"]["Ver1_스킬다섯"].get("덧붙인것") or {}),         "Ver1 에도 담았다 — 동결판 안내문은 이 길을 모른다"
+    # 바이트가 저장소 것과 같은가 (손으로 적은 사본이 아니라 베낀 것인가)
+    원본 = REPO / ".claude-plugin" / "marketplace.json"
+    assert 원본.is_file(), "저장소에 마켓플레이스 쪽이 없다 — %s" % 원본
+    원지문 = hashlib.sha256(원본.read_bytes()).hexdigest()
+    assert 브[장터] == 원지문, "차림표에 적힌 지문이 저장소 것과 다르다"
+    with zipfile.ZipFile(자리 / "Ver2_한줄흐름.zip") as zf:
+        안 = "Ver2_한줄흐름/" + 장터
+        assert 안 in zf.namelist(), "zip 안에 마켓플레이스 쪽이 없다"
+        assert hashlib.sha256(zf.read(안)).hexdigest() == 원지문, "zip 안 내용이 다르다"
+        # 그 안의 source 가 가리키는 자리가 **zip 안에 정말 있는가**
+        쪽 = json.loads(zf.read(안).decode("utf-8"))
+        가리킨 = 쪽["plugins"][0]["source"].lstrip("./")
+        assert any(n.startswith("Ver2_한줄흐름/%s/" % 가리킨) for n in zf.namelist()),             "marketplace.json 이 가리키는 `%s` 가 zip 안에 없다" % 가리킨
+    with zipfile.ZipFile(자리 / "Ver1_스킬다섯.zip") as zf:
+        assert not any(n.endswith("/.claude-plugin/marketplace.json") for n in zf.namelist()),             "Ver1 zip 에 마켓플레이스 쪽이 들어갔다"
+    # 안내문이 그 길을 적어 두었는가 — 담아 놓고 안 알리면 아무도 안 쓴다
+    읽어 = (자리 / "Ver2_한줄흐름" / "0_읽어주세요.md").read_text(encoding="utf-8")
+    for 말 in ("claude plugin marketplace add", "claude plugin install youtube-voc"):
+        assert 말 in 읽어, "Ver2 안내문에 「%s」 가 없다" % 말
+    assert "claude plugin marketplace add" not in         (자리 / "Ver1_스킬다섯" / "0_읽어주세요.md").read_text(encoding="utf-8"),         "Ver1 안내문이 담지도 않은 길을 가리킨다"
+
+
+def test_새채팅방_시험꾸러미는_바탕이_없으면_멈춘다(tmp_path, monkeypatch):
+    """★ sky 지시로 만든 새 채팅방 시험 꾸러미 (`tools/새채팅방_시험_묶기.py`).
+
+    바탕(`dist/판/Ver2_한줄흐름.zip`)이 없으면 **빈 꾸러미를 만들지 않고 멈춘다** —
+    「못 찾음」 은 0개가 아니다. 있을 때는 셋을 담고 **베낀 지문이 같은지** 댄다.
+    """
+    묶기 = pytest.importorskip("새채팅방_시험_묶기", reason="새채팅방_시험_묶기.py 를 못 읽었다")
+    monkeypatch.setattr(묶기, "바탕zip", tmp_path / "없는것.zip")
+    assert 묶기.만들기(tmp_path / "빈자리") == 2, "바탕이 없는데 만들었다"
+    assert not (tmp_path / "빈자리" / "새채팅방_시험.zip").exists()
+
+    바탕 = REPO / "dist" / "판" / "Ver2_한줄흐름.zip"
+    if not 바탕.is_file():
+        pytest.skip("dist/판 을 아직 안 묶었다 — `python tools/판_묶기.py` 뒤에 돈다")
+    monkeypatch.setattr(묶기, "바탕zip", 바탕)
+    받을곳 = tmp_path / "참자리"
+    assert 묶기.만들기(받을곳) == 0
+    z = 받을곳 / "새채팅방_시험.zip"
+    with zipfile.ZipFile(z) as zf:
+        안 = sorted(n.split("/", 1)[1] for n in zf.namelist() if "/" in n)
+        assert 안 == ["0_새채팅방에서_이렇게_하십시오.md", "Ver2_한줄흐름.zip", "시험기록표.md"], 안
+        assert hashlib.sha256(zf.read("새채팅방_시험/Ver2_한줄흐름.zip")).hexdigest()             == hashlib.sha256(바탕.read_bytes()).hexdigest(), "베낀 꾸러미가 바탕과 다르다"
+        순서 = zf.read("새채팅방_시험/0_새채팅방에서_이렇게_하십시오.md").decode("utf-8")
+    # 순서가 **다시 열라고** 말하는가 — 그 한 걸음이 빠지면 새 방에서 스킬이 안 보인다
+    assert "닫고 다시" in 순서, "다시 열라는 말이 없다"
+    assert "claude plugin list" in 순서, "판을 확인하라는 말이 없다"
+    기록 = json.loads((받을곳 / "새채팅방_시험_차림표.json").read_text(encoding="utf-8"))
+    판 = json.loads((REPO / "plugin" / ".claude-plugin" / "plugin.json")
+                   .read_text(encoding="utf-8"))["version"]
+    assert 기록["판"] == 판, "차림표의 판이 플러그인과 다르다"
+    assert 판 in 순서, "순서에 적힌 판 번호가 지금 판(%s)과 다르다" % 판
+
+
 def test_개발용_경로파일은_안_들어간다(꾸러미):
     """`paths.py` 는 이 컴퓨터 경로가 적힌 개발용이다 — 나가는 꾸러미가 부르지 않는다."""
     _, 표 = 꾸러미

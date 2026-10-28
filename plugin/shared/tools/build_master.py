@@ -19,7 +19,7 @@ sky 2026-08-18 결정
 """
 from __future__ import annotations
 
-import collections, csv, glob, io, json, os, re, sys
+import collections, csv, glob, io, json, os, re, shutil, sys
 
 # ★ 꾸러미로 풀면 스크립트는 「스크립트/」 안에 있고 데이터는 그 옆이다.
 #   BASE 는 언제나 「꾸러미 뿌리」 를 가리킨다 (sky 2026-08-21).
@@ -619,7 +619,6 @@ def main():
     # ── 12시트 번들 ────────────────────────────────────────────────
     #   ★ build_xlsx 는 outdir 안의 로그 CSV 를 읽어 뒤에 6시트를 붙인다.
     #     CSV 를 안 넣으면 6시트짜리 반쪽 번들이 나온다 (2026-08-18 실측)
-    import shutil
     # 최종 통합 번들 — 이름은 고정이다 (총괄 자리에서만 만든다)
     bd = os.path.join(R, 'master_final')
     os.makedirs(bd, exist_ok=True)
@@ -634,12 +633,37 @@ def main():
         for r in out:
             w.writerow({c: r.get(c, '') for c in cols})
 
-    # 로그 시트 — 분리·기준서·결함은 CC 회차 것을 그대로 잇는다
+    # ── 로그 시트 — 판독자 **둘** 것을 합친다 (2026-10-29) ──────────────────────
+    #   ★ 무엇이 있었나 — 전에는 이 자리가 「판독자 2」 번들의 네 파일을 **바이트 그대로**
+    #     베꼈다. 주석은 「CC 회차 것을 그대로 잇는다」 였는데 코드는 판독자 2 를 집었고,
+    #     한 줄 흐름에서 판독자 2 는 `_판독패키지/_결과/` 를 훑은 **순서**로 정해진다 —
+    #     어느 판독자의 발견이 살아남을지가 폴더 이름 순서에 달려 있었다.
+    #   ★ 작게 한 번 돌려 보고 드러났다 (2026-10-28 · 영상 1 · 84행). master_final 의 네 파일이
+    #     Codex 번들과 지문까지 같았고, 판독A(claude)가 낸 구조적결함 8 · 기준서개정후보 7 ·
+    #     분리제안 8 · 수정로그_오류확정 393행이 **최종에 없었다.** 그 안에는 「장문 후기의
+    #     소모품 VoC(교체용 먼지봉투 2달째 품절) 한 건이 통째로 사라졌다」 도 들어 있었다.
+    #     판독자를 둘 쓰는 뜻이 여기서 깨진다 — 한 쪽을 버리면 교차 검증이 아니다.
+    #   ★ 어떻게 합치나
+    #     · 머리글은 둘의 **합집합**이다 (판독자마다 칸이 다를 수 있다).
+    #     · 어느 판독자가 낸 것인지 `낸_판독자` 칸에 남긴다. 번들 폴더 이름을 그대로 쓴다 —
+    #       사람이볼목록의 칸(「지금값(2차 Codex_bundle)」)과 같은 이름이라 사람이 짝지을 수 있다.
+    #     · **빈 파일에도 같은 머리글을 쓴다** (CP-29 — 비었을 때와 있을 때 열이 다르면
+    #       승인 도구와 대시보드가 시트를 못 읽는다).
+    #     · 모든 칸이 똑같은 줄은 한 줄로 줄인다. 둘이 **다른** 제안을 냈으면 둘 다 남긴다 —
+    #       그것이 교차 검증의 결과이고, 어느 쪽을 받을지는 사람이 정한다.
+    _자리들 = [(os.path.basename(str(x).rstrip('/' + os.sep)),
+              x if os.path.isdir(x) else os.path.join(R, x)) for x in (_1, _2)]
+    _합친말 = []
     for f in ('수정로그_오류확정.csv', '분리제안.csv', '기준서개정후보.csv', '구조적결함.csv'):
-        _바탕 = _2 if os.path.isdir(_2) else os.path.join(R, _2)
-        s = os.path.join(_바탕, f)      # ★ 판독자 2 의 번들에서 잇는다
-        if os.path.exists(s):
-            shutil.copy2(s, os.path.join(bd, f))
+        _모두, _남은 = 로그합치기(bd, _자리들, f)
+        _합친말.append('%s %d행%s' % (f[:-4], _남은,
+                                   ('(같은 줄 %d 줄임)' % (_모두 - _남은)) if _모두 != _남은 else ''))
+    if os.environ.get('VOC_얼린기준_재현') == '1':
+        print('   ★ 얼린 기준 재현 — 옛 동작으로 담았다 (판독자 2 것만 · %s)'
+              % ' · '.join(_합친말))
+    else:
+        print('   ★ 판독자 둘의 발견을 합쳤다 — ' + ' · '.join(_합친말))
+        print('     (어느 판독자가 낸 것인지 「낸_판독자」 칸에 있다. 둘이 다르면 둘 다 남긴다)')
 
     # ★ 재검토 시트 = 사람이 볼 153행. 이 시트가 이번 판의 핵심 산출물이다
     # ★ 총괄 판정이 든 행은 지킨다 (2026-08-26에 고침).
@@ -690,6 +714,65 @@ def main():
     build_bundle_xlsx(bd)
     print()
     print('   ★ 번들  %s' % os.path.join(bd, 'voc_dashboard_export_bundle_2차시험본.xlsx'))
+
+
+def 로그합치기(받을곳, 자리들, 파일이름, 얼린기준재현=None):
+    """판독자 둘의 발견 시트 하나를 합쳐 `받을곳/파일이름` 으로 쓴다 (2026-10-29).
+
+    자리들 — [(이름표, 번들폴더), …]. 이름표는 번들 폴더 이름을 그대로 쓴다.
+    돌려주는 것 — (모은 줄 수, 남은 줄 수). 둘이 다르면 똑같은 줄을 줄인 것이다.
+
+    ★ 바깥 함수로 둔 까닭 — 시험이 직접 부를 수 있어야 한다. 안에 숨겨 두면
+      「판독자 한 쪽만 담긴다」 는 바로 그 버그를 다시 못 잡는다.
+
+    ★ `VOC_얼린기준_재현=1` 이면 **옛 동작**으로 돈다 — 판독자 2 의 파일을 바이트 그대로
+      베낀다(`낸_판독자` 칸도 붙이지 않는다). 얼린 3차 기준은 그 동작으로 만들어졌으므로
+      **동결된 정답을 고치지 않고** 재현할 수 있어야 한다. 섹션 5b 에서 §17(미판정→제외)과
+      handoff 의 88자 자르기를 같은 스위치로 가른 것과 같은 꼴이다.
+      기본 동작(스위치 없음)이 지금 업무에서 도는 것이고, 둘이 같이 있어야
+      **바꾼 것이 정확히 그것뿐임**을 안다.
+    """
+    if 얼린기준재현 is None:
+        얼린기준재현 = os.environ.get('VOC_얼린기준_재현') == '1'
+    if 얼린기준재현:
+        s = os.path.join(자리들[-1][1], 파일이름)      # ★ 옛 동작 — 판독자 2 것만
+        if not os.path.exists(s):
+            return 0, 0
+        shutil.copyfile(s, os.path.join(받을곳, 파일이름))
+        with io.open(s, encoding='utf-8-sig', newline='') as h:
+            n = sum(1 for r in csv.DictReader(h)
+                    if any((v or '').strip() for v in r.values()))
+        return n, n
+    모은것, 머리 = [], []
+    for 이름표, d in 자리들:
+        s = os.path.join(d, 파일이름)
+        if not os.path.exists(s):
+            continue
+        with io.open(s, encoding='utf-8-sig', newline='') as h:
+            rd = csv.DictReader(h)
+            for c in (rd.fieldnames or []):
+                if c and c != '낸_판독자' and c not in 머리:
+                    머리.append(c)
+            for r in rd:
+                if not any((v or '').strip() for v in r.values()):
+                    continue
+                모은것.append((이름표, r))
+    머리 = 머리 + ['낸_판독자']
+    본것, 줄들 = set(), []
+    for 이름표, r in 모은것:
+        열쇠 = tuple((r.get(c) or '').strip() for c in 머리[:-1])
+        if 열쇠 in 본것:
+            continue
+        본것.add(열쇠)
+        r = dict(r)
+        r['낸_판독자'] = 이름표
+        줄들.append(r)
+    with io.open(os.path.join(받을곳, 파일이름), 'w', encoding='utf-8-sig', newline='') as h:
+        w = csv.DictWriter(h, fieldnames=머리, extrasaction='ignore')
+        w.writeheader()
+        for r in 줄들:
+            w.writerow({c: r.get(c, '') for c in 머리})
+    return len(모은것), len(줄들)
 
 
 def build_bundle_xlsx(bd):

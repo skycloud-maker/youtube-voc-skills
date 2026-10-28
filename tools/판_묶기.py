@@ -195,6 +195,27 @@ python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌�
 python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌리기.py" "<판자리>" --4차반영
 ```
 
+## 또 하나의 길 — **플러그인으로 등록해 말로 시키기** (2026-10-29 더함)
+
+위 ②는 **명령 한 줄**로 돌리는 길입니다. 이 꾸러미는 플러그인으로 **등록**할 수도 있습니다.
+등록하면 새 채팅방에서 「유튜브 댓글 VoC 분석 해 주세요」 **한마디**로 됩니다 —
+AI 가 스킬을 스스로 집어 실행조건을 묻고, 갖춤새를 보고, 어림을 말한 뒤 승인을 기다립니다.
+
+```
+claude plugin marketplace add "<이 폴더>"
+claude plugin install youtube-voc@youtube-voc-skills
+```
+
+그다음 **Claude Code 를 닫고 다시 여십시오** — 등록은 다시 열 때 읽힙니다.
+`claude plugin list` 에 `youtube-voc@youtube-voc-skills` 가 보이면 된 것입니다.
+
+★ 이미 같은 이름(`youtube-voc-skills`)으로 등록해 둔 컴퓨터에서는 **다시 등록하지 마십시오** —
+  이름이 겹칩니다. `claude plugin list` 로 먼저 보시고, 판이 낡았으면
+  `claude plugin update youtube-voc` 만 하면 됩니다.
+
+★ 어느 길이든 **같은 코드가 돕니다.** 명령 한 줄은 자리를 손으로 가리키고, 플러그인은
+  AI 가 스스로 집는 차이입니다.
+
 ## 중간에 멈추면 — **같은 명령을 그대로 다시** 넣으십시오
 
 어디까지 했는지 `<판자리>/상태.json` 에 적혀 있습니다.
@@ -507,6 +528,7 @@ def 만들기(자리: Path) -> int:
     for 이름, 바탕, 읽어주세요, 어디서, 대조꼬리 in 판들:
         받을곳 = 자리 / 이름
         표 = _담기(바탕, 받을곳)
+        덧붙인것: dict = {}        # plugin/ 밖에 담는 것 — 차림표에 따로 적는다
         # ★ 2026-10-28 — 안내 끝에 **대조 안내**를 붙인다. 실무에서는 이 zip 하나만
         #   가므로, 「옛 것과 같은가」 를 재어 본 기록을 꾸러미 안에서 찾을 수 있어야 한다.
         (받을곳 / "0_읽어주세요.md").write_text(
@@ -528,6 +550,21 @@ def 만들기(자리: Path) -> int:
         #   2026-10-22 에 `0_빈컴퓨터에서…` 로 같은 것을 겪었는데 Ver3 만 남아 있었다.
         (받을곳 / "Ver3_아직_못_씁니다.md").write_text(
             _Ver3_안내, encoding="utf-8", newline=chr(10))
+        # ★ 2026-10-29 — Ver2 에만 `.claude-plugin/marketplace.json` 을 담는다.
+        #   왜 — 꾸러미에 `plugin/.claude-plugin/plugin.json` 은 있는데 **마켓플레이스 쪽이
+        #   없어** `claude plugin marketplace add` 가 안 됐다. 즉 받는 사람은 명령 한 줄로만
+        #   돌릴 수 있고 **새 채팅방에서 말로 시키는 길이 막혀 있었다** — 스킬로 옮긴 뜻의
+        #   절반이 빠진다. 저장소 것을 그대로 베낀다 (손으로 적지 않는다 · 공통 규칙 6).
+        #   `source` 가 `./plugin` 이라 **푼 폴더 뿌리에서 바로** 맞는다 (실제로 validate 로 확인).
+        #   ★ Ver1 에는 담지 않는다 — Ver1 은 동결 태그에서 꺼내므로 안내문이 이 길을 모른다.
+        if 이름 == "Ver2_한줄흐름":
+            장터 = REPO / ".claude-plugin" / "marketplace.json"
+            if not 장터.is_file():
+                raise SystemExit("못 찾음: %s — Ver2 를 플러그인으로 등록할 수 없게 된다" % 장터)
+            받을장터 = 받을곳 / ".claude-plugin" / "marketplace.json"
+            받을장터.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(장터, 받을장터)
+            덧붙인것[".claude-plugin/marketplace.json"] = _sha(장터)
         담은대조 = _대조자료_담기(받을곳)
         크기 = sum(p.stat().st_size for p, _ in 표)
         z = 자리 / (이름 + ".zip")
@@ -537,7 +574,11 @@ def 만들기(자리: Path) -> int:
                     zf.write(q, "%s/%s" % (이름, q.relative_to(받을곳).as_posix()))
         기록["판"][이름] = {"어디서": 어디서, "파일수": len(표),
                         "풀었을때바이트": 크기, "zip바이트": z.stat().st_size,
-                        "파일": {안: _sha(원) for 원, 안 in 표}}
+                        "파일": {안: _sha(원) for 원, 안 in 표},
+                        # ★ `파일` 은 **`plugin/` 것만**이다 — 그 목록을 git 과 대는 시험이 있다
+                        #   (`test_두_판의_차이는_태그_뒤에_바뀐_것뿐이다`). plugin/ 밖에 담은 것을
+                        #   거기 섞으면 그 시험이 「뜻 없이 갈렸다」 고 잡는다. 그래서 따로 적는다.
+                        "덧붙인것": 덧붙인것}
         print("  · %-16s %3d개 (+대조자료 %d개) · %4.1f MB (풀었을 때) · zip %4.1f MB — %s"
               % (이름, len(표), 담은대조, 크기 / 1048576,
                  z.stat().st_size / 1048576, 어디서))

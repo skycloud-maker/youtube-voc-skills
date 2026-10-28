@@ -130,6 +130,23 @@ def metrics(rows, baseline=True):
     }
 
 
+def 부딪히는_승인(approved):
+    """같은 (행 · 칸) 에 **서로 다른 값**이 승인된 곳을 찾는다 (2026-10-29).
+
+    돌려주는 것 — ({(atomic_id, field): {제안값들}}, {(atomic_id, field): {낸 쪽들}}).
+    값이 같으면(둘이 똑같이 제안했으면) 부딪힘이 아니다 — 어느 줄이 들어가도 결과가 같다.
+
+    ★ 바깥 함수로 둔 까닭 — 시험이 직접 부를 수 있어야 한다.
+    """
+    값들 = collections.defaultdict(set)
+    누가 = collections.defaultdict(set)
+    for fn, r in approved:
+        키 = (r.get('atomic_id', ''), r.get('field', ''))
+        값들[키].add(str(r.get('제안값', '')).strip())
+        누가[키].add(str(r.get('낸_판독자') or fn))
+    return {k: v for k, v in 값들.items() if len(v) > 1}, 누가
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -162,6 +179,32 @@ def main():
 
     if not (approved or rejected or pending):
         print('★ 수정로그를 찾지 못했습니다: %s' % outdir)
+        sys.exit(1)
+
+    # ---- ★ 한 칸에 승인이 둘이면 **반영하지 않고 멈춘다** (2026-10-29) ------------
+    #   왜 — 2026-10-29 부터 master_final 의 수정로그는 **판독자 둘 것을 합친** 것이다
+    #   (전에는 한 쪽만 베껴서 다른 쪽 발견이 조용히 사라졌다). 합치면 같은 (행 · 칸) 에
+    #   서로 다른 제안이 둘 올 수 있다 — 실측으로 84행짜리 작은 판에서도 25곳이었다.
+    #   아래 고리는 **나중에 읽은 줄이 이긴다.** 사람이 둘 다 승인했는데 한쪽만 조용히
+    #   들어가면, 사람은 자기가 고른 값이 들어갔다고 믿는다. 그래서 여기서 멈춘다 —
+    #   반쯤 반영된 데이터가 「최종」 이라는 이름을 달면 더 나쁘다.
+    _둘, _누가 = 부딪히는_승인(approved)
+    if _둘:
+        print('=' * 74)
+        print('  ✗ 한 칸에 승인이 둘입니다 — %d곳. **아무것도 반영하지 않았습니다.**' % len(_둘))
+        print('=' * 74)
+        print('  판독자 둘이 같은 칸에 **다른 값**을 냈고, 둘 다 승인되어 있습니다.')
+        print('  나중에 읽은 줄이 이기므로 어느 쪽이 들어갈지 사람이 알 수 없습니다.')
+        print('  → 수정로그에서 **한 쪽만 승인**으로 남기고 다른 쪽은 반려로 적으십시오.')
+        print('    (어느 판독자가 낸 것인지 「낸_판독자」 칸에 있습니다)')
+        print()
+        for (aid, fld), 값들 in sorted(_둘.items())[:12]:
+            print('    %s  %s' % (fld, aid))
+            for v in sorted(값들):
+                print('        · %s' % (v[:70] or '(빈 값)'))
+            print('        낸 쪽 — %s' % ' · '.join(sorted(_누가[(aid, fld)])))
+        if len(_둘) > 12:
+            print('    … 외 %d곳' % (len(_둘) - 12))
         sys.exit(1)
 
     # ---- 승인된 것만 반영 -------------------------------------------------

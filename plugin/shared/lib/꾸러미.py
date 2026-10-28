@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import datetime as _d
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -200,7 +201,56 @@ def 꾸러미_지문(담긴것):
                     ensure_ascii=False, indent=1)
 
 
-def readme(name, spec, files):
+# ── 글이 다른 이름으로 가리키는 자리 (2026-10-29 · 작게 한 번 돌려 보고 나왔다) ─────────
+#   ★ 무엇이 있었나 — 판독A(claude)가 실제 판독 중에 걸렸다. 기준 문서 셋(`0_전체안내.md` ·
+#     `8_topic_그룹.md` · `4_2차_확장부록.md`)이 대장을 `s9_group/topic_group_map.json` 으로
+#     가리키는데, 이 꾸러미에 들어가는 자리는 `대장/topic_group_map.json` 이다. 그 어긋남 때문에
+#     판독이 반려 1건과 계약 위반 24행을 안고 끝났고, 판독자는 **자기가 맞춰도 될지 sky 에게
+#     물어야** 했다 (판독B 와 조건이 달라지므로 혼자 고치지 않았다).
+#   ★ 고르지 않은 길 둘 — 기준 문서 원문을 고치는 것(공통 규칙 7 · 축약·개작 금지)과
+#     `s9_group/` 에 사본을 하나 더 두는 것(공통 규칙 6 · 같은 것이 두 벌). 둘 다 안 한다.
+#   ★ 고른 길 — **이름 대응을 안내문에 적는다.** 손으로 적지 않는다. 담은 글을 긁어
+#     **실제로 어긋난 것만** 뽑으므로 재료가 바뀌면 안내문도 따라 바뀐다.
+_낱말 = "A-Za-z0-9가-힣_"
+_가리키는무늬 = re.compile(
+    "(?<![" + _낱말 + "./-])"
+    "([" + _낱말 + "][" + _낱말 + "-]{1,30})/"
+    "([" + _낱말 + "./-]{1,60}[.](?:json|csv|md|py|xlsx|txt|docx|png))")
+
+
+def 이름대응(작업: Path) -> list:
+    """담긴 글이 가리키는 「폴더/파일」 가운데 **이 꾸러미에 다른 폴더 이름으로 들어 있는 것**을
+    (글이 말하는 자리, 이 꾸러미의 자리, 파일 이름들) 로 돌려준다.
+
+    ★ 넣지 않는 것 두 가지 — 둘 다 이름 어긋남이 아니다.
+      ① 글 옆에서 상대경로로 그대로 열리는 것 — 안내서 63 의 `캡쳐/01_전체화면.png` 는 안내서
+         바로 옆에 있어서 그대로 열린다 (섹션 7a ③ 에서 그렇게 넣었다).
+      ② 가리키는 파일이 이 꾸러미에 아예 없는 것 — 총괄 자리의 `s13_judge/judge_input.csv` ·
+         `s15_master/raw_voc.csv`, 옛 저장소의 `outputs/...` 처럼 **다른 자리를 설명하는 글**이다.
+         없는 것을 「이름이 다르다」 고 적으면 안내문이 거짓말을 한다.
+    """
+    있는것: dict = {}
+    for q in sorted(작업.rglob("*")):
+        if q.is_file() and "__pycache__" not in q.parts:
+            있는것.setdefault(q.name, []).append(q.relative_to(작업).as_posix())
+    본것: dict = {}
+    for 글 in sorted(작업.rglob("*.md")):
+        if 글.relative_to(작업).parts[:1] == ("engine",):
+            continue                      # 엔진 안 안내문은 엔진 자리를 말한다
+        for m in _가리키는무늬.finditer(글.read_text(encoding="utf-8", errors="replace")):
+            말한자리, 뒤 = m.group(1), m.group(2)
+            if (작업 / 말한자리 / 뒤).is_file() or (글.parent / 말한자리 / 뒤).is_file():
+                continue                  # ① 그대로 열린다
+            이름 = 뒤.rsplit("/", 1)[-1]
+            자리들 = 있는것.get(이름)
+            if not 자리들:
+                continue                  # ② 이 꾸러미에 없는 것
+            실제 = 자리들[0].rsplit("/", 1)[0] if "/" in 자리들[0] else ""
+            본것.setdefault((말한자리, 실제), set()).add(이름)
+    return [(ㄱ, ㄴ, sorted(ㄷ)) for (ㄱ, ㄴ), ㄷ in sorted(본것.items())]
+
+
+def readme(name, spec, files, 대응=()):
     L = ['# %s\n' % spec['차수'], spec['설명'], '',
          '기준 2026-08-19 · VoC 2차 판독 pilot 1차 완료본\n', '---\n',
          # ★ 첫 벽은 「AI 에게 이 폴더를 어떻게 열어 주나」 다 (sky 2026-08-22)
@@ -226,6 +276,23 @@ def readme(name, spec, files):
           '  판독자는 「무엇이 없었는지」 를 적어서 넘기고,',
           '  실무자는 보정요청서를 시스템 담당자에게 전달합니다.',
           '  수정은 총괄이 다음 판에 반영합니다', '```']
+    # ★ 글이 다른 이름으로 가리키는 자리 — 실제로 어긋난 것만 적는다 (2026-10-29)
+    if 대응:
+        L += ['', '## ★ 글이 다른 이름으로 가리키는 자리', '', '```',
+              '기준 문서와 안내서는 옛 저장소의 폴더 이름으로 적혀 있습니다.',
+              '글이 아래 왼쪽을 가리키면 **이 꾸러미에서는 오른쪽**을 여십시오.',
+              '원문은 고치지 않았고(원문 그대로 둡니다) 사본도 만들지 않았습니다.', '']
+        # ★ 한글은 두 칸을 차지한다 — len() 으로 맞추면 표가 어긋난다
+        import unicodedata as _u
+
+        def _폭(s):
+            return sum(2 if _u.east_asian_width(c) in 'WF' else 1 for c in s)
+        왼쪽 = [ㄱ + '/' for ㄱ, _, _ in 대응]
+        칸 = max(_폭(x) for x in 왼쪽) + 2
+        for (말한자리, 실제, 이름들), ㄱ in zip(대응, 왼쪽):
+            L.append('  %s%s->  %s' % (ㄱ, ' ' * (칸 - _폭(ㄱ)), (실제 + '/') if 실제 else './'))
+            L.append('  %s    %s' % (' ' * 칸, ' · '.join(이름들)))
+        L.append('```')
     return '\n'.join(L)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -249,7 +316,8 @@ def 차리기(작업: Path, 이름: str, 공통: Path, 엔진: Path, 참고: Pat
         셈["차림"] += 1
     목록.append("대장/지문.json")
     for 자리, 글 in (("대장/지문.json", lambda: 꾸러미_지문(담긴것)),
-                    ("0_먼저_읽으십시오.md", lambda: readme(이름, SPEC[이름], 목록))):
+                    ("0_먼저_읽으십시오.md",
+                     lambda: readme(이름, SPEC[이름], 목록, 이름대응(작업)))):
         q = 작업 / 자리
         if q.exists():
             셈["이미있음"] += 1
