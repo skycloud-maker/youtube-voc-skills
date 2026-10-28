@@ -46,6 +46,16 @@ from pathlib import Path
 #   편향검사 시트를 가리키는 행에 그 시트의 `잰_날짜` 값이 그대로 실린다 (2026-10-08 · 두 번 돌려 확인).
 #   그 행에서 **시각 꼴인 값만** 가린다 — 같은 행의 다른 값은 그대로 본다.
 시각칸 = ("잰_날짜", "편향검사")
+# ★ 2026-10-28 독립 점검 F02 — 위 가림을 **아무 파일에나 걸지 않는다.**
+#   기준 자리 전체를 뒤져 그 가림이 실제로 필요한 파일을 세었다 (2026-10-28):
+#     csv  — `편향검사.csv` 하나 (`잰_날짜,<시각>` 한 줄)
+#     xlsx — `VoC_데이터_안내.xlsx [2_다른_시트_칸]` 7행 · `3차_최종데이터.xlsx [편향검사]` 1행
+#            · `voc_dashboard_export_bundle_2차시험본.xlsx [편향검사]` 1행
+#   여기에 적힌 파일 밖에서는 시각도 그대로 댄다 — 그래야 다른 파일의 시각 차이가 드러난다.
+#   늘릴 때는 두 번 돌려 그 칸만 다른 것을 확인한 뒤에 적는다.
+시각가림_csv = ("편향검사.csv",)
+시각가림_xlsx = ("VoC_데이터_안내.xlsx", "3차_최종데이터.xlsx",
+             "voc_dashboard_export_bundle_2차시험본.xlsx")
 # json 에서 도는 시각을 적는 열쇠
 #   「뜬날」 — 지문검사의 `대장/지문.json` 이 **지문을 뜬 시각**을 적는다 (2026-10-08 · zip 안을 보게 되면서 드러났다)
 시각열쇠 = ("생성", "뜬날")
@@ -70,15 +80,29 @@ def _경로꼴(뿌리: Path) -> list[str]:
     return sorted(꼴, key=len, reverse=True)
 
 
+class 못읽음(Exception):
+    """글로 못 읽는 파일 — **같다고 돌려주지 않는다** (2026-10-28 독립 점검 F06).
+
+    `errors="replace"` 로 읽으면 깨진 바이트가 모두 U+FFFD 한 글자로 뭉개져,
+    **서로 다른 파일이 같아진다.** 실측 — `0xff` 와 `0xfe` 를 맞대니 `[]` 였다.
+    못 읽는 것은 「같음」 이 아니라 **사람이 봐야 하는 일**이다.
+    """
+
+
 def _글읽기(p: Path, 뿌리: Path) -> str:
-    t = p.read_bytes().decode("utf-8-sig", errors="replace")
+    바이트 = p.read_bytes()
+    try:
+        t = 바이트.decode("utf-8-sig")
+    except UnicodeDecodeError as e:
+        raise 못읽음("utf-8 로 못 읽음 (%d번째 바이트) — %s" % (e.start, p.name)) from e
     for 꼴 in _경로꼴(뿌리):
         t = t.replace(꼴, "<뿌리>")
     줄 = t.splitlines()
     for i, x in enumerate(줄):
-        for k in 시각칸:
-            if x.startswith(k + ","):
-                줄[i] = _시각꼴.sub("<시각>", x)
+        if p.name in 시각가림_csv:
+            for k in 시각칸:
+                if x.startswith(k + ","):
+                    줄[i] = _시각칸만_가리기(x)
         for k in 시각머리:
             if x.startswith(k):
                 줄[i] = _시각꼴.sub("<시각>", x, count=1)
@@ -96,6 +120,33 @@ def _글읽기(p: Path, 뿌리: Path) -> str:
     if p.suffix.lower() == ".csv":
         t = _표에서_날짜칸_가리기(t)
     return t
+
+
+def _시각칸만_가리기(줄: str) -> str:
+    """시각칸으로 시작하는 csv 줄에서 **칸 전체가 시각인 칸만** <시각> 으로 바꾼다.
+
+    ★ 2026-10-28 독립 점검 F02 — 전에는 `_시각꼴.sub("<시각>", 줄)` 로 **줄 전체**에
+      sub 를 걸었다. 그러면 글 안에 박힌 시각까지 바뀌어, 같은 줄의 **다른 글자가
+      달라져도 같아진다.** 48줄 주석은 「같은 행의 다른 값은 그대로 본다」 라고
+      적고 있었으니 **주석과 코드가 어긋나 있었다.**
+      이제 칸으로 쪼개어, **그 칸 전체가 시각 꼴인 칸만** 바꾼다.
+    """
+    import csv as _csv
+    import io as _io
+    try:
+        칸 = next(_csv.reader(_io.StringIO(줄)))
+    except (StopIteration, _csv.Error):
+        return 줄
+    바뀜 = False
+    for i, v in enumerate(칸):
+        if i and _시각꼴.fullmatch(v.strip()):
+            칸[i] = "<시각>"
+            바뀜 = True
+    if not 바뀜:
+        return 줄
+    낼곳 = _io.StringIO()
+    _csv.writer(낼곳, lineterminator="").writerow(칸)
+    return 낼곳.getvalue()
 
 
 def _표에서_날짜칸_가리기(t: str) -> str:
@@ -144,8 +195,12 @@ def _엑셀읽기(p: Path, 뿌리: Path):
                     r = [("<날짜>" if (i in 날짜자리 and isinstance(v, str)
                                      and _날짜꼴.fullmatch(v.strip())) else v)
                          for i, v in enumerate(r)]
-                if r and r[0] in 시각칸:
-                    r = [r[0]] + [("<시각>" if isinstance(v, str) and _시각꼴.search(v) else v)
+                if r and r[0] in 시각칸 and p.name in 시각가림_xlsx:
+                    # ★ 2026-10-28 독립 점검 F02 — 전에는 시각이 **든** 칸을 통째로
+                    #   "<시각>" 으로 바꿨다. 그래서 「규칙 A 2026-01-01 09:00」 과
+                    #   「규칙 B 2026-01-01 09:00」 이 **같아졌다** (실측 · `[]`).
+                    #   이제 그 칸의 **시각 부분만** 바꾼다 — 나머지 글자는 그대로 댄다.
+                    r = [r[0]] + [(_시각꼴.sub("<시각>", v) if isinstance(v, str) else v)
                                   for v in r[1:]]
                 rows.append(tuple(r))
             while rows and not rows[-1]:
@@ -154,6 +209,72 @@ def _엑셀읽기(p: Path, 뿌리: Path):
         return out
     finally:
         wb.close()
+
+
+def _엑셀꾸밈(p: Path):
+    """엑셀의 **값이 아닌 것**을 모은다 — 수식 · 열 너비 · 머리줄 꾸밈 · 숫자 꼴.
+
+    ★ 2026-10-28 독립 점검 F05 — `_엑셀읽기` 는 `data_only=True` · `values_only=True` 로
+      읽어 **값만** 댄다. 그래서 `=1+1` → `=100+100` 과 채움색 빨강 → 초록을 둘 다
+      놓쳤다(실측 · `[]`). 그런데 `test_baseline.py` 는 「색·너비 같은 꾸밈은 번들꾸미기
+      얼린 기준이 따로 지킨다」 고 적고 있었다 — **말과 장치가 어긋나 있었다.**
+      기준 자리의 번들꾸미기 두 판을 대 보니 꾸밈이 완전히 같았다(머리칸 341개 · 다른 곳 0),
+      그래서 **약한 말로 바꾸는 대신 대조를 넣는다.**
+    """
+    import openpyxl
+    wb = openpyxl.load_workbook(p, data_only=False)      # 수식을 보려면 False
+    try:
+        out = []
+        for ws in wb.worksheets:
+            너비 = {k: (v.width, v.hidden) for k, v in sorted(ws.column_dimensions.items())}
+            수식 = []
+            꼴 = []
+            채움 = []
+            for row in ws.iter_rows():
+                for c in row:
+                    if isinstance(c.value, str) and c.value.startswith("="):
+                        수식.append((c.coordinate, c.value))
+                    if c.number_format not in ("General", None):
+                        꼴.append((c.coordinate, c.number_format))
+                    # ★ 채움색은 **머리줄만 보면 안 된다** — 꾸밈은 본문 칸에도 들어간다.
+                    #   칸이 많을 수 있어 상한을 둔다. 상한에 닿으면 그 사실을 남긴다.
+                    if c.fill is not None and c.fill.patternType:
+                        if len(채움) < 20000:
+                            채움.append((c.coordinate, c.fill.patternType,
+                                       c.fill.fgColor.rgb, c.fill.bgColor.rgb))
+                        elif 채움[-1][0] != "…상한":
+                            채움.append(("…상한", None, None, None))
+            머리 = [(c.coordinate, c.fill.fgColor.rgb, c.font.bold, c.font.size,
+                   c.alignment.horizontal) for c in (ws[1] if ws.max_row else [])]
+            out.append((ws.title, 너비, tuple(수식), tuple(꼴[:4000]), tuple(머리),
+                        ws.freeze_panes, ws.sheet_state, tuple(채움)))
+        return out
+    finally:
+        wb.close()
+
+
+def _꾸밈다름(이름: str, a, b) -> list[str]:
+    """`_엑셀꾸밈` 둘을 대고 **무엇이 다른지** 말로 돌려준다."""
+    말 = []
+    for (t, 너비a, 수식a, 꼴a, 머리a, 얼a, 상a, 채움a), \
+            (_, 너비b, 수식b, 꼴b, 머리b, 얼b, 상b, 채움b) in zip(a, b):
+        if 너비a != 너비b:
+            다른열 = sorted({k for k in set(너비a) | set(너비b)
+                          if 너비a.get(k) != 너비b.get(k)})
+            말.append("열 너비 다름: %s [%s]  %s" % (이름, t, 다른열[:6]))
+        if 수식a != 수식b:
+            말.append("수식 다름: %s [%s]  (%d개 / %d개)"
+                    % (이름, t, len(수식a), len(수식b)))
+        if 꼴a != 꼴b:
+            말.append("숫자 꼴 다름: %s [%s]" % (이름, t))
+        if 머리a != 머리b:
+            말.append("머리줄 꾸밈 다름: %s [%s]" % (이름, t))
+        if 채움a != 채움b:
+            다른칸 = [x[0] for x in set(채움a) ^ set(채움b)]
+            말.append("채움색 꾸밈 다름: %s [%s]  %s" % (이름, t, sorted(다른칸)[:6]))
+        if (얼a, 상a) != (얼b, 상b):
+            말.append("틀고정·시트상태 다름: %s [%s]" % (이름, t))
+    return 말
 
 
 def _첫다름(a: list, b: list) -> str:
@@ -194,7 +315,8 @@ def _칸다름(파일: str, 시트: str, a: list, b: list, 허용: set, 센것: 
 
 
 def 맞대기(가: Path, 나: Path, 뿌리가: Path | None = None, 뿌리나: Path | None = None,
-           뺄것: tuple[str, ...] = (), 허용칸: dict | None = None, 허용센것: dict | None = None) -> list[str]:
+           뺄것: tuple[str, ...] = (), 허용칸: dict | None = None, 허용센것: dict | None = None,
+           꾸밈: bool = False) -> list[str]:
     가, 나 = Path(가), Path(나)
     뿌리가, 뿌리나 = Path(뿌리가 or 가), Path(뿌리나 or 나)
     다름: list[str] = []
@@ -232,6 +354,9 @@ def 맞대기(가: Path, 나: Path, 뿌리가: Path | None = None, 뿌리나: Pa
                     for (t, a), (_, b) in zip(x, y):
                         if a != b:
                             다름 += _칸다름(r, t, a, b, set(허용칸.get(t, ())), 센것)
+                # ★ 2026-10-28 F05 — 값 말고 **꾸밈·수식**도 댄다 (부르는 쪽이 켤 때)
+                if 꾸밈:
+                    다름 += _꾸밈다름(r, _엑셀꾸밈(p), _엑셀꾸밈(q))
             elif sfx == ".zip":
                 # ★ zip 은 **안을 풀어 같은 기준으로** 본다 (2026-10-08).
                 #   zip 바이트에는 압축 시각이 들어가 같은 내용도 다르다. 그리고 안에 든
@@ -245,7 +370,8 @@ def 맞대기(가: Path, 나: Path, 뿌리가: Path | None = None, 뿌리나: Pa
                         자리.mkdir()
                         with zipfile.ZipFile(파일) as z:
                             z.extractall(자리)
-                    for 말 in 맞대기(ㄱ자리, ㄴ자리, 뿌리가, 뿌리나, 뺄것, 허용칸, 허용센것):
+                    for 말 in 맞대기(ㄱ자리, ㄴ자리, 뿌리가, 뿌리나, 뺄것, 허용칸,
+                                  허용센것, 꾸밈):
                         다름.append("zip 안 다름: %s → %s" % (r, 말))
             elif p.read_bytes() != q.read_bytes():
                 다름.append("바이트 다름: %s" % r)

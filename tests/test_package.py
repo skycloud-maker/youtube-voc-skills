@@ -351,3 +351,75 @@ def test_플러그인_설명이_든_스킬을_하나도_빠뜨리지_않는다()
                   if p.is_dir() and (p / "SKILL.md").is_file())
     빠진것 = [s for s in 있는스킬 if s not in 설명]
     assert not 빠진것, "plugin.json 설명에 빠진 스킬 — %s" % 빠진것
+
+
+def test_PL이슈_뽑기가_열_누락을_0건으로_돌려주지_않는다(tmp_path):
+    """★ 2026-10-28 독립 점검 F07 — 「안전·위생이 0 건」 과 「분류할 열이 없다」 는 다르다.
+
+    고치기 전 — `topic`·`status` 가 없으면 아래 고리가 **모든 행을 건너뛰어**
+    머리만 있는 `PL이슈.csv` 를 만들고 **종료코드 0** 으로 끝났다 (실측).
+    PL 이슈는 제품 안전 건이다 — 조용히 0 이 되어선 안 된다.
+
+    ★ 이 구멍은 **옛 도구에도 있었다.** 옛 `PL이슈_뽑기.py` 76·80줄에 같은 코드가 있고
+      우리 파일은 줄바꿈만 빼고 바이트가 같았다(고친 이력 0) — 옮기다 깨진 것이 아니라
+      물려받은 것이다. 옛 실제 데이터는 89칸을 다 갖고 있어 터지지 않았다 (PL 213행).
+
+    ★ 이 도구는 cwd 가 아니라 **자기 파일 위치**로 ROOT 를 잡는다. 그래서 사본을
+      `<자리>/스크립트/` 에 두고 거기서 돌린다.
+    """
+    도구 = REPO / "plugin" / "shared" / "tools" / "PL이슈_뽑기.py"
+    칸 = ["atomic_id", "topic", "status", "product_category", "atomic_voc",
+         "original_voc", "cej", "sentiment_dir", "tee_emotion_score",
+         "voc_total_score", "rootcause_problem", "rootcause_cause",
+         "entity_role", "video_title", "video_url"]
+
+    def 돌리기(머리줄: str, 줄들: list[str]):
+        자리 = tmp_path / ("판_%d" % len(list(tmp_path.iterdir())))
+        (자리 / "스크립트").mkdir(parents=True)
+        사본 = 자리 / "스크립트" / 도구.name
+        shutil.copyfile(도구, 사본)
+        번들 = 자리 / "_판독패키지" / "_결과" / "master_final"
+        번들.mkdir(parents=True)
+        (번들 / "raw_voc.csv").write_text(
+            머리줄 + chr(10) + chr(10).join(줄들) + chr(10),
+            encoding="utf-8", newline=chr(10))
+        r = subprocess.run([sys.executable, str(사본)], cwd=str(자리),
+                           capture_output=True, text=True, encoding="utf-8")
+        return r, 번들 / "PL이슈.csv"
+
+    # ① 열이 없다 — 멈춰야 한다
+    r, 낸것 = 돌리기("atomic_id,wrong_column", ["a-1,x", "a-2,y"])
+    assert r.returncode != 0, (
+        "열이 없는데 종료코드 0 으로 끝났다 — 「0 건」 과 구분되지 않는다:\n" + r.stdout)
+    assert "꼭 필요한 열이 없습니다" in r.stdout, r.stdout
+    assert not 낸것.exists(), "열이 없는데 PL이슈.csv 를 만들었다 (머리만 있는 0건 파일)"
+
+    # ② 열이 있다 — 전처럼 돌아야 한다 (헛경보가 아님을 함께 확인한다)
+    def 한줄(라벨, 상태):
+        값 = {"atomic_id": "a-1", "topic": 라벨, "status": 상태,
+             "tee_emotion_score": "3", "voc_total_score": "7"}
+        return ",".join(값.get(c, "x") for c in 칸)
+
+    r2, 낸것2 = 돌리기(",".join(칸),
+                    [한줄("안전(화재·감전·누수)", "normal"),
+                     한줄("위생/냄새", "normal"),
+                     한줄("안전(화재·감전·누수)", "scope_excluded")])
+    assert r2.returncode == 0, r2.stdout + r2.stderr
+    assert 낸것2.exists(), "정상 입력인데 PL이슈.csv 를 안 만들었다"
+    줄수 = len(낸것2.read_text(encoding="utf-8-sig").rstrip().split(chr(10)))
+    assert 줄수 == 3, "안전 1 · 위생 1 이 뽑혀 머리까지 3줄이어야 한다 — %d줄" % 줄수
+
+
+def test_3차마무리가_PL실패를_보고도_안_멈추지_않는다():
+    """★ 2026-10-28 독립 점검 F07 — 실패 코드를 받고도 그냥 다음으로 갔다.
+
+    시트_붙이기는 `PL이슈.csv` 가 없으면 「못 찾았습니다」 하고 조용히 건너뛴다.
+    그래서 PL 뽑기가 실패하면 **★PL Issue 시트가 빠진 번들**이 「다 됐다」 로 나갔다.
+    코드를 읽어 **그 자리에 멈추는 구문이 있는지** 본다.
+    """
+    글 = (REPO / "plugin" / "shared" / "tools" / "3차_마무리.py").read_text(encoding="utf-8")
+    자리 = 글.find('_달리기("PL이슈_뽑기.py")')
+    assert 자리 > 0, "PL이슈_뽑기 를 부르는 자리를 못 찾았다 — 못 찾음은 통과가 아니다"
+    뒤 = 글[자리:자리 + 700]
+    assert "if 코드" in 뒤, "PL 뽑기 실패를 보고도 멈추지 않는다 (종료코드를 안 본다)"
+    assert "return 코드" in 뒤, "실패 코드를 그대로 돌려주지 않는다"

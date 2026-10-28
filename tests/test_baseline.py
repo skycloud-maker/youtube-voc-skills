@@ -68,8 +68,13 @@ def test_맞대기가_다름을_잡는다(tmp_path):
     가, 나 = tmp_path / "가", tmp_path / "나"
     for d in (가, 나):
         d.mkdir()
-        (d / "a.csv").write_text("x,1\n자리,%s\\s13_judge\n잰_날짜,2026-09-18 18:3%d\n"
-                                 % (d, 3 if d is 가 else 4), encoding="utf-8")
+        (d / "a.csv").write_text("x,1\n자리,%s\\s13_judge\n" % d, encoding="utf-8")
+        # ★ 2026-10-28 (독립 점검 F02) — 시각 가림은 **파일을 지목해서만** 쓴다.
+        #   전에는 이 `a.csv` 에 `잰_날짜` 줄을 넣어 두었는데, 그러면 「아무 csv 에서나
+        #   시각을 가린다」 는 옛 동작을 시험이 되레 고정시킨다. 실제로 그 가림이 필요한
+        #   파일은 `편향검사.csv` 하나다 (기준 자리 전수 확인) — 그 이름으로 시험한다.
+        (d / "편향검사.csv").write_text("잰_날짜,2026-09-18 18:3%d\n"
+                                     % (3 if d is 가 else 4), encoding="utf-8")
         wb = openpyxl.Workbook()
         wb.active.append(["id", "값"])
         wb.active.append(["r1", "같음"])
@@ -112,6 +117,65 @@ def test_맞대기가_다름을_잡는다(tmp_path):
     assert 맞대기(tmp_path / "빈1", tmp_path / "빈2"), "빈 폴더끼리는 같음이 아니다"
 
 
+def test_맞대기가_독립점검의_반례를_잡는다(tmp_path):
+    """★ 2026-10-28 독립 점검(Copilot CoWork)이 찾아온 반례 넷 — 그때 전부 `[]` 였다.
+
+    고치기 전 실측 —
+      ① `잰_날짜,` 로 시작하는 csv 줄에서 **다른 칸의 시각**을 바꿔도 `[]`
+      ② 첫 칸이 `편향검사` 인 xlsx 줄에서 시각이 든 칸의 **글자**를 바꿔도 `[]`
+         (그 칸을 통째로 `<시각>` 으로 바꿨다)
+      ③ 깨진 UTF-8 (`0xff` vs `0xfe`) 이 `[]`  — errors="replace" 로 뭉개졌다
+      ④ 엑셀 수식·채움색 차이가 `[]`  — 값만 댔다
+    이 넷이 다시 `[]` 가 되면 **대조 장치가 차이를 숨기는 상태로 돌아간 것**이다.
+    """
+    import openpyxl
+    from openpyxl.styles import PatternFill
+    가, 나 = tmp_path / "가", tmp_path / "나"
+    가.mkdir(), 나.mkdir()
+
+    # ① csv — 시각칸 줄의 다른 시각
+    for d, 때 in ((가, "2026-01-01 09:00"), (나, "2099-12-31 23:59")):
+        (d / "표.csv").write_text("항목,관측시각,값\n잰_날짜,%s,100\n" % 때,
+                                 encoding="utf-8", newline="\n")
+    assert any("표.csv" in x for x in 맞대기(가, 나)), "① 시각칸 줄의 다른 시각을 숨겼다"
+    for d in (가, 나):
+        (d / "표.csv").unlink()
+
+    # ② xlsx — 시각이 든 칸의 글자
+    for d, 말 in ((가, "규칙 A"), (나, "규칙 B")):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "편향검사"
+        ws.append(["항목", "내용"])
+        ws.append(["편향검사", "%s 2026-01-01 09:00" % 말])
+        wb.save(d / "번들.xlsx")
+    assert any("번들.xlsx" in x for x in 맞대기(가, 나)), "② 시각이 든 칸의 글자를 숨겼다"
+    for d in (가, 나):
+        (d / "번들.xlsx").unlink()
+
+    # ③ 깨진 UTF-8 — 「못 읽음」 은 같음이 아니다
+    (가 / "a.txt").write_bytes(bytes([0xFF]))
+    (나 / "a.txt").write_bytes(bytes([0xFE]))
+    말 = 맞대기(가, 나)
+    assert any("못 읽음" in x for x in 말), "③ 깨진 바이트를 같음으로 돌려줬다 — %s" % 말
+    for d in (가, 나):
+        (d / "a.txt").unlink()
+
+    # ④ 수식 · 채움색 — `꾸밈=True` 로 켤 때 잡는다
+    for d, 다름 in ((가, False), (나, True)):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "raw_voc"
+        ws.append(["atomic_id", "값"])
+        ws.append(["a-1", "=100+100" if 다름 else "=1+1"])
+        ws["B2"].fill = PatternFill("solid", fgColor="FF0000" if 다름 else "00FF00")
+        wb.save(d / "꾸밈.xlsx")
+    assert not 맞대기(가, 나), "값은 같으니 값 대조에서는 같아야 한다 (캐시값 없음)"
+    말 = 맞대기(가, 나, 꾸밈=True)
+    assert any("수식 다름" in x for x in 말), "④ 수식 차이를 숨겼다 — %s" % 말
+    assert any("머리줄 꾸밈" in x or "꾸밈" in x for x in 말), "④ 꾸밈 차이를 숨겼다 — %s" % 말
+
+
 @pytest.mark.parametrize("이름", sorted(기준_만들기.실행들))
 def test_기준이_재현된다(이름):
     """사본을 새 자리에 다시 차려 돌리면 얼린 기준과 같아야 한다.
@@ -125,7 +189,10 @@ def test_기준이_재현된다(이름):
     그릇.mkdir(parents=True)
     assert 기준_만들기.차려서_돌리기(이름, 그릇) == 0, (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
     얼린 = BASELINE / "실행" / ("%s_1" % 이름)
-    다름 = 맞대기(얼린 / "2판", 그릇 / "2판")
+    # ★ 2026-10-28 독립 점검 F05 — 값만 대고 있었다. 꾸밈·수식도 댄다.
+    #   번들꾸미기 두 판을 대 보니 꾸밈이 완전히 같았다(머리칸 341개 · 다른 곳 0)
+    #   → 「색·너비는 따로 지킨다」 던 말을 **실제 대조로** 바꾼다.
+    다름 = 맞대기(얼린 / "2판", 그릇 / "2판", 꾸밈=True)
     assert not 다름, "얼린 기준과 다르다:\n" + "\n".join(다름[:20])
 
 
@@ -269,7 +336,12 @@ def test_허용한_칸만_빼고_나머지는_잡는다():
 #
 # ★ 옛 저장소는 **읽지도 않는다** — 기준 자리의 사본만 쓴다 (결정 0001 · 변화 0).
 #   (옛 자리의 경로는 `paths.py` 한 곳에만 둔다 — 2026-10-23 검사가 이 줄을 잡았다)
-# ★ 값으로 댄다 (`data_only=True`). 색·너비 같은 꾸밈은 `번들꾸미기` 얼린 기준이 따로 지킨다.
+# ★ 값으로 댄다 (`data_only=True`) — 이 시험은 **값만** 본다.
+#   ★ 2026-10-28 고침 (독립 점검 F05) — 전에 이 자리에 「색·너비 같은 꾸밈은 `번들꾸미기`
+#     얼린 기준이 따로 지킨다」 고 적혀 있었다. **틀렸다.** 그 기준도 같은 맞대기로 값만
+#     댔으므로 색·너비를 보지 않았다 (채움색 빨강 → 초록을 못 잡는 것을 실측했다).
+#     이제 `test_기준이_재현된다` 가 `꾸밈=True` 로 수식·열너비·머리줄 꾸밈·숫자꼴을
+#     실제로 댄다. 이 4차 시험은 사람 결정이 든 판의 **값**을 보는 자리로 둔다.
 # ─────────────────────────────────────────────────────────────────────────────
 _옛번들지문 = "6e07c2281953a8c29a0d38ec7c1f499bd9a61d77b5a549c77734854cb7be0c3f"
 # 4차_반영 이 읽는 입력 — 어느 자리에서 읽는지는 도구 안에 적혀 있다
