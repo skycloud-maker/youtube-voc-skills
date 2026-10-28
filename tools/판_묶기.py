@@ -173,18 +173,18 @@ _Ver2_읽어주세요 = """# Ver2 — 한 줄 흐름. **이 꾸러미 하나만*
 ② 한 줄 넣습니다 — **이것 하나입니다.**
 
 ```
-python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌리기.py" ^
-       "<판자리>" --조건 "검색어=LG 로봇청소기; 영상=2; 댓글=50; 이름=판1"
+python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌리기.py" "<판자리>" --조건 "검색어=LG 로봇청소기; 영상=2; 댓글=50; 이름=판1"
 ```
 
 ★ `<판자리>` 는 **저장소 밖 빈 폴더**를 새로 하나 주십시오. 그 안에 판의 모든 것이 쌓입니다.
+
+★ **한 줄입니다.** 줄을 나누어 적지 마십시오 — 줄 나누는 글자는 셸(cmd · PowerShell · bash)마다 달라 붙여 넣는 곳에서 깨집니다 (2026-10-28 설치 예행).
 
 ③ 그 명령은 **어림(규모 · 시간 · 비용 · 유튜브 할당량)을 말하고 멈춥니다.**
    숫자가 괜찮으면 `--승인` 을 붙여 같은 명령을 다시 넣으십시오 — 그때부터 끝까지 갑니다.
 
 ```
-python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌리기.py" ^
-       "<판자리>" --조건 "검색어=LG 로봇청소기; 영상=2; 댓글=50; 이름=판1" --승인
+python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌리기.py" "<판자리>" --조건 "검색어=LG 로봇청소기; 영상=2; 댓글=50; 이름=판1" --승인
 ```
 
    ★ 한 번 승인하면 `상태.json` 에 적힙니다 — 멈춘 뒤 이어갈 때는 다시 묻지 않습니다.
@@ -192,8 +192,7 @@ python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌�
 ⑤ 마지막 한 줄 —
 
 ```
-python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌리기.py" ^
-       "<판자리>" --4차반영
+python "<이 폴더>/plugin/skills/coordinating-voc-pipeline/scripts/한줄_돌리기.py" "<판자리>" --4차반영
 ```
 
 ## 중간에 멈추면 — **같은 명령을 그대로 다시** 넣으십시오
@@ -446,6 +445,13 @@ def 만들기(자리: Path) -> int:
         #   그때 무엇을 보고 무엇을 보내면 되는지를 꾸러미 안에 같이 넣는다.
         (받을곳 / "0_막히면_이_순서로.md").write_text(
             _막히면_안내, encoding="utf-8", newline=chr(10))
+        # ★ 2026-10-28 설치 예행 — 빈 폴더에 zip 만 풀어 보니, 두 안내가 「`Ver3_아직_못
+        #   _씁니다.md` 를 보십시오」 라고 가리키는데 **그 파일이 꾸러미 안에 없었다.**
+        #   `dist/판/` 에만 썼기 때문이다. 받는 사람에게 건네는 것은 zip 하나다
+        #   (`0_읽어주세요.md` 가 「**이 꾸러미 하나만** 건네면 됩니다」 라고 적는다).
+        #   2026-10-22 에 `0_빈컴퓨터에서…` 로 같은 것을 겪었는데 Ver3 만 남아 있었다.
+        (받을곳 / "Ver3_아직_못_씁니다.md").write_text(
+            _Ver3_안내, encoding="utf-8", newline=chr(10))
         크기 = sum(p.stat().st_size for p, _ in 표)
         z = 자리 / (이름 + ".zip")
         with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
