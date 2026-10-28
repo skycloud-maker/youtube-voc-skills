@@ -69,6 +69,26 @@ ROOT = _HERE.parent if _HERE.name in ("스크립트", "scripts") else _HERE
 찾은자리: list[str] = []      # ★ 실제로 본 자리 — 「이상 없음」 을 말해도 되는지 가른다
 
 
+def 한칸_지문(길: Path) -> str:
+    """파일 하나의 지문. ★ **지문을 뜨는 방식은 여기 한 곳**에서 정한다.
+
+    줄바꿈(CRLF/LF)은 하나로 맞춰 센다 — 판마다 달라 지문이 흔들린 적이 있다.
+
+    ★ 왜 따로 뽑았나 (2026-10-28)
+      `데이터_넣기.py` 가 영상메타를 갈아 끼운 뒤 **그 한 칸만** 다시 떠야 한다.
+      그때 해시 뜨는 네 줄을 거기에 베껴 두면 **같은 것이 두 벌**이 되고,
+      줄바꿈 맞추기를 한쪽만 고치는 날 지문이 영원히 어긋난다.
+      그래서 베끼지 않고 이 함수를 불러 쓴다.
+    """
+    바이트 = 길.read_bytes()
+    try:
+        글 = 바이트.decode("utf-8")
+        재료 = 글.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+    except UnicodeDecodeError:
+        재료 = 바이트
+    return hashlib.sha256(재료).hexdigest()[:16]
+
+
 def 지문뜨기() -> dict[str, str]:
     나온것: dict[str, str] = {}
     찾은자리.clear()
@@ -82,16 +102,8 @@ def 지문뜨기() -> dict[str, str]:
                 continue
             if 건너뜀 & set(길.parts) or 길.name in 건너뜀:
                 continue
-            # ★ 줄바꿈(CRLF/LF)이 판마다 달라 지문이 흔들린 적이 있다.
-            #   글자만 보고, 줄바꿈은 하나로 맞춰 센다
-            바이트 = 길.read_bytes()
-            try:
-                글 = 바이트.decode("utf-8")
-                재료 = 글.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
-            except UnicodeDecodeError:
-                재료 = 바이트
             상대 = 길.relative_to(ROOT).as_posix()
-            나온것[상대] = hashlib.sha256(재료).hexdigest()[:16]
+            나온것[상대] = 한칸_지문(길)        # ★ 뜨는 방식은 한 곳 (위 함수)
     return 나온것
 
 

@@ -227,27 +227,82 @@ def test_1차가_만든_영상메타가_판독폴더에_앉는다(차린폴더, 
     sys.path.insert(0, str(SHARED / "tools"))
     import 데이터_넣기                                     # noqa: PLC0415
 
-    자리 = 차린폴더 / "판독패키지" / "7_영상메타.csv"
+    # ★ 2026-10-28 — **사본에서** 한다. 갈아끼우기가 이제 `대장/지문.json` 을 다시 뜨고
+    #   `대장/지문_이력.json` 을 만들므로, module 범위인 `차린폴더` 를 더럽히면
+    #   뒤에 오는 시험이 파일 수를 세다 틀린다.
+    사본 = tmp_path / "판독폴더사본"
+    shutil.copytree(차린폴더, 사본)
+    자리 = 사본 / "판독패키지" / "7_영상메타.csv"
     옛내용 = 자리.read_bytes()
+    옛대장 = json.loads((사본 / "대장" / "지문.json").read_text(encoding="utf-8"))
+    assert _지문검사(사본) == 0, "갈아 끼우기 전에는 통과해야 한다"
 
-    # ① 1차 결과 옆에 있으면 갈아 끼운다
+    # ① 없으면 그대로 두고 **말한다** (「못 찾음」 을 「없음」 으로 넘기지 않는다)
+    빈자리 = tmp_path / "빈곳"
+    빈자리.mkdir()
+    말2 = 데이터_넣기.영상메타_갈아끼우기(빈자리 / "번들.xlsx", 사본)
+    assert "없습니다" in 말2 and "제목만" in 말2, 말2
+    assert 자리.read_bytes() == 옛내용
+
+    # ② 1차 결과 옆에 있으면 갈아 끼운다
     원본 = tmp_path / "번들.xlsx"
     원본.write_bytes(b"x")                                # 이 시험은 갈아끼우기만 본다
     (tmp_path / "7_영상메타.csv").write_text(
-        "video_id,video_title,video_tags,video_description,channel_title,published_at,atomic_rows\n"
-        "aaa,제목,,,채널,2026-01-01,3\n", encoding="utf-8-sig")
-    말 = 데이터_넣기.영상메타_갈아끼우기(원본, 차린폴더)
+        "video_id,video_title,video_tags,video_description,channel_title,published_at,atomic_rows"
+        + chr(10) + "aaa,제목,,,채널,2026-01-01,3" + chr(10), encoding="utf-8-sig")
+    말 = 데이터_넣기.영상메타_갈아끼우기(원본, 사본)
     assert "갈아 끼웠습니다" in 말 and "영상 1개" in 말, 말
     assert 자리.read_bytes() != 옛내용
     assert "aaa" in 자리.read_text(encoding="utf-8-sig")
 
-    # ② 없으면 그대로 두고 **말한다** (「못 찾음」 을 「없음」 으로 넘기지 않는다)
-    자리.write_bytes(옛내용)
-    빈자리 = tmp_path / "빈곳"
-    빈자리.mkdir()
-    말2 = 데이터_넣기.영상메타_갈아끼우기(빈자리 / "번들.xlsx", 차린폴더)
-    assert "없습니다" in 말2 and "제목만" in 말2, 말2
-    assert 자리.read_bytes() == 옛내용
+    # ③ ★ 갈아 끼운 **뒤에도 지문검사가 통과해야 한다** (2026-10-28 · sky ㉯).
+    #   전에는 여기서 반려가 났다 — 꾸러미가 **견본**의 지문을 떠 두는데
+    #   갈아끼우기가 설계대로 그것을 이 판의 것으로 바꾸기 때문이다.
+    #   그래서 **실제 1차를 돌린 판은 모두 판독이 헛반려됐다** (깨끗한 판 1, 판독A·판독B 둘 다).
+    #   옛 시험 그릇은 견본을 그대로 쓰므로 갈리지 않아 이것을 한 번도 못 잡았다.
+    assert "다시 떴습니다" in 말, 말
+    assert _지문검사(사본) == 0, "갈아 끼운 뒤 지문검사가 반려했다 — 판독이 헛반려된다"
+
+    # ④ 다시 뜬 사실이 **이력에 남아야** 한다 — 덮어쓴 것을 숨기지 않는다
+    이력 = json.loads((사본 / "대장" / "지문_이력.json").read_text(encoding="utf-8"))
+    assert 이력 and 이력[-1]["바뀐것"] == ["판독패키지/7_영상메타.csv"], 이력
+    assert 이력[-1]["바뀐파일수"] == 1, 이력
+    assert "데이터_넣기" in 이력[-1]["누가"], 이력
+    새대장 = json.loads((사본 / "대장" / "지문.json").read_text(encoding="utf-8"))
+    assert 새대장["뜬날"] == 옛대장["뜬날"], "뜬날을 오늘로 바꾸면 「처음부터 이랬다」 로 보인다"
+    assert 새대장["다시뜬횟수"] == len(이력)
+    assert 새대장["파일수"] == 옛대장["파일수"], "칸 수가 달라졌다 — 한 칸만 다시 떠야 한다"
+    달라진것 = [k for k, v in 새대장["지문"].items() if 옛대장["지문"].get(k) != v]
+    assert 달라진것 == ["판독패키지/7_영상메타.csv"], 달라진것
+
+
+def test_지문을_다시_안_뜨면_판독이_헛반려된다(차린폴더, tmp_path):
+    """★ 일부러 틀리게 — 2026-10-28 **전의 모습**을 되살려 정말 잡히는지 본다.
+
+    갈아 끼운 뒤 대장의 그 칸을 **옛 견본 지문으로 되돌린다.** 그것이 고치기 전 모습이다.
+    이때 지문검사가 반려해야 한다 — 반려하지 않으면 ③ 의 통과가 아무것도 재지 않은 것이다.
+    """
+    sys.path.insert(0, str(SHARED / "tools"))
+    import 데이터_넣기                                     # noqa: PLC0415
+
+    사본 = tmp_path / "되돌린폴더"
+    shutil.copytree(차린폴더, 사본)
+    원본 = tmp_path / "번들.xlsx"
+    원본.write_bytes(b"x")
+    (tmp_path / "7_영상메타.csv").write_text(
+        "video_id,video_title,video_tags,video_description,channel_title,published_at,atomic_rows"
+        + chr(10) + "bbb,딴제목,,,채널,2026-01-01,3" + chr(10), encoding="utf-8-sig")
+
+    대장 = 사본 / "대장" / "지문.json"
+    옛해시 = json.loads(대장.read_text(encoding="utf-8"))["지문"]["판독패키지/7_영상메타.csv"]
+    데이터_넣기.영상메타_갈아끼우기(원본, 사본)
+    assert _지문검사(사본) == 0
+
+    적힌것 = json.loads(대장.read_text(encoding="utf-8"))
+    assert 적힌것["지문"]["판독패키지/7_영상메타.csv"] != 옛해시, "다시 뜨지도 않았다"
+    적힌것["지문"]["판독패키지/7_영상메타.csv"] = 옛해시        # ← 고치기 전 모습
+    대장.write_text(json.dumps(적힌것, ensure_ascii=False, indent=1), encoding="utf-8")
+    assert _지문검사(사본) == 1, "견본 지문을 되돌렸는데 지문검사가 통과했다 — 아무것도 안 재고 있다"
 
 
 def test_안내서가_가리키는_그림이_다_있다(차린폴더):
