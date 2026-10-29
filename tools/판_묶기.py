@@ -408,7 +408,32 @@ YOUTUBE_API_KEY     댓글을 모읍니다
 OPENAI_API_KEY      1차 분석을 합니다 (gpt-4o-mini)
 ```
 
+**넣는 법** — 한 줄씩 넣고 **창을 새로 켭니다** (환경변수는 새로 켠 창에만 들어옵니다).
+
+PowerShell (윈도우 · 영구)
+```
+setx YOUTUBE_API_KEY "<받은 키>"
+setx OPENAI_API_KEY "<받은 키>"
+```
+
+cmd (윈도우 · 영구)
+```
+setx YOUTUBE_API_KEY "<받은 키>"
+```
+
+mac · linux (`~/.zshrc` 나 `~/.bashrc` 에 적고 창을 새로 켭니다)
+```
+export YOUTUBE_API_KEY="<받은 키>"
+export OPENAI_API_KEY="<받은 키>"
+```
+
+들어갔는지 보기 — **값이 아니라 「있다/없다」** 만 찍습니다
+```
+python -c "import os; print('키', [k for k in ('YOUTUBE_API_KEY','OPENAI_API_KEY') if os.environ.get(k)])"
+```
+
 ★ 키를 이 꾸러미 안의 파일에 적지 마십시오. 꾸러미는 사람에게 건네는 것입니다.
+★ 키 **값**을 메일·채팅에 붙이지 마십시오. 「넣었습니다」 만 알려 주시면 됩니다.
 
 ## ④ AI 명령 — 2·3·4차를 돌릴 때만
 
