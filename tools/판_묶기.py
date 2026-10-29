@@ -492,6 +492,9 @@ _대조자료 = {
     "대조장치/기준_만들기_2차.py": REPO / "tests" / "baseline" / "기준_만들기_2차.py",
     "대조장치/보고서기준_만들기.py": REPO / "tests" / "baseline" / "보고서기준_만들기.py",
     "대조장치/test_baseline.py": REPO / "tests" / "test_baseline.py",
+    # ★ 2026-10-29 — 「안 옮긴 것」 을 세는 대장. 점검요청 문서가 이 둘을 가리킨다
+    "옛꾸러미_대장.md": REPO / "docs" / "옛꾸러미_대장.md",
+    "옛꾸러미_목록.json": REPO / "docs" / "옛꾸러미_목록.json",
 }
 
 

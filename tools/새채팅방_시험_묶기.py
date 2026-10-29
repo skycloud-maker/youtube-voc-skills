@@ -233,4 +233,7 @@ def 만들기(자리: Path) -> int:
 
 
 if __name__ == "__main__":
+    # ★ 2026-10-29 — 출력을 파일로 보내면 윈도우가 cp949 로 적으려 해서 「—」 에서 죽었다.
+    #   돌아가다 **마지막 print 에서** 터지므로 꾸러미는 만들어진 채로 종료코드 1 이 나왔다.
+    sys.stdout.reconfigure(encoding="utf-8")
     raise SystemExit(만들기(Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "dist"))

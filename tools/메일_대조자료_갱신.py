@@ -36,8 +36,10 @@ REPO = Path(__file__).resolve().parents[1]
 안_뿌리 = "원본_바탕자료"
 
 # 갈아 끼울 칸 — **원본은 저장소 한 벌**이고 여기서 베낀다.
-#   ★ `tools/판_묶기.py` 의 `_대조자료` 와 같은 일곱 벌이어야 한다. 아래 시험이 그것을 댄다
-#     (`tests/test_메일자료.py::test_옛쪽과_새쪽이_같은_일곱벌을_담는다`).
+#   ★ `tools/판_묶기.py` 의 `_대조자료` 와 같은 아홉 벌이어야 한다. 아래 시험이 그것을 댄다
+#     (`tests/test_메일자료.py::test_옛쪽과_새쪽이_같은_벌을_담는다`).
+#     ★ 이 주석이 가리키는 이름이 정말 있는지 그 파일의
+#       `test_가리킨_시험이름이_정말_있다` 가 댄다 — 전에 **없는 파일을 가리켰다.**
 #     ★ 2026-10-29 — 이 주석이 가리키던 **그 파일이 없었다.** 가리키기만 하고 없는
 #       가드였다 (꾸러미 안내가 없는 `.ps1` 을 가리킨 것과 같은 갈래). 이제 있다.
 갈아끼울것 = {
@@ -48,6 +50,9 @@ REPO = Path(__file__).resolve().parents[1]
     "대조장치/기준_만들기_2차.py": REPO / "tests" / "baseline" / "기준_만들기_2차.py",
     "대조장치/보고서기준_만들기.py": REPO / "tests" / "baseline" / "보고서기준_만들기.py",
     "대조장치/test_baseline.py": REPO / "tests" / "test_baseline.py",
+    # ★ 2026-10-29 — 「안 옮긴 것」 을 세는 대장. 점검요청 문서가 이 둘을 가리킨다
+    "옛꾸러미_대장.md": REPO / "docs" / "옛꾸러미_대장.md",
+    "옛꾸러미_목록.json": REPO / "docs" / "옛꾸러미_목록.json",
 }
 
 안내자리 = "0_읽어주세요.md"
@@ -115,6 +120,8 @@ def 갱신(zip길: Path) -> int:
 
     임시 = zip길.with_suffix(".갱신중.zip")
     바뀜 = 0
+    본것: set = set()        # 옛 zip 에 이미 있던 대조 자료 이름
+    더함: list = []          # 없어서 **더해 넣은** 항목 (전체 이름)
     with zipfile.ZipFile(zip길) as 옛, \
          zipfile.ZipFile(임시, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as 새:
         for i in 옛.infolist():
@@ -134,15 +141,29 @@ def 갱신(zip길: Path) -> int:
                     print("     · %-34s %6d → %6d 바이트" % (짧은, len(재료), len(새재료)))
                 재료 = 새재료
             새.writestr(i, 재료, zipfile.ZIP_DEFLATED)
+            본것.add(짧은)
+
+        # ★ 2026-10-29 — 전에는 **갈아 끼우기만** 했다. 대조 자료가 7벌에서 9벌로 늘었을 때
+        #   옛 쪽 zip 에 없는 둘을 **넣을 수가 없어** 「꾸러미에 없다」 로 끝까지 남았다.
+        #   「맞추는 도구」 가 맞출 수 없으면 도구가 아니다 — **없는 것은 더해 넣는다.**
+        #   (옛 쪽 zip 을 **새로 만드는** 것은 여전히 안 한다. 있는 항목은 바이트 그대로 베낀다)
+        for 짧은, 원 in 갈아끼울것.items():
+            if 짧은 in 본것:
+                continue
+            더함.append("%s/%s" % (안_뿌리, 짧은))
+            새.writestr(더함[-1], 원.read_bytes(), zipfile.ZIP_DEFLATED)
+            바뀜 += 1
+            print("     + %-34s %6d 바이트 (없어서 **더해 넣었다**)" % (짧은, 원.stat().st_size))
 
     # ★ 뜻한 칸 말고 바뀐 것이 있으면 멈춘다 — 베끼다 흘린 것이 없는지 **항목마다** 댄다
     뜻한것 = {"%s/%s" % (안_뿌리, k) for k in list(갈아끼울것) + [안내자리]}
     흘린것 = []
     with zipfile.ZipFile(zip길) as 옛, zipfile.ZipFile(임시) as 새:
         ㄱ, ㄴ = 옛.namelist(), 새.namelist()
-        if ㄱ != ㄴ:
+        if ㄴ != ㄱ + 더함:
             임시.unlink(missing_ok=True)
-            raise SystemExit("항목 목록이 달라졌다 (%d → %d) — 멈춘다" % (len(ㄱ), len(ㄴ)))
+            raise SystemExit("항목 목록이 **뜻한 것과 다르게** 달라졌다 (%d → %d · 더한 것 %d) — 멈춘다"
+                             % (len(ㄱ), len(ㄴ), len(더함)))
         for n in ㄱ:
             if n in 뜻한것:
                 continue
