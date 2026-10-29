@@ -3,7 +3,8 @@
 
 ★ 무엇을 — 매 판 총괄 입구(3차_준비 · 감독쪽지_만들기 · 3차_마무리 · 번들_마무리꾸미기 · 4차_반영)에서
   닿는 도구 가운데 plugin/shared/tools/ 에 아직 없는 18개 + 공통/어휘.json.
-★ 옛 저장소 관리 도구 5개(마무리_이력정리 · 정본_맞추기 · make_zip · 박힌말_검사 · 5차기준_검사)는
+★ 옛 저장소 관리 도구 **7개**(마무리_이력정리 · 정본_맞추기 · make_zip · 박힌말_검사 · 5차기준_검사 ·
+  **문서_한말_검사 · 점검서_빠진것**)는
   sky 결정(2026-09-21 「새 방식으로 대신한다」)대로 **도구로는 넣지 않고** 원문을 docs/sources/옛관리도구/ 에
   기록으로만 둔다. 그 일은 새 저장소가 맡는다 (쌍둥이 → tests/test_shared.py · 꾸러미 → 스킬 차리기 · 섹션 6 조립 ·
   커밋·진행 기록 → 저장소 절차 · 박힌말/5차기준 검사 → tests/ 로 옮길 것).
@@ -14,7 +15,8 @@
      그 단계는 「새 저장소가 맡는다」 는 안내만 내고 통과하게 했다 (sky 결정)
 
 쓰기
-    python tools/옛꾸러미_가져오기_총괄.py <옛 voc_secondary 자리>
+    python tools/옛꾸러미_가져오기_총괄.py [<옛 voc_secondary 자리>]
+    python tools/옛꾸러미_가져오기_총괄.py --기록만   ★ 옛 관리 도구 원문만 기록한다
 """
 from __future__ import annotations
 
@@ -24,13 +26,21 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "plugin" / "shared"))
-from paths import PLUGIN, REPO, SHARED  # noqa: E402
+from paths import PLUGIN, REPO, SHARED, 옛저장소  # noqa: E402
 
 새도구 = ["3차_준비.py", "감독쪽지_만들기.py", "3차_마무리.py", "build_master.py", "make_judge_input.py",
         "총괄검수.py", "PL이슈_뽑기.py", "차례_만들기.py", "사람이볼목록_채우기.py", "번들_마무리꾸미기.py",
         "번들_색칠하기.py", "데이터안내_만들기.py", "4차_반영.py", "그룹_맞추기.py", "폐기라벨_정리.py",
         "아무도_안채우는칸_검사.py", "apply_sky.py", "apply_split.py"]
-옛관리도구 = ["마무리_이력정리.py", "정본_맞추기.py", "make_zip.py", "박힌말_검사.py", "5차기준_검사.py"]
+# ★ 2026-10-29 — 다섯에서 **일곱**으로 늘렸다. 옛 꾸러미 114개를 전량 보다가,
+#   **고르지 않은 둘이 하필 「빠진 것을 찾는 도구」** 였다는 것이 드러났다
+#   (`docs/옛꾸러미_대장.md` · `docs/기준서개정후보.md` 후보 2·3).
+#   빠진 것을 찾는 도구가 빠지면 그 뒤로는 빠진 것이 안 보인다 —
+#   sky 2026-10-29 「왜 누락이 계속 생기는지 모르겠네요」 의 자리가 여기였다.
+#   그 둘의 **규칙**은 `tools/문서_한말_검사.py` · `tools/정한것_빠진것.py` 로 다시 지었고,
+#   여기서는 **원문을 기록**한다 (`박힌말_검사` · `5차기준_검사` 와 같은 꼴).
+옛관리도구 = ["마무리_이력정리.py", "정본_맞추기.py", "make_zip.py", "박힌말_검사.py", "5차기준_검사.py",
+          "문서_한말_검사.py", "점검서_빠진것.py"]
 
 고침 = {
     # 그룹_맞추기.py 는 줄 모양으로 고친다 (아래 _그룹_고치기) — 옛 경로 글자를 이 도구에 적지 않으려고
@@ -69,7 +79,20 @@ def _그룹_고치기(t: str) -> str:
 
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
-    옛 = Path(sys.argv[1])
+    인자 = [a for a in sys.argv[1:] if not a.startswith("--")]
+    # ★ 2026-10-29 — 자리를 안 주면 `paths.py` 한 자리에서 정한 옛 자리를 쓴다
+    #   (경로를 이 도구에 박지 않는다 — `tests/test_no_old_paths.py` 가 그것을 지킨다)
+    옛 = Path(인자[0]) if 인자 else 옛저장소
+    if not 옛.is_dir():
+        raise SystemExit("못 찾음: %s — 옛 꾸러미가 없다. 가져올 수 없다 (통과가 아니다)" % 옛)
+
+    # ★ `--기록만` — 옛 관리 도구 원문만 기록한다.
+    #   도구 18개는 이미 와 있고 **꾸러미에 실리는 파일**이라, 그것까지 다시 쓰지 않으려고 둔 길이다.
+    if "--기록만" in sys.argv:
+        print("기록만 — 옛 관리 도구와 「안 하기로 한 것」 원문만 적는다 (plugin/ 은 건드리지 않는다)")
+        탈 = _관리도구_기록(옛)
+        return 탈 or _옛결정_기록(옛)
+
     기록p = SHARED / "출처_꾸러미.json"
     기록 = json.loads(기록p.read_text(encoding="utf-8"))
     for 이름, 새, 원 in ([(n, SHARED / "tools" / n, n) for n in 새도구]
@@ -99,18 +122,63 @@ def main() -> int:
         print("  옮김 — %s%s" % (자리, "  (고침)" if 이력 else ""))
     기록p.write_text(json.dumps(기록, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
 
-    # 옛 관리 도구 — 기록으로만 (원문 그대로 · 줄바꿈만 LF)
-    기록자리 = REPO / "docs" / "sources" / "옛관리도구"
-    기록자리.mkdir(parents=True, exist_ok=True)
-    출처 = {"설명": "옛 저장소 관리 도구 5개의 원문 — 기록이다. 새 저장소에서 돌리지 않는다 (sky 2026-09-21 「새 방식으로 대신한다」).",
+    return _관리도구_기록(옛)
+
+
+# ★ 2026-10-29 — 옛 저장소의 「안 하기로 한 것」 글. 원문 그대로 기록한다 (공통 규칙 7 · 축약 금지).
+#   이 글이 없어서 2026-10-29 에 **이미 버린 안**(「파생 8칸을 빼자」)을 다시 들고 왔다 —
+#   sky 가 「없애면 의도를 무시하고 역행하는거 같아서요」 라고 막았다. 맞는 말이었다.
+#   사는 자리는 `docs/decisions/0010-안-하기로-한-것.md` 이고, 이 기록이 그 글의 원문이다.
+옛결정글 = ["91_결정사항_안하기로_한_것.md"]
+
+
+def _옛결정_기록(옛: Path) -> int:
+    """옛 「안 하기로 한 것」 원문 — 지문과 함께 기록한다. 글자를 바꾸지 않는다."""
+    자리 = REPO / "docs" / "sources" / "옛결정"
+    자리.mkdir(parents=True, exist_ok=True)
+    없는것 = [n for n in 옛결정글 if not (옛 / n).is_file()]
+    if 없는것:
+        raise SystemExit("못 찾음: %s — 기록할 원문이 없다 (통과가 아니다)" % 없는것)
+    출처 = {"설명": "옛 저장소의 「안 하기로 한 것」 원문 %d개 — 기록이다. 글자를 바꾸지 않는다 "
+                  "(공통 규칙 7 · 축약 금지). 사는 자리는 docs/decisions/0010-안-하기로-한-것.md 다."
+                  % len(옛결정글),
             "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 outputs/voc_secondary (90078f1)",
             "파일": {}}
+    for n in 옛결정글:
+        raw = (옛 / n).read_bytes()
+        (자리 / n).write_bytes(raw.replace(b"\r\n", b"\n"))
+        출처["파일"][n] = hashlib.sha256(raw).hexdigest()
+        print("  기록 — docs/sources/옛결정/%s" % n)
+    (자리 / "출처.json").write_text(json.dumps(출처, ensure_ascii=False, indent=1) + "\n",
+                                 encoding="utf-8", newline="\n")
+    print("  · 출처.json 에 %d개를 적었다" % len(옛결정글))
+    return 0
+
+
+def _관리도구_기록(옛: Path) -> int:
+    """옛 관리 도구 — 기록으로만 (원문 그대로 · 줄바꿈만 LF).
+
+    ★ 수를 글에 손으로 적지 않는다 — `len(옛관리도구)` 를 그대로 쓴다.
+      전에 「5개」 라고 박아 두었다가 일곱으로 늘렸을 때 **글만 옛말이 됐다.**
+    """
+    기록자리 = REPO / "docs" / "sources" / "옛관리도구"
+    기록자리.mkdir(parents=True, exist_ok=True)
+    출처 = {"설명": "옛 저장소 관리 도구 %d개의 원문 — 기록이다. 새 저장소에서 돌리지 않는다 "
+                  "(sky 2026-09-21 「새 방식으로 대신한다」). 뒤의 둘은 2026-10-29 에 더했다 — "
+                  "규칙은 tools/문서_한말_검사.py · tools/정한것_빠진것.py 로 다시 지었다."
+                  % len(옛관리도구),
+            "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 outputs/voc_secondary (90078f1)",
+            "파일": {}}
+    없는것 = [n for n in 옛관리도구 if not (옛 / n).is_file()]
+    if 없는것:
+        raise SystemExit("못 찾음: %s — 기록할 원문이 없다 (통과가 아니다)" % 없는것)
     for n in 옛관리도구:
         raw = (옛 / n).read_bytes()
         (기록자리 / n).write_bytes(raw.replace(b"\r\n", b"\n"))
         출처["파일"][n] = hashlib.sha256(raw).hexdigest()
         print("  기록 — docs/sources/옛관리도구/%s" % n)
     (기록자리 / "출처.json").write_text(json.dumps(출처, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
+    print("  · 출처.json 에 %d개를 적었다" % len(옛관리도구))
     return 0
 
 

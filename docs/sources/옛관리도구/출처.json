@@ -1,11 +1,13 @@
 {
- "설명": "옛 저장소 관리 도구 5개의 원문 — 기록이다. 새 저장소에서 돌리지 않는다 (sky 2026-09-21 「새 방식으로 대신한다」).",
+ "설명": "옛 저장소 관리 도구 7개의 원문 — 기록이다. 새 저장소에서 돌리지 않는다 (sky 2026-09-21 「새 방식으로 대신한다」). 뒤의 둘은 2026-10-29 에 더했다 — 규칙은 tools/문서_한말_검사.py · tools/정한것_빠진것.py 로 다시 지었다.",
  "원본_자리": "옛 저장소 github.com/skycloud-maker/youtube-comment-analyzer 의 outputs/voc_secondary (90078f1)",
  "파일": {
   "마무리_이력정리.py": "c0e7ad5acd38b3d003a98399808b8629e5b3dbb3247b17c062b1d3e6347a4ee5",
   "정본_맞추기.py": "2f92646f251f32954b23d2ab94183f07ee20557d43afd6f147628d8e0fff4bb2",
   "make_zip.py": "27d5071a6e4d541014d76e6e559193f91332b0769c702e6a759f47a27e3e2859",
   "박힌말_검사.py": "8a80c71fd449a89df52594a12b7fc202d4b6cfb82e3a4c74b2dbd98c1262cc5e",
-  "5차기준_검사.py": "5aeba8bf525dba917d4c85c7faac61b6f66800dbc5cc44fbdaad65c21dd38737"
+  "5차기준_검사.py": "5aeba8bf525dba917d4c85c7faac61b6f66800dbc5cc44fbdaad65c21dd38737",
+  "문서_한말_검사.py": "d7f613d19900ffd45542f22acd7cd6006608f3f84e4981f1dba6d73e35ac4706",
+  "점검서_빠진것.py": "a76ff34e1d665165ddb3cf68549ca133d7a0b3cc5019e7e4d3587e43dd52f8cd"
  }
 }
