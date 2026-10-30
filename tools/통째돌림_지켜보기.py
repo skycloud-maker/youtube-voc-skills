@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -38,6 +39,7 @@ REPO = Path(__file__).resolve().parent.parent
 돌리개 = REPO / "plugin" / "skills" / "coordinating-voc-pipeline" / "scripts" / "한줄_돌리기.py"
 끝단계 = "아웃풋1"
 멈춤이름 = "멈춤"
+기록보관 = "_바퀴별"
 
 
 def 진행_세기(판: Path) -> dict:
@@ -54,6 +56,33 @@ def 진행_세기(판: Path) -> dict:
     감독 = sorted(q.name for q in 판.rglob("감독결과_*") if q.is_file())
     return {"끝난단계": 끝난, "판독": len(판독), "감독": len(감독),
             "소견": len(상태.get("소견", [])), "자": (tuple(끝난), len(판독), len(감독))}
+
+
+def 기록_간수(판: Path) -> int:
+    """AI 기록(`기록/*.jsonl`)은 **바퀴마다 덮인다** — 덮이기 전에 챙겨 둔다.
+
+    ★ 2026-10-30 에 실제로 잃었다. 돌리개는 `기록자리.write_text(...)` 로 **덮으므로**
+      바퀴를 다섯 번 돌고도 비용 기록이 **한 바퀴 분량만** 남아 있었다. 그래서
+      「지금까지 얼마 썼나」 를 못 셌다. 게다가 240분 제한에 걸려 터진 바퀴는
+      기록이 **아예 안 적힌다** (쓰기 전에 예외가 난다).
+
+    ★ 적힌 때를 이름에 붙여 `기록/_바퀴별/` 로 옮겨 둔다. 같은 것은 다시 안 챙긴다.
+      돌려주는 것 — 이번에 새로 챙긴 개수.
+    """
+    기록 = 판 / "기록"
+    if not 기록.is_dir():
+        return 0
+    보관 = 기록 / 기록보관
+    보관.mkdir(exist_ok=True)
+    챙김 = 0
+    for q in sorted(기록.glob("*.jsonl")):
+        때 = datetime.fromtimestamp(q.stat().st_mtime).strftime("%m%d_%H%M%S")
+        쪽 = 보관 / ("%s_%s" % (때, q.name))
+        if 쪽.exists():
+            continue
+        shutil.copy2(q, 쪽)
+        챙김 += 1
+    return 챙김
 
 
 def 한바퀴(판: Path, 깨끗: bool, 기록: Path) -> int:
@@ -91,10 +120,13 @@ def 지켜보기(판: Path, 최대: int, 깨끗: bool) -> int:
         시작 = time.time()
         print("\n── 바퀴 %d/%d  %s" % (바퀴, 최대, datetime.now().strftime("%H:%M:%S")))
         코드 = 한바퀴(판, 깨끗, 기록)
+        챙김 = 기록_간수(판)
         뒤 = 진행_세기(판)
         분 = (time.time() - 시작) / 60
         print("   종료코드 %d · %.1f분 · 끝난단계 %d · 판독결과 %d · 감독결과 %d · 소견 %d"
               % (코드, 분, len(뒤["끝난단계"]), 뒤["판독"], 뒤["감독"], 뒤["소견"]))
+        if 챙김:
+            print("   AI 기록 %d개를 `기록/%s/` 로 챙겼습니다 (덮이기 전에)" % (챙김, 기록보관))
 
         if 끝단계 in 뒤["끝난단계"]:
             print("\n  ✔ `%s` 까지 끝났습니다 — %d 바퀴 걸렸습니다." % (끝단계, 바퀴))

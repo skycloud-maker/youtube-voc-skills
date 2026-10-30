@@ -157,3 +157,37 @@ def test_한도가_0이면_거절한다(도구, tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as e:
         도구.main()
     assert "1 이상" in str(e.value)
+
+
+def test_AI기록을_바퀴마다_챙겨_둔다(도구, tmp_path):
+    """★ 2026-10-30 — 돌리개가 `기록/판독A.jsonl` 을 **바퀴마다 덮는다.**
+
+    다섯 바퀴를 돌고도 비용 기록이 한 바퀴 분량만 남아 「얼마 썼나」 를 못 셌다.
+    240분 제한에 걸려 터진 바퀴는 아예 안 적힌다. 그래서 덮이기 전에 챙기는지 본다.
+    """
+    판 = _판차리기(tmp_path / "판")
+    기록 = 판 / "기록"
+    기록.mkdir()
+    쪽 = 기록 / "판독A.jsonl"
+    쪽.write_text("첫 바퀴", encoding="utf-8")
+
+    assert 도구.기록_간수(판) == 1, "첫 바퀴 기록을 안 챙겼다"
+    assert 도구.기록_간수(판) == 0, "같은 것을 두 번 챙겼다 — 바퀴마다 쌓이면 디스크가 찬다"
+
+    import os
+    import time
+    쪽.write_text("둘째 바퀴 — 덮였다", encoding="utf-8")
+    새때 = time.time() + 3600
+    os.utime(쪽, (새때, 새때))
+    assert 도구.기록_간수(판) == 1, "덮인 뒤의 기록을 안 챙겼다 — 첫 바퀴 것만 남는다"
+
+    보관 = sorted(q.name for q in (기록 / 도구.기록보관).glob("*.jsonl"))
+    assert len(보관) == 2, "보관된 것이 %s — 두 벌이어야 한다" % 보관
+    글 = sorted((기록 / 도구.기록보관 / n).read_text(encoding="utf-8") for n in 보관)
+    assert 글 == ["둘째 바퀴 — 덮였다", "첫 바퀴"], 글
+
+
+def test_기록폴더가_없어도_안_터진다(도구, tmp_path):
+    """1차만 끝난 자리에는 `기록/` 이 없을 수 있다."""
+    판 = _판차리기(tmp_path / "판")
+    assert 도구.기록_간수(판) == 0
