@@ -1,0 +1,50 @@
+============================================================================
+  옛 2판 최종과 대조 — 열쇠 `atomic_id`
+============================================================================
+  옛  C:\작업\youtube-voc-skills_기준데이터\원본사본\2판\_판독패키지\_결과\master_final\raw_voc.csv
+  새  C:\voc_2판통째\총괄\2판통째\_판독패키지\_결과\master_final\raw_voc.csv
+
+  행 — 옛 6846 · 새 6393 · **양쪽 6171** · 옛에만 675 · 새에만 222
+     ★ 한쪽만 있는 행은 **분리·병합이 달라졌다**는 뜻이다 (값 차이가 아니다)
+       옛에만: Ugw-gblxu0_yJpkvfSB4AaABAg-06 · Ugw-gblxu0_yJpkvfSB4AaABAg-07 · Ugw-gblxu0_yJpkvfSB4AaABAg-04 · Ugw-gblxu0_yJpkvfSB4AaABAg-05 · Ugw17I3BSG1n6aCdGdB4AaABAg-03 …
+       새에만: Ugw-gblxu0_yJpkvfSB4AaABAg-02 · Ugw2W721NlHYbfW8fvB4AaABAg-01 · Ugw2fhWHfR6tvJUi2gp4AaABAg-01 · Ugw2p2AYGR6YnpKbbI54AaABAg-01 · Ugw31QH77qvhmWODFfF4AaABAg.A_FjI4cLJZiA_Gmk3zPpBf-01 …
+  칸 — 옛 89 · 새 89 · 양쪽 89 · 옛칸만 0 · 새칸만 0
+
+  묶음마다 — 그 묶음의 칸이 **다 같은 행**
+     A 원천 고정값        6171 /  6171 = 100.00%  (칸 9)  ★ 글 머리는 12칸이라는데 그 글의 **표에는 9칸**이다 (후보 1)
+     B 기계 계산         2402 /  6171 =  38.92%  (칸 7)  ★ 글 머리는 11칸이라는데 그 글의 **표에는 7칸**이다 (후보 1)
+     C 참고            5288 /  6171 =  85.69%  (칸 8)  ★ 글 머리는 6칸이라는데 그 글의 **표에는 8칸**이다 (후보 1)
+     D ★판정 대상           0 /  6171 =   0.00%  (칸 44)  ★ 글 머리는 32칸이라는데 그 글의 **표에는 44칸**이다 (후보 1)
+        ↑ **이것이 정확도다** (2차·3차가 채우는 칸)
+     (분류 밖)             0 /  6171 =   0.00%  (칸 21 — 분류 글이 **안 다루는** 칸)
+        sentiment_dir · market_display · brand_display · competitor_brand_display_tags · cej_group · validity · confidence_gate · review_queue · na_class · split_origin_atomic_id · secondary_topic_source · topic_group · review_reason · qc_verdict · qc_finding_count · qc_entity · qc_confidence · qc_criteria_uncovered · qc_structural_defect · decided_by · decided_note
+        ↑ 대시보드 파생 · 2·3·4차 판정 칸이다 — `docs/기준서개정후보.md` 후보 1
+
+  칸마다 — 다른 행이 많은 순 (69칸)
+     [-] qc_finding_count                 다른 행  6086 ( 98.62%)
+     [D] rootcause_problem                다른 행  5635 ( 91.31%)
+     [D] cej_evidence                     다른 행  5386 ( 87.28%)
+     [-] review_queue                     다른 행  5289 ( 85.71%)
+     [D] topic_evidence                   다른 행  5177 ( 83.89%)
+     [D] tee_emotion_evidence             다른 행  5177 ( 83.89%)
+     [B] voc_total_score                  다른 행  3542 ( 57.40%)
+     [-] brand_display                    다른 행  3471 ( 56.25%)
+     [D] brand                            다른 행  3304 ( 53.54%)
+     [D] rootcause_target                 다른 행  3296 ( 53.41%)
+     [D] rootcause_summary                다른 행  3192 ( 51.73%)
+     [-] qc_entity                        다른 행  3172 ( 51.40%)
+     [D] entity_role                      다른 행  3166 ( 51.30%)
+     [D] tee_summary                      다른 행  3063 ( 49.64%)
+     [D] tee_effort_evidence              다른 행  2895 ( 46.91%)
+     [D] tee_success_evidence             다른 행  2848 ( 46.15%)
+     [D] confidence_entity_role           다른 행  2845 ( 46.10%)
+     [D] tee_time_evidence                다른 행  2807 ( 45.49%)
+     [-] decided_by                       다른 행  2723 ( 44.13%)
+     [D] confidence_need_signal           다른 행  2711 ( 43.93%)
+     [D] rootcause_score                  다른 행  2709 ( 43.90%)
+     [D] confidence_cej                   다른 행  2633 ( 42.67%)
+     [B] confidence_rating                다른 행  2614 ( 42.36%)
+     [D] confidence_inquiry               다른 행  2562 ( 41.52%)
+     [D] atomic_voc_summary               다른 행  2525 ( 40.92%)
+     … 44칸 더
+============================================================================
