@@ -81,6 +81,16 @@ def _달리기(도구: str, *인자: str) -> tuple[int, str]:
     #   254건을 확정해 놓고 데이터에는 안 들어가고 있었다.
     #   행이 늘고 줄므로 xlsx 를 만들기 **전에** 해야 한다.
     ("⓪ 분리제안 반영", "apply_split.py", "승인된 분리·병합을 데이터에"),
+    # ★★ 2026-11-01 — **조용히 버려지던 자리.** 2판을 통째로 다시 돌려 보고 찾았다.
+    #   `apply_split.py` 는 `s15_master/raw_voc.csv` 를 읽고 **거기에 쓴다**(238줄).
+    #   그런데 번들은 `master_final/raw_voc.csv` 로 만든다
+    #   (`build_bundle.build_xlsx` 531줄이 `outdir/raw_voc.csv` 를 읽는다).
+    #   그래서 **사람이 승인한 분리가 번들에 닿지 않았다.** 실측 —
+    #       s15_master    6,530행 · 쪼개진 조각 316
+    #       master_final  6,393행 · 쪼개진 조각 105   ← 번들이 이것을 담았다
+    #   행 **137개** · 조각 **211개**가 **오류 하나 없이** 버려졌다 (종료 0 · 「끝났습니다」).
+    #   옛 2판이 6,846행인 까닭의 상당 부분이 이 분리다.
+    ("⓪-1 분리를 번들 자리로", None, "s15_master 의 분리 결과를 master_final 로"),
     # ★★ 2026-08-26 — topic_group 은 topic 에서 나오는 **파생 칸**인데,
     #   topic 을 바꾼 주체가 같이 안 고쳐 1,534행이 어긋나 있었다.
     #     reader_agree 0% · 3차 감독 27% · 총괄 55% · sky 100%(전부 빈칸)
@@ -135,6 +145,64 @@ def _xlsx_다시() -> tuple[int, str]:
             사이.unlink()
         except OSError:
             pass
+
+
+def _분리_옮기기() -> tuple[int, str]:
+    """`apply_split` 이 쓴 `s15_master/raw_voc.csv` 를 **번들이 읽는 자리**로 옮긴다.
+
+    ★ 왜 — 위 ⓪-1 주석에 적었다. 분리가 번들에 닿지 않아 행 137개가 조용히 버려졌다.
+
+    ★ **못 옮기면 크게 실패한다.** 「없음」 과 「못 찾음」 을 가른다 —
+      · 분리가 하나도 없었으면(행 수가 같으면) 옮길 것이 없다 → 그대로 넘어간다
+      · 분리가 있었는데 옮긴 뒤에도 행 수가 안 늘었으면 **멈춘다**
+    """
+    import csv as _csv
+    import shutil as _shutil
+
+    s15 = ROOT / "s15_master" / "raw_voc.csv"
+    끝 = 번들 / "raw_voc.csv"
+    if not s15.is_file():
+        return 1, ("     ✗ s15_master/raw_voc.csv 가 없습니다 — %s\n"
+                   "       (못 찾음은 통과가 아닙니다. apply_split 이 쓰는 자리입니다)" % s15)
+    if not 끝.is_file():
+        return 1, "     ✗ %s 가 없습니다" % 끝
+
+    def 세기(p):
+        with io.open(p, encoding="utf-8-sig", newline="") as h:
+            줄들 = list(_csv.DictReader(h))
+        조각 = sum(1 for r in 줄들 if (r.get("split_origin_atomic_id") or "").strip())
+        칸 = set(줄들[0].keys()) if 줄들 else set()
+        return len(줄들), 조각, 칸
+
+    s행, s조각, s칸 = 세기(s15)
+    m행, m조각, m칸 = 세기(끝)
+    말 = ["     s15_master  %5d행 · 쪼개진 조각 %4d" % (s행, s조각),
+         "     번들 자리    %5d행 · 쪼개진 조각 %4d" % (m행, m조각)]
+
+    if s칸 != m칸:
+        말.append("     ✗ 두 파일의 **칸이 다릅니다** — 옮기면 번들이 깨집니다")
+        말.append("       s15 에만: %s" % (" · ".join(sorted(s칸 - m칸)) or "(없음)"))
+        말.append("       번들에만: %s" % (" · ".join(sorted(m칸 - s칸)) or "(없음)"))
+        return 1, "\n".join(말)
+
+    if s행 == m행 and s조각 == m조각:
+        말.append("     · 옮길 것이 없습니다 (분리가 더 생기지 않았습니다)")
+        return 0, "\n".join(말)
+
+    if s행 < m행:
+        말.append("     ✗ s15 쪽이 **더 적습니다** — 덮으면 행을 잃습니다. 멈춥니다")
+        return 1, "\n".join(말)
+
+    _shutil.copy2(s15, 끝)
+    뒤행, 뒤조각, _ = 세기(끝)
+    말.append("     · 옮겼습니다 — 번들 자리 %d행 · 조각 %d" % (뒤행, 뒤조각))
+    if 뒤행 != s행 or 뒤조각 != s조각:
+        말.append("     ✗ 옮긴 뒤에도 수가 안 맞습니다 (%d/%d → %d/%d) — 멈춥니다"
+                  % (s행, s조각, 뒤행, 뒤조각))
+        return 1, "\n".join(말)
+    말.append("     ★ 행 %+d · 조각 %+d — 분리가 번들에 **닿았습니다**"
+              % (뒤행 - m행, 뒤조각 - m조각))
+    return 0, "\n".join(말)
 
 
 def _이력() -> tuple[int, str]:
@@ -209,7 +277,12 @@ def main() -> int:
         print()
         print("  %s — %s" % (이름, 설명))
         if 도구 is None:
-            코드, 글 = _xlsx_다시() if 이름.startswith("①") else _이력()
+            if 이름.startswith("⓪-1"):
+                코드, 글 = _분리_옮기기()
+            elif 이름.startswith("①"):
+                코드, 글 = _xlsx_다시()
+            else:
+                코드, 글 = _이력()
         else:
             코드, 글 = _달리기(도구)
         끝 = [x for x in 글.splitlines() if x.strip()]
