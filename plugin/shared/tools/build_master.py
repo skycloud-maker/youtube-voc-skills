@@ -159,6 +159,41 @@ def _감독자가름():
     return 골라진[0], 골라진[1]
 
 
+def _바탕_맞추기(하나: str, 둘: str) -> tuple[str, str]:
+    """어느 번들이 **바탕**인지 정한다 — 그리고 **반드시 찍는다** (결정 0012 ㉢).
+
+    ★ 2026-11-01 — `base = dict(K[aid])` 의 `K` 는 **둘째** 번들이고, 거기서
+      `CC_FIELDS` 24칸을 가져온다. 즉 **둘째가 바탕**이다.
+      그런데 인자를 안 주면 둘째가 `sorted(os.listdir())` 의 **글자 순서**로 정해졌다.
+      `Codex_bundle` 과 `claudecode_bundle` 중 대문자 `C` 가 먼저 와서
+      **codex 가 바탕**이 됐다 — 설계가 아니라 **우연**이다.
+      폴더 이름을 고치거나 좌석을 바꾸면 최종 판정 24칸이 통째로 바뀐다.
+
+    ★ 그래서 둘을 한다 —
+      ① `--바탕 <이름조각>` 으로 **골라 줄 수 있게** 한다 (없으면 지금 그대로 — 2판 재현 조건을 지킨다)
+      ② 어느 쪽이 바탕인지 **화면에 찍는다.** 몰래 정해지지 않게.
+    """
+    고른것 = None
+    if '--바탕' in sys.argv:
+        i = sys.argv.index('--바탕') + 1
+        if i >= len(sys.argv):
+            print('  ✗ `--바탕` 뒤에 번들 이름(조각)을 주십시오')
+            sys.exit(1)
+        조각 = sys.argv[i]
+        맞는것 = [x for x in (하나, 둘) if 조각 in os.path.basename(str(x).rstrip('/\\'))]
+        if len(맞는것) != 1:
+            print('  ✗ `--바탕 %s` 가 가리키는 번들이 **하나로 정해지지 않습니다**' % 조각)
+            print('    번들: %s · %s' % (os.path.basename(str(하나)), os.path.basename(str(둘))))
+            sys.exit(1)
+        고른것 = 맞는것[0]
+        하나, 둘 = ((둘, 하나) if 고른것 == 하나 else (하나, 둘))
+    print('  · 바탕 번들 = %s   (판정 24칸을 여기서 가져옵니다%s)'
+          % (os.path.basename(str(둘).rstrip('/\\')),
+             ' — `--바탕` 으로 고른 것' if 고른것 else ' — 인자를 안 주어 찾은 순서대로'))
+    print('    다른 쪽   = %s' % os.path.basename(str(하나).rstrip('/\\')))
+    return 하나, 둘
+
+
 def _판독번들():
     """2차 판독자 두 명의 최종 번들 폴더 이름을 찾는다.
 
@@ -170,7 +205,7 @@ def _판독번들():
     준것 = [a for a in sys.argv[1:] if not a.startswith('--')]
     if len(준것) >= 2:
         # ★ 이름만 떼면 옆 폴더에 있는 번들을 못 찾는다 — 자리를 그대로 준다
-        return 준것[0].rstrip('/\\'), 준것[1].rstrip('/\\')
+        return _바탕_맞추기(준것[0].rstrip('/\\'), 준것[1].rstrip('/\\'))
 
     후보 = []
     if os.path.isdir(R):
@@ -183,7 +218,7 @@ def _판독번들():
             if os.path.exists(os.path.join(길, 'raw_voc.csv')):
                 후보.append(이름)
     if len(후보) == 2:
-        return 후보[0], 후보[1]
+        return _바탕_맞추기(후보[0], 후보[1])
 
     print('  2차 판독자 두 명의 번들을 못 찾았습니다.')
     print('    본 자리 : %s' % R)
@@ -374,6 +409,24 @@ def main():
             elif a[:2] == b[:2]:
                 kindv, val, who = a
                 stats['감독자 합의'] += 1
+                # ★★ 2026-11-01 — 감독 판정을 **CC_FIELDS 24칸에도** 반영한다 (결정 0012 ㉠).
+                #   전에는 status · topic · topic_evidence 만 넣었다. 그래서 감독이
+                #   「판독A 가 맞다」 고 한 행에서도 brand · cej · entity_role ·
+                #   rootcause_* · tee_* 는 **바탕(판독자 둘째) 값**이 그대로 갔다.
+                #   ★ 2판 통째 재현에서 실측했다 —
+                #       감독이 판독A 를 택한 526행에서 최종 brand 가 A값 **0** · B값 **526**
+                #       entity_role 629행 → 0 · 629 · cej 804행 → 0 · 804
+                #     감독은 전체에서 판독A 를 1,893 대 405 로 택했는데 **한 건도** 안 닿았다.
+                #     감독 둘이 2,554행을 몇 시간 판정한 것이 topic 하나에만 닿았다.
+                #   ★ 감독이 **직접** 낸 라벨(C 판정 · who == 'judge')은 판독자 쪽이 없으므로
+                #     바탕을 그대로 둔다 — 없는 값을 지어내지 않는다.
+                _고른쪽자료 = (X.get(aid) if _어느번들(who) == '1'
+                           else (K.get(aid) if _어느번들(who) == '2' else None))
+                if _고른쪽자료:
+                    for _f in CC_FIELDS:
+                        if _f in _고른쪽자료:
+                            base[_f] = _고른쪽자료[_f]
+                    stats['감독이 고른 쪽의 판정 칸을 옮겼다'] += 1
                 if kindv == '제외':
                     base['status'] = 'scope_excluded'
                     base['scope_exclusion_reason'] = val
@@ -446,6 +499,17 @@ def main():
                     '총괄_근거': '',
                     '지금값(2차 %s)' % _이름2: base.get('topic', ''),
                 })
+        elif aid in JX or aid in JK:
+            # ★★ 2026-11-01 — **감독 한 명만 본 행**이다 (결정 0012 ㉣).
+            #   전에는 이것도 `reader_agree`(두 판독자 합의)로 적혔다. 판독자 둘이
+            #   **갈려서** 3차로 간 행인데 「합의」 로 기록되고 경고도 없었다.
+            #   사람은 합의된 줄 안다. 2026-11-01 판에서는 한쪽만 본 행이 0 이라
+            #   터지지 않았지만, 감독이 한 회차라도 빠뜨리면 그대로 둔갑한다.
+            _본쪽 = _s1 if aid in JX else _s2
+            stats['★ 감독 한 명만 봤다 (합의가 아니다)'] += 1
+            base['decided_by'] = '감독_한쪽만'
+            base['decided_note'] = ('감독 %s 만 판정했다 — 다른 감독이 안 봤다. '
+                                    '합의가 아니다' % _본쪽)
         else:
             stats['두 판독자 합의'] += 1
             base['decided_by'] = 'reader_agree'
