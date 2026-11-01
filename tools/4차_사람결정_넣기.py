@@ -48,6 +48,7 @@ import argparse
 import csv
 import io
 import json
+import re
 import shutil
 import sys
 from collections import Counter
@@ -79,6 +80,43 @@ def 쓰기(p: Path, 줄들: list[dict], 칸들: list[str]) -> None:
             w.writerow(r)
 
 
+def 표기_풀기(필드말: str, 새값: str) -> list[tuple[str, str]]:
+    """옛 수정로그의 표기를 **(칸, 그 칸에 들어갈 값)** 목록으로 푼다.
+
+    ★ 2026-11-01 — 처음에는 `field` 를 `/` 로 가르고 **같은 `새값` 을 두 칸에 다** 댔다.
+      틀렸다. 옛 수정로그는 `field` 에 `status/topic` 처럼 **쌍**을 적고, `새값` 에는
+      **한 값을 이 표기로** 적는다 (옛 자료에서 읽은 것이다 — 짐작이 아니다) —
+
+          새값이 `제외(operator_notice)` 꼴  → status=scope_excluded ·
+                                              scope_exclusion_reason=operator_notice ·
+                                              topic=N/A
+          그 밖(라벨 이름)                   → topic=<그 이름> · status=normal
+
+      그래서 `status` 칸의 제안값 `scope_excluded` 가 옛 `새값` 과 글자로 같을 수가
+      없었고, 사람이 「제외」 로 정한 **18행을 내가 반려로 떨어뜨렸다.**
+      총괄 AI 가 그것을 찾아 `4차반영_사슬구멍_status.csv` 에 적어 주었다.
+    """
+    칸들 = [c.strip() for c in 필드말.split("/") if c.strip()]
+    값 = (새값 or "").strip()
+    m = re.match(r"^제외\((.+)\)$", 값)
+    out: list[tuple[str, str]] = []
+    if m:
+        사유 = m.group(1).strip()
+        if "status" in 칸들 or "topic" in 칸들:
+            out += [("status", "scope_excluded"),
+                    ("scope_exclusion_reason", 사유),
+                    ("topic", "N/A")]
+    else:
+        if "topic" in 칸들:
+            out.append(("topic", 값))
+        if "status" in 칸들:
+            out.append(("status", "normal"))
+    for c in 칸들:
+        if c not in ("status", "topic"):
+            out.append((c, 값))
+    return out
+
+
 def 옛결정_읽기() -> tuple[dict, dict]:
     """옛 2판에서 **사람이 적은 것**을 읽는다. 없으면 멈춘다 — 못 찾음은 통과가 아니다."""
     분 = 옛자리 / _옛분리
@@ -100,11 +138,10 @@ def 옛결정_읽기() -> tuple[dict, dict]:
     규칙 = {}
     for r in 읽기(규):
         aid = (r.get("atomic_id") or "").strip()
-        새값 = (r.get("새값") or "").strip()
-        for 칸 in (r.get("field") or "").split("/"):
-            칸 = 칸.strip()
-            if aid and 칸:
-                규칙.setdefault((aid, 칸), set()).add(새값)
+        if not aid:
+            continue
+        for 칸, 값 in 표기_풀기(r.get("field") or "", r.get("새값") or ""):
+            규칙.setdefault((aid, 칸), set()).add(값)
     return 분리, 규칙
 
 

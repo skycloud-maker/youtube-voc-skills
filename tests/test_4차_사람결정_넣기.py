@@ -193,3 +193,48 @@ def test_감독의_병합판정을_조용히_넘기지_않는다(자리, capsys)
     말 = capsys.readouterr().out
     assert "사슬의 구멍" in 말 and "병합" in 말, (
         "병합을 못 받는다는 것을 **안 말했다** — 조용히 사라진다\n%s" % 말)
+
+
+def test_옛_표기를_제대로_푼다(도구):
+    """★ 2026-11-01 — 내가 틀렸던 자리.
+
+    옛 수정로그는 `field` 에 `status/topic` 쌍을 적고 `새값` 에 **한 값을 이 표기로**
+    적는다. `제외(X)` 는 status=scope_excluded · 사유=X · topic=N/A 를 뜻한다.
+    처음에는 같은 `새값` 을 두 칸에 다 대서, 사람이 「제외」 로 정한 **18행을
+    반려로 떨어뜨렸다.**
+    """
+    풀기 = 도구.표기_풀기
+    r = dict(풀기("status/topic", "제외(operator_notice)"))
+    assert r.get("status") == "scope_excluded", r
+    assert r.get("scope_exclusion_reason") == "operator_notice", r
+    assert r.get("topic") == "N/A", r
+
+    r = dict(풀기("status/topic", "제품 전반"))
+    assert r.get("topic") == "제품 전반", r
+    assert r.get("status") == "normal", r
+
+    r = dict(풀기("topic/status", "시장 점유·경쟁 구도"))
+    assert r.get("topic") == "시장 점유·경쟁 구도" and r.get("status") == "normal", r
+
+    assert dict(풀기("topic", "위생/냄새")).get("topic") == "위생/냄새", "단일 topic"
+    assert dict(풀기("entity_role", "product_brand")).get("entity_role") == "product_brand"
+
+
+def test_제외로_정한_행을_승인한다(자리):
+    """★ 사람이 「제외」 로 정했고 우리 판독자가 scope_excluded 를 제안했으면 승인해야 한다."""
+    _쓰기(자리["옛"] / "수정로그_4차규칙_2판.csv",
+         ["atomic_id", "field", "옛값", "새값", "규칙", "승인상태"],
+         [{"atomic_id": "S-01", "field": "status/topic", "옛값": "제품 전반",
+           "새값": "제외(operator_notice)", "규칙": "정본③", "승인상태": "총괄 적용 (sky 확정)"}])
+    _쓰기(자리["회의"] / "수정로그_오류확정.csv",
+         ["atomic_id", "field", "제안값", "승인상태"],
+         [{"atomic_id": "S-01", "field": "status", "제안값": "scope_excluded", "승인상태": ""},
+          {"atomic_id": "S-01", "field": "scope_exclusion_reason",
+           "제안값": "operator_notice", "승인상태": ""},
+          {"atomic_id": "S-01", "field": "topic", "제안값": "N/A", "승인상태": ""}])
+    _돌리기(자리["도구"], 자리["판"])
+    줄들 = _읽기(자리["회의"] / "수정로그_오류확정.csv")
+    for r in 줄들:
+        assert r["승인상태"] == "승인", (
+            "「제외」 로 정한 것의 %s 를 %r 로 뒀다 — 사람 결정이 데이터에 안 들어간다"
+            % (r["field"], r["승인상태"]))
