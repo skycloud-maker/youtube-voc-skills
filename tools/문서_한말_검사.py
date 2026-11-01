@@ -159,19 +159,31 @@ def main() -> int:
     #   **지금을 말하는 표시**가 있는 줄만 본다 (「…였습니다」 는 지난 일이다).
     지금줄 = re.compile(r"적은\s*날|요청입니다")
     어긋 = []
+    본줄 = 0            # ★ 몇 줄을 보고 그 말을 하는지 — 0 이면 검사를 **못 한** 것이다
     for p in 글들:
         for i, l in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
             if not l.lstrip().startswith(">") or not 지금줄.search(l) or "였습니다" in l:
                 continue        # 글 머리에서 **지금 판**을 말하는 줄만 본다
             for m in 판무늬.finditer(l):
+                본줄 += 1
                 if m.group(1) != 판 and "~" not in l:
                     어긋.append((p.name, i, l.strip()))
-    if 어긋:
+    # ★ 2026-11-02 — **「못 찾음」 을 「없음」 으로 돌려주지 않는다.**
+    #   그날 세 글의 머리를 「그때 판은 2.0.12 였습니다」 (지난 일)로 고쳤더니
+    #   이 검사가 볼 줄이 **0개**가 되었는데도 「머리에 적힌 판이 다 2.0.13 다」 라고
+    #   찍고 통과했다. 검사 안 한 것을 통과로 보여 준 것이다.
+    #   지금 판을 대는 줄은 `docs/지금_어디인가.md` 머리에 있다.
+    if 본줄 == 0:
+        탈 += 1
+        print("     ★ 지금 판을 말하는 줄을 **한 줄도 못 찾았습니다** — 검사를 못 했습니다.")
+        print("        (찾는 꼴 — 인용줄 「> … 적은 날 … 판 X.Y.Z」 · 「였습니다」 가 없는 줄)")
+        print("        `docs/지금_어디인가.md` 머리의 「적은 날 … 판」 줄을 되살리십시오.")
+    elif 어긋:
         탈 += len(어긋)
         for n, i, l in (어긋 if 자세히 else 어긋[:5]):
             print("     ★ %s:%d  %s" % (n, i, l[:70]))
     else:
-        print("     · 머리에 적힌 판이 다 %s 다" % 판)
+        print("     · 머리에 적힌 판이 다 %s 다 (본 줄 %d개)" % (판, 본줄))
 
     # ③ 낡은 말
     print()

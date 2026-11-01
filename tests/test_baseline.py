@@ -25,7 +25,7 @@ _여기 = Path(__file__).resolve().parent
 _뿌리 = _여기.parent
 sys.path.insert(0, str(_여기.parent / "plugin" / "shared"))
 sys.path.insert(0, str(_여기 / "baseline"))
-from paths import BASELINE  # noqa: E402
+from paths import BASELINE, PLUGIN  # noqa: E402
 import 기준_만들기  # noqa: E402
 import 맞대기 as 맞대기_mod  # noqa: E402
 from 맞대기 import 맞대기  # noqa: E402
@@ -299,6 +299,72 @@ def test_가3_뒤처리가_N_A행을_다시_빼지_않는다():
     바뀐 = [k for k in 얼린 if k not in 뺐던 and
            any(얼린[k].get(c) != 새것[k].get(c) for c in ("status", "topic", "scope_exclusion_reason", "decided_by"))]
     assert not 바뀐, "옛 규칙과 상관없는 행이 바뀌었다: %s" % 바뀐[:5]
+
+
+def test_가4_감독판정이_24칸에_닿는다():
+    """★ 결정 0012 ㉠ (2026-11-02) — 새 동작으로 3차 마무리를 돌리면 **감독이 고른 쪽**의
+    판정 칸이 최종에 들어가야 한다.
+
+    ★ 왜 이 시험이 따로 있나 — 얼린 3차 기준은 **옛 동작으로 만든 것**이라 이 고침과
+      바이트가 같을 수 없다 (실측 — 판정 23칸 · 6,492행 중 최대 417행이 다르다).
+      그래서 재현 시험은 `VOC_얼린기준_재현=1` 로 **옛 동작**을 돌린다 (§17 · handoff 와 같은 꼴).
+      그러면 고친 동작을 **아무도 안 돌린다** — 가드는 돌리는 자리에 둔다.
+      둘이 같이 있어야 바꾼 것이 정확히 그것뿐임을 안다.
+    """
+    import csv, io
+    그릇 = BASELINE / "시험실행" / "총괄_3차마무리_24칸"
+    if 그릇.exists():
+        shutil.rmtree(그릇)
+    그릇.mkdir(parents=True)
+    assert 총괄후보.차려서_돌리기("3차마무리", 그릇, 옛판=False) == 0,         (그릇 / "실행기록.txt").read_text(encoding="utf-8")[-2000:]
+
+    def 읽기(p):
+        return {r["atomic_id"]: r for r in csv.DictReader(io.StringIO(p.read_bytes().decode("utf-8-sig")))}
+    판 = 그릇 / "총괄" / "2판"
+    새것 = 읽기(판 / "s15_master" / "raw_voc.csv")
+    얼린 = 읽기(BASELINE / "실행" / "3차마무리_1" / "2판" / "s15_master" / "raw_voc.csv")
+    assert set(얼린) == set(새것), "행이 늘거나 줄었다 — 이 고침은 행을 건드리지 않는다"
+
+    # 판독자 둘의 번들에서 같은 행을 집어, 감독이 고른 쪽 값이 들어갔는지 본다
+    번들 = 판 / "_판독패키지" / "_결과"
+    A = 읽기(번들 / "claudecode_bundle" / "raw_voc.csv")
+    B = 읽기(번들 / "Codex_bundle" / "raw_voc.csv")
+    볼칸 = ("brand", "entity_role", "cej", "rootcause_score", "need_signal_type", "tee_summary")
+    # 판독자 둘이 **갈린** 칸만 센다 (같으면 어느 쪽에서 와도 구별이 안 된다)
+    A쪽, B쪽, 갈린행 = 0, 0, 0
+    for aid, r in 새것.items():
+        a, b = A.get(aid), B.get(aid)
+        if not a or not b:
+            continue
+        for c in 볼칸:
+            va, vb, vn = (a.get(c) or ""), (b.get(c) or ""), (r.get(c) or "")
+            if va == vb:
+                continue
+            갈린행 += 1
+            if vn == va:
+                A쪽 += 1
+            elif vn == vb:
+                B쪽 += 1
+    assert 갈린행 >= 100, (
+        "판독자 둘이 갈린 칸을 %d개밖에 못 찾았다 — **시험 대상을 못 찾았다** (통과가 아니다)" % 갈린행)
+    assert A쪽 >= 50, (
+        "갈린 칸 %d개에서 최종이 판독A 값을 쓴 것이 %d개뿐이다 (판독B %d개) — "
+        "감독 판정이 판정 24칸에 **안 닿는다.** 고치기 전에는 A쪽이 **0** 이었다." % (갈린행, A쪽, B쪽))
+
+
+def test_얼린기준_재현_모드는_24칸을_옮기지_않는다():
+    """★ 일부러 틀리게 — 스위치가 정말 끄는지 본다. 안 끄면 재현 시험이 영원히 실패한다."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "빌드마스터_스위치", PLUGIN / "shared" / "tools" / "build_master.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    import inspect
+    글 = inspect.getsource(m.main)
+    i = 글.find("_고른쪽자료 = None")
+    assert i > 0, "스위치가 없다 — 옛 동작으로 돌릴 길이 없으면 얼린 기준을 덮어쓰게 된다"
+    뒤 = 글[i:i + 400]
+    assert "VOC_얼린기준_재현" in 뒤, 뒤
 
 
 def test_허용한_칸만_빼고_나머지는_잡는다():
