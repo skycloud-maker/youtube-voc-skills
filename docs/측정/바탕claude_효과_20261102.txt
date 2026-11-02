@@ -1,0 +1,71 @@
+============================================================================
+  바탕을 바꾸면 무엇을 얻고 무엇을 버리나 — 판정 24칸
+============================================================================
+  옛 2판      C:\작업\youtube-voc-skills_기준데이터\원본사본\2판\_판독패키지\_결과\master_final\raw_voc.csv
+  바탕=codex  C:/voc_바탕codex/2판통째/_판독패키지/_결과/master_final/raw_voc.csv
+  바탕=claude C:/voc_바탕claude/2판통째/_판독패키지/_결과/master_final/raw_voc.csv
+
+  행 — 옛 6846 · codex바탕 6393 · claude바탕 6456 · **셋 다 있는 행 6156**
+
+  칸                           바탕정함      얻음      버림    둘다틀림     순이득
+  ----------------------------------------------------------------
+  rootcause_problem           3860    2225      37    1598   +2188
+  rootcause_target            1267      33      62    1172     -29
+  rootcause_cause              807      38     591     178    -553
+  rootcause_summary           1616     161     249    1206     -88
+  rootcause_score             1111     465     300     346    +165
+  atomic_voc_summary            54       2       7      45      -5
+  topic_provisional              0       0       0       0      +0
+  tee_summary                  634      26      69     539     -43
+  cej_evidence                4229    2553     317    1359   +2236
+  tee_time_evidence           3838    2403    1419      16    +984
+  tee_effort_evidence         3785    2404    1312      69   +1092
+  tee_emotion_evidence        4289    2450     509    1330   +1941
+  tee_success_evidence        3762    2383    1324      55   +1059
+  tee_time_score                40       5      34       1     -29
+  tee_effort_score              46      30       7       9     +23
+  tee_emotion_score            807     422     267     118    +155
+  tee_success_score             47      16      17      14      -1
+  need_signal_flag             736     604     132       0    +472
+  need_signal_type             909     414     182     313    +232
+  inquiry_flag                 191     154      37       0    +117
+  inquiry_type                 268     172      52      44    +120
+  cej                         1193     690     226     277    +464
+  entity_role                 2564    2240     214     110   +2026
+  brand                       2741    2554      35     152   +2519
+  ----------------------------------------------------------------
+  합                          38794   22444    7399    8951  +15045
+
+  ★ **버림 7399칸** — 감독이 판정하지 않아 바탕이 값을 정한 자리에서,
+    codex 가 옛 2판과 맞고 claude 가 안 맞은 칸입니다. 이것이 버려지는 수입니다.
+  ★ **얻음 22444칸** · 순이득 **+15045칸**
+
+  칸마다 — 옛 2판과 몇 % 같은가 (같은 6156행에서)
+  칸                          바탕codex  바탕claude        차이
+  ------------------------------------------------------
+  rootcause_problem            8.90%    44.44%   +35.54%
+  rootcause_target            45.99%    45.52%    -0.47%
+  rootcause_cause             86.18%    77.19%    -8.98%
+  rootcause_summary           47.09%    45.66%    -1.43%
+  rootcause_score             59.60%    62.28%    +2.68%
+  atomic_voc_summary          59.13%    59.05%    -0.08%
+  topic_provisional          100.00%   100.00%    +0.00%
+  tee_summary                 49.61%    48.91%    -0.70%
+  cej_evidence                14.96%    51.28%   +36.32%
+  tee_time_evidence           49.19%    65.17%   +15.98%
+  tee_effort_evidence         48.55%    66.29%   +17.74%
+  tee_emotion_evidence        17.45%    48.98%   +31.53%
+  tee_success_evidence        49.12%    66.33%   +17.20%
+  tee_time_score              99.43%    98.96%    -0.47%
+  tee_effort_score            97.77%    98.15%    +0.37%
+  tee_emotion_score           66.52%    69.04%    +2.52%
+  tee_success_score           98.49%    98.47%    -0.02%
+  need_signal_flag            77.14%    84.81%    +7.67%
+  need_signal_type            62.31%    66.08%    +3.77%
+  inquiry_flag                90.98%    92.88%    +1.90%
+  inquiry_type                87.59%    89.54%    +1.95%
+  cej                         62.75%    70.29%    +7.54%
+  entity_role                 49.42%    82.33%   +32.91%
+  brand                       50.05%    90.97%   +40.92%
+  ------------------------------------------------------
+  ★ **내려간 칸이 7개다** (숨기지 않는다) — rootcause_cause -8.98% · rootcause_summary -1.43% · tee_summary -0.70% · rootcause_target -0.47% · tee_time_score -0.47% · atomic_voc_summary -0.08% · tee_success_score -0.02%

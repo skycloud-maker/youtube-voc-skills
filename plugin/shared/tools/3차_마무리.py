@@ -218,6 +218,26 @@ def _확인만이면_보여주고_멈춘다() -> bool:
     return True
 
 
+def _바탕인자() -> list[str]:
+    """`--바탕 <이름조각>` 을 뽑아 `build_master.py` 로 **넘긴다** (2026-11-02).
+
+    ★ 왜 — `build_master.py` 에는 `--바탕` 이 있는데 **이 도구가 안 넘겨 주고 있었다.**
+      스킬을 쓰는 사람은 `3차_마무리.py` 를 돌리므로, 그 인자는 **닿을 길이 없었다.**
+      더 나쁜 것은 **조용히 틀리게 돌았다는 것이다** —
+        · `--바탕` 은 아래 `startswith("--")` 에 걸려 **버려지고**
+        · 값 `claudecode` 는 `--` 가 없으니 **감독폴더 경로로 오해**된다
+      그러면 감독결과를 그 엉뚱한 자리에서 찾아 **0개**를 세고, 사람은 바탕을 바꿨다고
+      믿는다. 「못 찾음」 을 「없음」 으로 돌려주는 것과 같은 꼴이다.
+    """
+    if "--바탕" not in sys.argv:
+        return []
+    i = sys.argv.index("--바탕") + 1
+    if i >= len(sys.argv) or sys.argv[i].startswith("--"):
+        print("  ✗ `--바탕` 뒤에 번들 이름(조각)을 주십시오 — 예: `--바탕 claudecode`")
+        raise SystemExit(2)
+    return ["--바탕", sys.argv[i]]
+
+
 def main() -> int:
     if _확인만이면_보여주고_멈춘다():
         return 0
@@ -227,8 +247,14 @@ def main() -> int:
 
     R.mkdir(parents=True, exist_ok=True)
 
+    바탕 = _바탕인자()
+    if 바탕:
+        print("  · `--바탕 %s` 를 build_master 로 넘깁니다 (판정 24칸의 바탕 번들)" % 바탕[1])
+
     # ── ① 감독자 결과를 모은다 ──────────────────────────────────────
-    준것 = [Path(a) for a in sys.argv[1:] if not a.startswith("--")]
+    #   ★ `--바탕` 의 **값**도 빼야 한다 — 안 빼면 감독폴더 경로로 오해한다
+    _값 = set(바탕[1:])
+    준것 = [Path(a) for a in sys.argv[1:] if not a.startswith("--") and a not in _값]
     자리 = 준것 or _감독폴더찾기()
     # ★ 파일 **이름**으로 센다 (2026-08-24).
     #   한 번 통합하면 다른 감독자 결과가 이 폴더로 복사된다. 다시 돌리면
@@ -297,7 +323,14 @@ def main() -> int:
             print("     · %s" % p)
         return 1
 
-    코드, 말 = _달리기("build_master.py", str(번들[0]), str(번들[1]))
+    코드, 말 = _달리기("build_master.py", str(번들[0]), str(번들[1]), *바탕)
+    # ★ 2026-11-02 — 아래 「마지막 14줄」 은 build_master 의 **머리에 찍히는**
+    #   「바탕 번들 = …」 줄을 잘라 버린다. 그 줄은 결정 0012 ㉢ 이 「바탕이 **몰래**
+    #   정해지지 않게」 넣은 것인데, 사람이 보는 것은 이 도구의 화면이므로
+    #   **스킬 경로에서는 ㉢ 이 깨져 있었다.** 그래서 그 줄만 따로 끌어올린다.
+    for _줄 in 말.splitlines():
+        if "바탕 번들 =" in _줄:
+            print("  " + _줄.strip())
     print("\n".join("  " + x for x in 말.rstrip().splitlines()[-14:]))
     if 코드:
         try:

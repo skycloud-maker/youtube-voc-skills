@@ -118,3 +118,72 @@ def test_바탕이_하나로_안_정해지면_멈춘다(통합, monkeypatch):
                         ["build_master.py", "x_bundle", "x2_bundle", "--바탕", "x"])
     with pytest.raises(SystemExit):
         통합._판독번들()
+
+
+# ──────────────────────────────────────────────────────────────────────────
+#  ★ 2026-11-02 — `--바탕` 이 **스킬 경로에서는 닿지 않았다** (가드는 돌리는 자리에)
+#    `build_master.py` 에만 인자를 두어도, 사람이 돌리는 것은 `3차_마무리.py` 다.
+#    그 도구가 안 넘겨 주면 인자는 **있으나 쓸 수 없다.** 더 나쁜 것은 조용히
+#    틀리게 돌았다는 것 — `--바탕` 은 버려지고, 값 `claudecode` 는 `--` 가 없어
+#    **감독폴더 경로**로 오해됐다. sky 가 「바탕 claude 로 돌려보라」 고 한 2026-11-02 에
+#    실제로 걸린 고장이다.
+# ──────────────────────────────────────────────────────────────────────────
+마무리쪽 = REPO / "plugin" / "shared" / "tools" / "3차_마무리.py"
+
+
+@pytest.fixture()
+def 마무리():
+    spec = importlib.util.spec_from_file_location("삼차마무리_시험", 마무리쪽)
+    m = importlib.util.module_from_spec(spec)
+    sys.modules["삼차마무리_시험"] = m
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_마무리가_바탕인자를_넘긴다(마무리, monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["3차_마무리.py", "--바탕", "claudecode"])
+    assert 마무리._바탕인자() == ["--바탕", "claudecode"]
+    # 안 주면 아무것도 넘기지 않는다 (기본 동작은 그대로 — 2판 재현 조건)
+    monkeypatch.setattr(sys, "argv", ["3차_마무리.py"])
+    assert 마무리._바탕인자() == []
+
+
+def test_마무리가_바탕값을_감독폴더로_오해하지_않는다(마무리, monkeypatch):
+    """★ 알맹이 — 그날 걸린 고장 그대로다. 값이 감독폴더 목록에 들어가면
+    감독결과를 엉뚱한 자리에서 찾아 **0개**를 세고도 사람은 바탕을 바꿨다고 믿는다."""
+    글 = 마무리쪽.read_text(encoding="utf-8")
+    i = 글.find("준것 = [Path(a) for a in sys.argv[1:]")
+    assert i > 0, "감독폴더를 고르는 줄을 못 찾았다 — 도구가 바뀐 것인지 보십시오"
+    줄 = 글[i:글.find("\n", i)]
+    assert "_값" in 줄, ("`--바탕` 의 **값**을 안 빼고 있다 — 감독폴더로 오해한다:\n%s" % 줄)
+
+
+def test_마무리가_build_master_를_부를_때_바탕을_붙인다():
+    """넘겨받기만 하고 **안 붙이면** 아무 일도 안 일어난다 — 그 줄을 본다."""
+    글 = 마무리쪽.read_text(encoding="utf-8")
+    i = 글.find('_달리기("build_master.py"')
+    assert i > 0, "build_master 를 부르는 줄을 못 찾았다"
+    줄 = 글[i:글.find("\n", i)]
+    assert "*바탕" in 줄, ("바탕 인자를 안 붙인다 — `--바탕` 이 닿을 길이 없다:\n%s" % 줄)
+
+
+def test_바탕_뒤에_값이_없으면_멈춘다(마무리, monkeypatch):
+    """★ 「못 찾음」 을 「기본값」 으로 돌려주지 않는다."""
+    monkeypatch.setattr(sys, "argv", ["3차_마무리.py", "--바탕"])
+    with pytest.raises(SystemExit):
+        마무리._바탕인자()
+    monkeypatch.setattr(sys, "argv", ["3차_마무리.py", "--바탕", "--확인만"])
+    with pytest.raises(SystemExit):
+        마무리._바탕인자()
+
+
+def test_마무리가_바탕_번들_줄을_끌어올린다():
+    """★ ㉢ 은 「바탕이 **몰래** 정해지지 않게」 찍는 것인데, `3차_마무리.py` 가
+    build_master 출력의 **마지막 14줄만** 보여 주어 그 줄이 잘렸다. 사람이 보는 것은
+    이 도구의 화면이므로 **스킬 경로에서는 ㉢ 이 깨져 있었다** (2026-11-02)."""
+    글 = 마무리쪽.read_text(encoding="utf-8")
+    i = 글.find('_달리기("build_master.py"')
+    토막 = 글[i:i + 700]
+    assert "바탕 번들 =" in 토막, (
+        "build_master 의 「바탕 번들 = …」 줄을 끌어올리지 않는다 — 마지막 14줄에 잘려\n"
+        "사람은 어느 쪽이 바탕인지 **화면에서 볼 수 없다** (㉢ 이 깨진다):\n%s" % 토막[:400])
