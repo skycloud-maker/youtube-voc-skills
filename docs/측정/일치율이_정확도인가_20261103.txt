@@ -1,0 +1,94 @@
+==============================================================================
+  일치율은 정확도가 아니다 — 쏠림 · 근거 · 기준서 위반으로 다시 본다
+==============================================================================
+  옛 2판 6846행 · codex바탕 6393행 · claude바탕 6456행 · **셋 다 있는 6156행**
+
+  ① **멍청규칙 대비** — 「옛 2판의 최빈값만 적는 규칙」의 점수와 댄다
+  칸                           멍청규칙    codex   claude   claude-멍청
+  --------------------------------------------------------------
+  rootcause_problem         45.65%    8.90%   44.44%      -1.20% ✗
+  rootcause_target          46.26%   45.99%   45.52%      -0.75% ✗
+  rootcause_cause           86.34%   86.18%   77.19%      -9.15% ✗
+  rootcause_summary         42.32%   47.09%   45.66%      +3.35%
+  rootcause_score           46.20%   59.60%   62.28%     +16.08%
+  atomic_voc_summary         2.92%   59.13%   59.05%     +56.12%
+  topic_provisional         96.72%  100.00%  100.00%      +3.28%
+  tee_summary               29.24%   49.61%   48.91%     +19.67%
+  cej_evidence               3.44%   14.96%   51.28%     +47.84%
+  tee_time_evidence         54.71%   49.19%   65.17%     +10.46%
+  tee_effort_evidence       55.00%   48.55%   66.29%     +11.29%
+  tee_emotion_evidence      28.41%   17.45%   48.98%     +20.57%
+  tee_success_evidence      54.84%   49.12%   66.33%     +11.48%
+  tee_time_score            99.82%   99.43%   98.96%      -0.86% ✗
+  tee_effort_score          99.53%   97.77%   98.15%      -1.38% ✗
+  tee_emotion_score         68.23%   66.52%   69.04%      +0.81%
+  tee_success_score         99.30%   98.49%   98.47%      -0.83% ✗
+  need_signal_flag          57.20%   77.14%   84.81%     +27.62%
+  need_signal_type          42.80%   62.31%   66.08%     +23.28%
+  inquiry_flag              86.29%   90.98%   92.88%      +6.60%
+  inquiry_type              86.29%   87.59%   89.54%      +3.25%
+  cej                       37.44%   62.75%   70.29%     +32.85%
+  entity_role               42.25%   49.42%   82.33%     +40.07%
+  brand                     92.58%   50.05%   90.97%      -1.61% ✗
+  --------------------------------------------------------------
+  ★ **claude 가 멍청규칙을 못 넘긴 칸 7개 / 24개** — 이 칸의 일치율은
+    「좋아졌다」 는 증거로 **쓸 수 없다**:
+     · rootcause_cause        멍청규칙  86.34%  claude  77.19%  (-9.15%)  최빈값=「N/A」
+     · brand                  멍청규칙  92.58%  claude  90.97%  (-1.61%)  최빈값=「LG」
+     · tee_effort_score       멍청규칙  99.53%  claude  98.15%  (-1.38%)  최빈값=「0」
+     · rootcause_problem      멍청규칙  45.65%  claude  44.44%  (-1.20%)  최빈값=「N/A」
+     · tee_time_score         멍청규칙  99.82%  claude  98.96%  (-0.86%)  최빈값=「0」
+     · tee_success_score      멍청규칙  99.30%  claude  98.47%  (-0.83%)  최빈값=「0」
+     · rootcause_target       멍청규칙  46.26%  claude  45.52%  (-0.75%)  최빈값=「N/A」
+
+  ② **근거율** — 적어 놓은 브랜드가 **원문에 실제로 있나** (`brand` 는 「원문 표기 브랜드」)
+                   구체브랜드          원문에있음          원문에없음       N/A등
+  ---------------------------------------------------------------
+  옛2판               5714     638( 11.2%)    5076( 88.8%)        442
+  codex             3167     613( 19.4%)    2554( 80.6%)       2989
+  claude            5796     667( 11.5%)    5129( 88.5%)        360
+  ---------------------------------------------------------------
+  ★ **옛2판 는 적어 놓은 브랜드의 88.8% 가 원문에 없다** — 「원문 표기 브랜드」 가
+    아니라 **기본값**이다. 이 칸의 일치율이 높은 것은 분석이 맞다는 뜻이 아니다.
+  ★ **claude 는 적어 놓은 브랜드의 88.5% 가 원문에 없다** — 「원문 표기 브랜드」 가
+    아니라 **기본값**이다. 이 칸의 일치율이 높은 것은 분석이 맞다는 뜻이 아니다.
+  ※ 별명표는 손으로 적은 것이므로 「없음」 이 조금 많게 나올 수 있다 — 근거율은 **최솟값**이다.
+
+  ③ **[다5] 위반** — brand 칸에 entity_role 값 (unknown · creator_channel · product_brand)
+  옛2판       unknown  200 · creator_channel   75 · product_brand    0  → **위반 275행**
+  codex     unknown    0 · creator_channel    2 · product_brand    0  → **위반 2행**
+  claude    unknown    0 · creator_channel    0 · product_brand    0  → **위반 0행**
+  ★ 옛 2판에 위반이 **275행** 있다 — 그 자리에서는 **옛 2판과 어긋나는 것이 맞는 것**이다.
+    일치율은 거기서 오히려 **벌을 준다.** 이것도 일치율이 정확도가 아닌 까닭이다.
+
+  근거 없는 행 보기 (쪽마다 다섯 줄까지)
+     [옛2판] Ugw-369W1I_o_JE5SzB4AaABAg-01  brand=LG
+          원문「히든 스테이션 진짜 궁금했어요ㅠㅠ! 그런데 배수 y커넥터가 이미 설치된 상태면 설치 불가라고 …」
+     [옛2판] Ugw-369W1I_o_JE5SzB4AaABAg.AYk5xNfYKGHAYkYle5I8ZC-01  brand=LG
+          원문「배수캡 있으면 설치 된다네요…」
+     [옛2판] Ugw-369W1I_o_JE5SzB4AaABAg.AYk5xNfYKGHAYkaN-invMK-01  brand=LG
+          원문「​@Gwi-Don오오! 그럼 문의를 해볼 여지가 있겠네요! 감사합니다!…」
+     [옛2판] Ugw-3985vlatwd-yoYJ4AaABAg-01  brand=LG
+          원문「중국산 청소기 카메라 조심,, 또 조심.…」
+     [옛2판] Ugw-3985vlatwd-yoYJ4AaABAg.AZ6A1qsm_HLAZxZERFqhla-01  brand=LG
+          원문「소국다운 웃픈 허위날조 뉴스에 썩어가는 뇌들 ㅋㅋㅋ…」
+     [codex] Ugw-369W1I_o_JE5SzB4AaABAg-01  brand=LG
+          원문「히든 스테이션 진짜 궁금했어요ㅠㅠ! 그런데 배수 y커넥터가 이미 설치된 상태면 설치 불가라고 …」
+     [codex] Ugw-369W1I_o_JE5SzB4AaABAg.AYk5xNfYKGHAYkYle5I8ZC-01  brand=LG
+          원문「배수캡 있으면 설치 된다네요…」
+     [codex] Ugw-369W1I_o_JE5SzB4AaABAg.AYk5xNfYKGHAYkaN-invMK-01  brand=LG
+          원문「​@Gwi-Don오오! 그럼 문의를 해볼 여지가 있겠네요! 감사합니다!…」
+     [codex] Ugw-3985vlatwd-yoYJ4AaABAg-01  brand=LG
+          원문「중국산 청소기 카메라 조심,, 또 조심.…」
+     [codex] Ugw-dJMqS6vXn8gs_k54AaABAg-01  brand=LG
+          원문「중국 청소기 매핑이 잘되는 이유는 원격조정, 터지고 털리고…」
+     [claude] Ugw-369W1I_o_JE5SzB4AaABAg-01  brand=LG
+          원문「히든 스테이션 진짜 궁금했어요ㅠㅠ! 그런데 배수 y커넥터가 이미 설치된 상태면 설치 불가라고 …」
+     [claude] Ugw-369W1I_o_JE5SzB4AaABAg.AYk5xNfYKGHAYkYle5I8ZC-01  brand=LG
+          원문「배수캡 있으면 설치 된다네요…」
+     [claude] Ugw-369W1I_o_JE5SzB4AaABAg.AYk5xNfYKGHAYkaN-invMK-01  brand=LG
+          원문「​@Gwi-Don오오! 그럼 문의를 해볼 여지가 있겠네요! 감사합니다!…」
+     [claude] Ugw-3985vlatwd-yoYJ4AaABAg-01  brand=LG
+          원문「중국산 청소기 카메라 조심,, 또 조심.…」
+     [claude] Ugw-3985vlatwd-yoYJ4AaABAg.AZ6A1qsm_HLAZxZERFqhla-01  brand=LG
+          원문「소국다운 웃픈 허위날조 뉴스에 썩어가는 뇌들 ㅋㅋㅋ…」
