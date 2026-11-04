@@ -60,6 +60,17 @@ claude plugin list
    그보다 낮은 판으로 보이면 `claude plugin update youtube-voc` 를 치고
    **다시 닫았다 엽니다.**
 
+   ★ **PowerShell 에서 「이 시스템에서 스크립트를 실행할 수 없으므로 … `claude.ps1` …」**
+     이 나오면 **꾸러미 탓이 아닙니다.** npm 이 `claude.ps1`(PowerShell 스크립트)과
+     `claude.cmd`(배치 파일)를 같이 깔아 두는데, PowerShell 창에서 `claude` 라고 치면
+     `.ps1` 을 먼저 집고 그 실행이 **정책으로 막혀** 있는 것입니다.
+     → `claude` 대신 **`claude.cmd`** 를 치십시오 (배치 파일이라 정책을 거치지 않습니다).
+       `cmd /c "claude plugin list"` 도 됩니다.
+     ★ 실행 정책을 **바꾸는 것은 보안 설정**입니다. 이 시험에 필요하지 않으니 바꾸지 마십시오.
+       회사 컴퓨터라면 전산 담당자에게 물어야 합니다.
+     ★ 이 걸음(②)은 **건너뛰어도 시험이 됩니다.** ①③④⑤ 는 전부 앱 안에서 하는 것이고
+       터미널이 필요 없습니다.
+
 ③ **새 채팅방**을 엽니다 (지금 방이 아니라 새 방이어야 합니다).
 
 ④ 이렇게 한마디만 칩니다 — **파일 경로를 주지 마십시오.** 그걸 주면 시험이 아닙니다.
@@ -98,6 +109,10 @@ claude plugin list
 claude plugin marketplace add "<푼 폴더>"
 claude plugin install youtube-voc@youtube-voc-skills
 ```
+
+★ **PowerShell 에서 위 두 줄이 「스크립트를 실행할 수 없으므로」 로 막히면** —
+  `claude` 를 **`claude.cmd`** 로 바꿔 치십시오. 자세한 까닭은 ㉮ 의 ② 에 적었습니다.
+  이 길에서는 ② 와 달리 **건너뛸 수 없습니다** (등록을 해야 하니 명령이 꼭 돌아야 합니다).
 
 그다음 **Claude Code 를 닫고 다시 열고**, 위 ㉮ 의 ③④⑤ 를 그대로 하십시오.
 

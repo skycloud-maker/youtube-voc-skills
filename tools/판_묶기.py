@@ -209,6 +209,14 @@ claude plugin install youtube-voc@youtube-voc-skills
 그다음 **Claude Code 를 닫고 다시 여십시오** — 등록은 다시 열 때 읽힙니다.
 `claude plugin list` 에 `youtube-voc@youtube-voc-skills` 가 보이면 된 것입니다.
 
+★ **윈도 PowerShell 에서 「이 시스템에서 스크립트를 실행할 수 없으므로 … `claude.ps1` …」**
+  이 나오면 **꾸러미 탓이 아닙니다.** npm 이 `claude.ps1`(PowerShell 스크립트)과
+  `claude.cmd`(배치 파일)를 같이 깔아 두는데, PowerShell 창에서 `claude` 라고 치면 `.ps1` 을
+  먼저 집고 그 실행이 **정책으로 막혀** 있는 것입니다.
+  → `claude` 대신 **`claude.cmd`** 를 치십시오 (배치 파일이라 정책을 거치지 않습니다).
+    `cmd /c "claude plugin list"` 도 됩니다.
+  ★ 실행 정책을 **바꾸는 것은 보안 설정**입니다. 회사 컴퓨터라면 전산 담당자에게 물어야 합니다.
+
 ★ 이미 같은 이름(`youtube-voc-skills`)으로 등록해 둔 컴퓨터에서는 **다시 등록하지 마십시오** —
   이름이 겹칩니다. `claude plugin list` 로 먼저 보시고, 판이 낡았으면
   `claude plugin update youtube-voc` 만 하면 됩니다.
@@ -349,6 +357,10 @@ python <스킬>/scripts/한줄_돌리기.py <판자리> --조건 "…" --승인
 
    ★ **멈추지는 않습니다.** 안 넣어도 흐름은 CSV 로 끝까지 갑니다.
 3. `claude` · `codex` 는 윈도에서 npm `.cmd` 입니다 — 경로에 한글이 있으면 깨질 수 있습니다.
+   ★ **PowerShell 에서 「이 시스템에서 스크립트를 실행할 수 없으므로 … `claude.ps1` …」** 이
+     나오면 꾸러미 탓이 아닙니다. `claude` 대신 **`claude.cmd`** 를 치십시오 — 배치 파일이라
+     PowerShell 실행 정책을 거치지 않습니다. `cmd /c "claude plugin list"` 도 됩니다.
+     실행 정책을 바꾸는 것은 **보안 설정**이라 회사 컴퓨터에서는 전산 담당자에게 물어야 합니다.
 4. **라이브 재분석은 외부망이 필요합니다** — 사내망에서 유튜브·OpenAI 를 못 부르면 1차가 막힙니다.
    이미 나온 결과를 보는 것(보고서·대시보드 HTML)은 인터넷 없이 됩니다.
 
