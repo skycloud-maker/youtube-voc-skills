@@ -39,6 +39,7 @@ def _옆스킬(이름: str) -> Path:
 판독 = _옆스킬("reading-voc-comments")
 감독 = _옆스킬("supervising-voc-disagreements")
 sys.path.insert(0, str(공통 / "lib"))
+import 자리_가드  # noqa: E402
 import 총괄자리  # noqa: E402
 
 
@@ -54,7 +55,10 @@ def main() -> int:
     if len(sys.argv) != 3:
         print(__doc__)
         return 2
-    셈 = 차리기(Path(sys.argv[1]).resolve(), sys.argv[2])
+    총괄자리 = Path(sys.argv[1]).resolve()
+    # ★ 2026-11-04 — **저장소 안이면 여기서 멈춘다** (결정 0013 의 가드).
+    자리_가드.자리_확인하고_멈추기(총괄자리, "총괄자리")
+    셈 = 차리기(총괄자리, sys.argv[2])
     print("  총괄 자리 — %s" % 셈["판"])
     print("  차림 %d개 · 이미 있어 그대로 둠 %d개" % (셈["차림"], 셈["이미있음"]))
     if "감독꾸러미_파일수" in 셈:

@@ -37,6 +37,7 @@ def _찾기(이름: str) -> Path:
 엔진 = _찾기("engine")
 sys.path.insert(0, str(공통 / "lib"))
 import 일차자리 as 자리모듈  # noqa: E402
+import 자리_가드  # noqa: E402
 
 
 def main() -> int:
@@ -49,6 +50,8 @@ def main() -> int:
         print(__doc__)
         return 2
     자리 = Path(인자[0]).resolve()
+    # ★ 2026-11-04 — **저장소 안이면 여기서 멈춘다** (결정 0013 의 가드).
+    자리_가드.자리_확인하고_멈추기(자리, "1차자리")
     새로 = "--새로" in sys.argv
     차림, 그대로, 낡음 = 자리모듈.차리기(자리, 공통, 엔진, Path(__file__).resolve().parent, 새로=새로)
     print("  1차 실행 자리 — %s" % 자리)
