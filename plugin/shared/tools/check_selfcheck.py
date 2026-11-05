@@ -20,6 +20,29 @@ import collections, csv, glob, json, os, re, sys, time
 _HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = (os.path.dirname(_HERE)
         if os.path.basename(_HERE) in ('스크립트', 'scripts') else _HERE)
+
+# ── 대장 폴더가 자리마다 이름이 다르다 (2026-11-05 · 결정 1 · sky 「1번 ㄱ」) ──────────
+#   ★ 무엇이 있었나 — 2026-11-05 한 줄 흐름을 끝까지 돌려 보니, 판독자 둘(claude · codex)이
+#     **각자 `s9_group → 대장` 바로가기(정션)를 만들어야** 판독이 돌아갔다. 도구가 `s9_group/`
+#     만 보는데 판독·감독 꾸러미에 실리는 자리 이름은 `대장/` 이기 때문이다 (꾸러미.py 의 목록).
+#   ★ 2026-10-29 에 고른 길은 「이름 대응을 **안내문에** 적는다」 였다. 안내문만으로는
+#     **사람은 알아도 도구는 못 찾는다.** 그래서 도구가 스스로 찾게 한다.
+#   ★ 사본을 만들지 않는다 — **찾는 자리를 하나 늘릴 뿐**이다 (공통 규칙 6 · 같은 것이 두 벌).
+#     총괄 자리에서는 폴더 이름이 진짜 `s9_group` 이라 그 이름도 그대로 본다.
+def 대장자리(*이름: str) -> str:
+    """대장 파일의 자리 — 판독·감독 폴더는 `대장/`, 총괄 자리는 `s9_group/` 이다."""
+    # ★ 순서가 중요하다 — `s9_group` 이 **먼저**다. 2026-11-05 에 거꾸로 했다가 얼린 2차 기준
+    #   시험 둘이 떨어졌다 (`topic_group` 값 다름 · `계약위반.csv` 다름). 2판 판독 폴더를
+    #   되살려 돌리는 그 시험에는 **둘 다 있다** — `대장/` 은 꾸러미가 깐 **처음 상태**이고
+    #   `s9_group/` 은 **판독자가 판독하며 갱신한 살아 있는 대장**이다. `대장` 을 먼저 보면
+    #   판독자가 갱신한 것을 버린다. 이 순서라야 **전에 되던 자리가 하나도 안 바뀌고**,
+    #   `s9_group` 이 아예 없는 새 판독 폴더에서만 `대장` 으로 간다 — 늘리기만 하는 것이다.
+    for 폴더 in ("s9_group", "대장"):
+        q = os.path.join(BASE, 폴더, *이름)
+        if os.path.exists(q):
+            return q
+    # 둘 다 없다 — 옛 이름으로 돌려준다. 열리지 않으면 **그 자리에서 크게 실패해야 한다**
+    return os.path.join(BASE, "s9_group", *이름)
 sys.path.insert(0, _HERE)      # 형제 도구는 스크립트가 있는 자리에서 찾는다
 
 try:
@@ -342,7 +365,7 @@ def check_labels(rows):
     """S-9  폐기된 라벨 이름이 남았는가 · 대장에 없는 라벨인가"""
     print(chr(10) + '[S-9] 라벨 이름이 대장과 맞는가')
     import json
-    gp = os.path.join(BASE, 's9_group', 'topic_group_map.json')
+    gp = 대장자리('topic_group_map.json')
     known = set()
     try:
         for v in json.load(open(gp, encoding='utf-8'))['그룹'].values():
