@@ -36,6 +36,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 import json
 import os
@@ -749,6 +750,11 @@ _정하는법 = """# 회의에서 정할 것
   `수정로그_재검토필요.csv` 에서 찾아 그 행의 `승인상태` 와 `제안값` 을 채우십시오
   (두 파일은 `atomic_id` 로 이어집니다).
 
+★ **4차에서 받지 않는 칸** — {받지않는칸}.
+  최종 엑셀을 만들 때 엔진이 **다른 칸에서 다시 셈해 덮어쓰는** 칸이라, 승인해도 남지
+  않습니다. 이 칸을 `승인` 으로 적으면 `--4차반영` 이 아무것도 옮기지 않고 멈춥니다.
+  감성 방향(`sentiment_dir`)은 감정 점수(`tee_emotion_score`)에서 나옵니다.
+
 ## 정한 뒤
 
 ```
@@ -761,6 +767,17 @@ python 한줄_돌리기.py <판자리> --4차반영
 ★ **하나도 안 정한 상태로 돌리면 멈춥니다.** 정한 것이 없는 최종본을
   「최종」 이라고 부르지 않습니다.
 """
+
+
+def 정하는법_글() -> str:
+    """`0_여기서_정하십시오.md` 의 글 — 받지 않는 칸은 **엔진 목록에서** 채운다 (두 벌 금지).
+
+    `str.format` 을 쓰지 않는다 — 글 안의 다른 중괄호가 깨진다. 자리 하나만 바꾼다.
+    """
+    칸들 = 파생칸들()
+    말 = (" · ".join("`%s`" % c for c in 칸들) if 칸들
+          else "(엔진 목록을 못 읽었습니다 — `--4차반영` 이 멈추며 알립니다)")
+    return _정하는법.replace("{받지않는칸}", 말)
 
 
 아웃풋1에담을것 = ["사람이볼목록.csv", "보정요청.csv", "보정요청_논의본.md", "분리제안.csv",
@@ -851,7 +868,7 @@ def 단계_아웃풋1(판: Path, 상태: dict, 조건: dict, 확인만: bool) ->
         모음.append(소견이름)
     if not 모음:
         raise 멈춤("아웃풋 1 에 담을 것을 하나도 못 찾았습니다 — 3차가 제대로 끝났는지 보십시오")
-    (모을곳 / "0_여기서_정하십시오.md").write_text(_정하는법, encoding="utf-8",
+    (모을곳 / "0_여기서_정하십시오.md").write_text(정하는법_글(), encoding="utf-8",
                                               newline=chr(10))
     남은 = 인풋2_센다(모을곳)
     print("   · 적을 자리 — %s" % " · ".join("%s %d칸" % (k, v) for k, v in 남은.items()))
@@ -866,6 +883,58 @@ def 단계_아웃풋1(판: Path, 상태: dict, 조건: dict, 확인만: bool) ->
 
 _승인말 = {"승인", "Y", "y", "O", "o", "반영"}
 _반려말 = {"반려", "N", "n", "X", "x"}
+
+
+# ★ 2026-11-06 — **4차에서 받지 않는 칸** (sky 결정 「4차에서 안 받기」).
+#   여러 칸을 섞은 4차 시험에서 실측한 것 — 사람이 `sentiment_dir` 6칸을 승인했고
+#   총괄이 csv 에 그대로 넣었는데, 최종 엑셀에서 **5칸이 도로 뒤집혔다.**
+#   엔진 `data_contract.py` 가 엑셀을 만들 때 이 칸들을 **다른 칸에서 다시 셈해 덮어쓴다**
+#   (`sentiment_dir` 은 `tee_emotion_score`, 0 이면 `tee_success_score` 에서 나온다).
+#   즉 승인해도 **조용히 사라진다** — 사람은 반영됐다고 믿는다. 그래서 받지 않고 멈춘다.
+#   ★ 칸 목록을 여기 박지 않는다 — 엔진의 `DERIVED_COLUMNS_DEFAULTS` 한 곳에서 읽는다
+#     (두 벌이 되면 엔진이 칸을 늘리는 날 이 검사가 눈먼다).
+def 파생칸들() -> tuple:
+    """엔진이 다시 셈하는 칸 이름들. **못 읽으면 빈 것** — 부르는 쪽이 멈춘다.
+
+    엔진을 불러오지 않고(판다스 등) 파일을 글로 읽어 그 사전 하나만 푼다.
+    """
+    p = _찾기("engine") / "src" / "dashboard60" / "data_contract.py"
+    try:
+        나무 = ast.parse(p.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return ()
+    for 마디 in 나무.body:
+        if isinstance(마디, ast.Assign) and any(
+                getattr(t, "id", "") == "DERIVED_COLUMNS_DEFAULTS" for t in 마디.targets):
+            try:
+                return tuple(ast.literal_eval(마디.value).keys())
+            except (ValueError, AttributeError):
+                return ()
+    return ()
+
+
+def 파생칸_승인(모을곳: Path) -> tuple[list[str], list[str]]:
+    """아웃풋 1 의 수정로그에서 **받지 않는 칸을 승인한 줄**을 찾는다.
+
+    돌려주는 것 — (걸린 줄, 확인 못 한 까닭). 확인 못 했으면 그것도 멈출 까닭이다
+    (「못 찾음」 은 「없음」 이 아니다).
+    """
+    칸들 = set(파생칸들())
+    if not 칸들:
+        return [], ["받지 않는 칸 목록을 엔진(engine/src/dashboard60/data_contract.py 의 "
+                    "DERIVED_COLUMNS_DEFAULTS)에서 못 읽었습니다 — 확인할 수 없어 멈춥니다"]
+    걸린 = []
+    for 이름 in ("수정로그_재검토필요.csv", "수정로그_오류확정.csv"):
+        q = 모을곳 / 이름
+        if not q.is_file():
+            continue
+        with open(q, encoding="utf-8-sig", newline="") as h:
+            for r in csv.DictReader(h):
+                칸 = (r.get("field") or "").strip()
+                if 칸 in 칸들 and (r.get("승인상태") or "").strip() in _승인말:
+                    걸린.append("%s: %s 의 %s ← 「%s」"
+                              % (이름, r.get("atomic_id"), 칸, (r.get("제안값") or "")[:30]))
+    return 걸린, []
 
 
 def 인풋2_확인(판자리: Path) -> list[str]:
@@ -1024,6 +1093,22 @@ def 사차반영(판: Path, 상태: dict, 조건: dict) -> int:
       그래서 ①②③ 은 총괄 AI 가 하고, 그 뒤에 도구를 돌린다.
     """
     판자리 = 판 / "총괄" / 조건["이름"]
+
+    # ── 받지 않는 칸을 승인했으면 **아무것도 옮기기 전에** 멈춘다 (2026-11-06 sky 결정)
+    걸린, 못봄 = 파생칸_승인(판 / "아웃풋1_회의에서_정할것")
+    if 걸린 or 못봄:
+        print("  ✗ 4차에서 받지 않는 칸을 승인했습니다 — 멈춥니다 (아무것도 옮기지 않았습니다)."
+              if 걸린 else "  ✗ 받지 않는 칸을 확인하지 못했습니다 — 멈춥니다.")
+        for x in (걸린 + 못봄)[:10]:
+            print("     %s" % x)
+        if len(걸린) > 10:
+            print("     … 그 밖 %d줄" % (len(걸린) - 10))
+        if 걸린:
+            print("     이 칸들은 엔진이 최종 엑셀을 만들 때 **다른 칸에서 다시 셈해 덮어씁니다** —")
+            print("     승인해도 최종본에 남지 않습니다. 감성 방향(sentiment_dir)은 감정 점수")
+            print("     (tee_emotion_score, 0 이면 tee_success_score)에서 나옵니다.")
+            print("     그 줄의 승인상태를 `반려` 로 바꾼 뒤 같은 명령을 다시 넣으십시오.")
+        return 2
 
     # ── 인풋 2 가 실제로 왔는가. 안 왔으면 **멈춘다** (정한 것이 없는 최종본은 최종이 아니다)
     남은 = 인풋2_센다(판 / "아웃풋1_회의에서_정할것")
