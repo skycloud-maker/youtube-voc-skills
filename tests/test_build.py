@@ -182,8 +182,8 @@ def test_총괄_스킬이_떨어진_자리에서_총괄_자리를_차린다(묶�
     assert r.returncode == 0, r.stdout + r.stderr
     assert "못 찾" not in r.stdout, r.stdout
     판 = tmp_path / "총괄" / "시험판"
-    # 2026-10-09 — 글자_점검.py 를 더해 42 → 43
-    assert len(list(판.glob("*.py"))) == 43
+    # 2026-10-09 — 글자_점검.py 를 더해 42 → 43 · 2026-11-06 — 정확도_채점.py 를 더해 43 → 44
+    assert len(list(판.glob("*.py"))) == 44
     with zipfile.ZipFile(판 / "_배포" / "VoC_3_3차감독.zip") as zf:
         assert len([n for n in zf.namelist() if not n.endswith("/")]) == 74
 
