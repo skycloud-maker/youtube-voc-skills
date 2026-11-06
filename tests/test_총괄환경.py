@@ -113,15 +113,25 @@ def test_띄울_때_실제로_그_환경을_준다(monkeypatch, tmp_path):
     총괄._엔진_가리키기()
     담은것: dict[str, str] = {}
 
-    class _답:
-        returncode, stdout, stderr = 0, "", ""
+    # ★ 2026-11-07 — `AI돌리기` 가 `subprocess.run` 대신 `Popen` 으로 띄운다 (시간 제한 고침).
+    #   그래서 가로채는 자리를 `Popen` 으로 옮겼다. 보는 것(띄울 때의 env)은 그대로다.
+    class _입력:
+        def write(self, _):
+            pass
 
-    def _가짜(명령, **ㅋ):
-        담은것.clear()
-        담은것.update(ㅋ.get("env") or {})
-        return _답()
+        def close(self):
+            pass
 
-    monkeypatch.setattr(총괄.subprocess, "run", _가짜)
+    class _가짜:
+        def __init__(self, 명령, **ㅋ):
+            담은것.clear()
+            담은것.update(ㅋ.get("env") or {})
+            self.stdin, self.pid = _입력(), 0
+
+        def wait(self, timeout=None):
+            return 0
+
+    monkeypatch.setattr(총괄.subprocess, "Popen", _가짜)
     monkeypatch.setattr(총괄.shutil, "which", lambda x: "/가짜/%s.exe" % x)
     총괄.AI돌리기("codex", tmp_path, "아무 말", tmp_path / "기록.jsonl")
     assert 담은것.get("PATH", "").split(os.pathsep)[0] == str(총괄._코덱스파이썬), \

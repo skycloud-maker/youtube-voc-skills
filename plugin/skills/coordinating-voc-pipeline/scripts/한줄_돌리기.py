@@ -210,11 +210,60 @@ def AI돌리기(누구: str, 작업: Path, 프롬프트: str, 기록자리: Path
         raise SystemExit("모르는 판독자 종류: %s" % 누구)
     if not 명령[0]:
         raise SystemExit("못 찾음: %s 명령이 이 컴퓨터에 없습니다" % 누구.split(":")[0])
-    r = subprocess.run(명령, input=프롬프트, cwd=str(작업), capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", env=환경, timeout=분 * 60)
-    기록자리.write_text(r.stdout, encoding="utf-8")
-    (기록자리.with_suffix(".stderr.txt")).write_text(r.stderr, encoding="utf-8")
-    return r.returncode, _마지막답(r.stdout)
+    # ★ 2026-11-07 — 시간 제한을 고쳤다 (2026-10-30 큰 판 다섯째 바퀴에서 실제로 터졌다).
+    #   전에는 `subprocess.run(capture_output=True, timeout=…)` 이었고 세 가지가 틀렸다.
+    #   ① 넘기면 `TimeoutExpired` 가 그대로 터져 실무자에게 traceback 이 보였다.
+    #   ② 기록을 다 끝난 **뒤에** 썼으므로 터진 바퀴의 AI 기록(비용)이 아예 안 남았다.
+    #   ③ Windows 에서 `claude` 는 `.cmd` 라 파이썬은 `cmd.exe` 만 죽이고, 그 밑의 진짜
+    #      프로그램은 출력 관을 쥔 채 끝까지 갔다 — 240분 제한이 332분에야 터졌다.
+    #   그래서 — 기록은 **파일로 바로** 받고(쓰는 대로 남는다), 넘기면 **프로세스 나무째**
+    #   끄고, 예외 대신 종료코드 `시간넘김` 과 알림말을 돌려준다. 부르는 쪽은 종료코드가
+    #   0 이 아니면 이미 `멈춤` 으로 사람에게 알린다 (고치지 않아도 된다).
+    오류자리 = 기록자리.with_suffix(".stderr.txt")
+    with open(기록자리, "wb") as 출력, open(오류자리, "wb") as 오류:
+        p = subprocess.Popen(명령, stdin=subprocess.PIPE, stdout=출력, stderr=오류,
+                             cwd=str(작업), env=환경,
+                             start_new_session=(os.name != "nt"))
+        try:
+            p.stdin.write(프롬프트.encode("utf-8"))
+            p.stdin.close()
+        except OSError:
+            pass                          # 먼저 끝나 버린 것 — 종료코드가 말해 준다
+        try:
+            코드 = p.wait(timeout=분 * 60)
+            넘김 = False
+        except subprocess.TimeoutExpired:
+            _나무째_끄기(p)
+            코드, 넘김 = 시간넘김, True
+    스트림 = 기록자리.read_text(encoding="utf-8", errors="replace")
+    if 넘김:
+        알림 = ("시간 제한 %s분을 넘겨 이 창을 껐습니다 (%s). 그때까지 한 것은 폴더와 기록 `%s` 에 "
+              "남아 있습니다. 같은 명령을 다시 넣으면 남은 것부터 이어 갑니다." % (분, 누구, 기록자리.name))
+        with open(오류자리, "a", encoding="utf-8") as h:
+            h.write("\n[한줄_돌리기] " + 알림 + "\n")
+        마지막 = _마지막답(스트림)
+        return 코드, 알림 + ("\n그 창의 마지막 답:\n" + 마지막 if 마지막 else "")
+    return 코드, _마지막답(스트림)
+
+
+시간넘김 = 124   # 시간 제한으로 끈 창의 종료코드 (GNU `timeout` 과 같은 수)
+
+
+def _나무째_끄기(p: subprocess.Popen) -> None:
+    """띄운 것과 **그 밑의 것까지** 끈다 — `.cmd` 밑에서 도는 진짜 프로그램이 살아남지 않게."""
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)],
+                       capture_output=True, text=True, errors="replace")
+    else:
+        try:
+            os.killpg(p.pid, 9)
+        except OSError:
+            pass
+    try:
+        p.wait(timeout=60)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.wait()
 
 
 def _마지막답(스트림: str) -> str:
