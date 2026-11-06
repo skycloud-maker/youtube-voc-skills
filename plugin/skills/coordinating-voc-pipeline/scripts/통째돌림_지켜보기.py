@@ -16,12 +16,25 @@
 ★ 세는 것 — `상태.json` 의 끝난단계 수 · 판자리 안의 `판독결과_*` · `감독결과_*` 파일 수.
   이름을 박지 않고 **무늬로** 센다 (claude·codex 가 이름을 다르게 낸다).
 
-쓰기 —
-    python tools/통째돌림_지켜보기.py <판자리>
-    python tools/통째돌림_지켜보기.py <판자리> --최대 20 --깨끗
+★ 2026-11-06 — 저장소 `tools/` 에서 **꾸러미 안**(이 스킬의 `scripts/`)으로 옮겼다 (큰 판 길).
+  sky 「정확도 채점과 큰 규모 실행은 … 여기서 그게 돌아가서 그런 결과는 나오는 skill 을
+  만들어놔야」. 실무자 컴퓨터에는 저장소가 없고 꾸러미만 간다 — 도구가 꾸러미 밖에 있으면
+  큰 판을 사람이 열 번 넘게 손으로 다시 넣어야 한다. 옮기면서 달라진 것 셋 —
+  ① 돌리개를 **같은 폴더**에서 찾는다 (저장소 자리를 짐작하지 않는다).
+  ② **`--승인` 을 스스로 붙이지 않는다.** 옮기기 전에는 붙였다 — 꾸러미에서 그대로 두면
+     사람이 어림을 한 번도 안 보고 돈이 나갈 수 있다. 이제 `상태.json` 에 **사람이 승인한
+     기록**(돌리개가 `--승인` 을 받으면 적는다)이 있는 판만 이어 돌리고, 없으면 거절한다.
+  ③ 다 끝난 뒤 안내에서 저장소에만 있는 도구(`tools/옛판_결과대조.py`) 이름을 뺐다.
 
+쓰기 —
+    python 통째돌림_지켜보기.py <판자리>
+    python 통째돌림_지켜보기.py <판자리> --최대 20 --깨끗
+
+  ★ 먼저 돌리개로 **한 번** 시작해야 한다 — `python 한줄_돌리기.py <판자리> --조건 "…"` 로
+    어림을 보고, 괜찮으면 `--승인` 을 붙여 다시 넣는다. 판독자가 스스로 넘겨 멈추면
+    그때부터 이 도구가 이어 띄운다.
   멈추려면 — 판자리에 `멈춤` 이라는 빈 파일을 만든다 (돌던 한 바퀴는 끝까지 간다).
-  실제로 쓰는 자리는 `docs/진행_2판통째.md` 에 적혀 있다.
+  2판 통째 재현에서 실제로 쓴 기록은 저장소의 `docs/진행_2판통째.md` 에 있다.
 """
 from __future__ import annotations
 
@@ -35,8 +48,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-돌리개 = REPO / "plugin" / "skills" / "coordinating-voc-pipeline" / "scripts" / "한줄_돌리기.py"
+돌리개 = Path(__file__).resolve().parent / "한줄_돌리기.py"
 끝단계 = "아웃풋1"
 멈춤이름 = "멈춤"
 기록보관 = "_바퀴별"
@@ -56,6 +68,15 @@ def 진행_세기(판: Path) -> dict:
     감독 = sorted(q.name for q in 판.rglob("감독결과_*") if q.is_file())
     return {"끝난단계": 끝난, "판독": len(판독), "감독": len(감독),
             "소견": len(상태.get("소견", [])), "자": (tuple(끝난), len(판독), len(감독))}
+
+
+def 승인했나(판: Path) -> bool:
+    """`상태.json` 에 사람이 승인한 기록이 있나 — 돌리개가 `--승인` 을 받으면 `"승인": true` 를 적는다.
+    읽을 수 없으면 **승인 안 한 것**으로 본다 (못 읽음은 통과가 아니다)."""
+    try:
+        return json.loads((판 / "상태.json").read_text(encoding="utf-8")).get("승인") is True
+    except Exception:
+        return False
 
 
 def 기록_간수(판: Path) -> int:
@@ -92,7 +113,8 @@ def 한바퀴(판: Path, 깨끗: bool, 기록: Path) -> int:
       쓸 수 없어 `$코드` 가 **글자 그대로** 기록에 남았고, 진짜 종료코드를 잃었다.
       그래서 파이썬이 직접 받아 적는다.
     """
-    명령 = [sys.executable, str(돌리개), str(판), "--승인"]
+    # ★ `--승인` 을 붙이지 않는다 — 사람의 승인은 `상태.json` 에 이미 있어야 한다 (main 이 본다).
+    명령 = [sys.executable, str(돌리개), str(판)]
     if 깨끗:
         명령.append("--깨끗")
     환경 = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
@@ -102,7 +124,7 @@ def 한바퀴(판: Path, 깨끗: bool, 기록: Path) -> int:
                                         " ".join(명령[2:])))
         f.write("=" * 66 + "\n")
         f.flush()
-        r = subprocess.run(명령, stdout=f, stderr=subprocess.STDOUT, cwd=str(REPO), env=환경)
+        r = subprocess.run(명령, stdout=f, stderr=subprocess.STDOUT, cwd=str(판), env=환경)
         f.write("\n── 한 바퀴 끝 %s · ★ 진짜 종료코드 %d\n"
                 % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), r.returncode))
     return r.returncode
@@ -130,7 +152,7 @@ def 지켜보기(판: Path, 최대: int, 깨끗: bool) -> int:
 
         if 끝단계 in 뒤["끝난단계"]:
             print("\n  ✔ `%s` 까지 끝났습니다 — %d 바퀴 걸렸습니다." % (끝단계, 바퀴))
-            print("    다음 — `--4차반영` 으로 사람 결정을 넣고 `tools/옛판_결과대조.py` 로 댑니다.")
+            print("    다음 — 회의에서 정한 뒤 `한줄_돌리기.py <판자리> --4차반영` 으로 사람 결정을 넣습니다.")
             return 0
         if 뒤["자"] == 앞["자"]:
             # ★ 알맹이 — 늘어난 것이 하나도 없다. 다시 띄우면 같은 자리에서 돈만 쓴다.
@@ -155,8 +177,12 @@ def main() -> int:
     a = p.parse_args()
     판 = Path(a.판자리).resolve()
     if not (판 / "상태.json").is_file():
-        raise SystemExit("판자리에 상태.json 이 없습니다 (%s) — 먼저 자리를 차리십시오 "
-                         "(tools/2판통째_자리차리기.py)" % 판)
+        raise SystemExit("판자리에 상태.json 이 없습니다 (%s) — 먼저 `한줄_돌리기.py` 로 "
+                         "어림을 보고 `--승인` 을 붙여 한 번 시작하십시오" % 판)
+    if not 승인했나(판):
+        raise SystemExit("이 판은 사람이 승인한 기록이 없습니다 (%s 의 상태.json) — "
+                         "이 도구는 돈이 드는 것을 되풀이 띄우므로 스스로 승인하지 않습니다. "
+                         "먼저 `한줄_돌리기.py` 로 어림을 보고 `--승인` 을 붙여 한 번 시작하십시오" % 판)
     if a.최대 < 1:
         raise SystemExit("--최대 는 1 이상이어야 합니다")
     print("=" * 66)

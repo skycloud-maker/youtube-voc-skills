@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib
 import io
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -24,7 +25,8 @@ import pytest
 
 _여기 = Path(__file__).resolve().parent
 REPO = _여기.parent
-sys.path.insert(0, str(REPO / "tools"))
+# ★ 2026-11-06 — 저장소 `tools/` 에서 꾸러미 안(총괄 스킬 `scripts/`)으로 옮겼다 (큰 판 길)
+sys.path.insert(0, str(REPO / "plugin" / "skills" / "coordinating-voc-pipeline" / "scripts"))
 
 
 @pytest.fixture()
@@ -33,10 +35,10 @@ def 도구():
     return importlib.reload(m)
 
 
-def _판차리기(자리: Path, 끝난=("1차",)) -> Path:
+def _판차리기(자리: Path, 끝난=("1차",), 승인=True) -> Path:
     자리.mkdir(parents=True, exist_ok=True)
     (자리 / "상태.json").write_text(
-        json.dumps({"끝난단계": list(끝난), "소견": []}, ensure_ascii=False),
+        json.dumps({"끝난단계": list(끝난), "소견": [], "승인": 승인}, ensure_ascii=False),
         encoding="utf-8", newline="\n")
     return 자리
 
@@ -191,3 +193,113 @@ def test_기록폴더가_없어도_안_터진다(도구, tmp_path):
     """1차만 끝난 자리에는 `기록/` 이 없을 수 있다."""
     판 = _판차리기(tmp_path / "판")
     assert 도구.기록_간수(판) == 0
+
+
+# ── 2026-11-06 · 꾸러미 안으로 옮기며 더한 시험 (큰 판 길) ─────────────────────────
+
+def test_돌리개를_같은_폴더에서_찾는다(도구):
+    """실무자 컴퓨터에는 저장소가 없다 — 꾸러미를 푼 자리에서도 돌리개를 찾아야 한다."""
+    assert 도구.돌리개.name == "한줄_돌리기.py"
+    assert 도구.돌리개.parent == Path(도구.__file__).resolve().parent
+    assert 도구.돌리개.is_file(), "옆에 돌리개가 없다 — %s" % 도구.돌리개
+
+
+def test_승인을_스스로_붙이지_않는다(도구, tmp_path):
+    """★ 옮기기 전에는 `--승인` 을 붙여 띄웠다. 꾸러미에서 그대로 두면 사람이 어림을
+    한 번도 안 보고 돈이 나갈 수 있다. 돌리개가 받은 인자를 적게 해서 본다."""
+    판 = _판차리기(tmp_path / "판")
+    도구.돌리개 = _가짜돌리개(tmp_path, "(판 / '인자.txt').write_text(' '.join(sys.argv[1:]), encoding='utf-8')")
+    도구.한바퀴(판, True, 판 / "돌린기록.txt")
+    인자 = (판 / "인자.txt").read_text(encoding="utf-8")
+    assert "--승인" not in 인자, "돌리개에 --승인 을 붙였다 — %s" % 인자
+    assert "--깨끗" in 인자, "--깨끗 을 넘기지 않았다 — %s" % 인자
+
+
+@pytest.mark.parametrize("상태글", [
+    {"끝난단계": ["1차"], "소견": []},                      # 승인 기록 없음
+    {"끝난단계": ["1차"], "소견": [], "승인": False},
+    "{ 깨진 json",                                          # 못 읽음은 통과가 아니다
+])
+def test_사람이_승인한_기록이_없으면_한_번도_안_띄운다(도구, tmp_path, monkeypatch, 상태글):
+    판 = tmp_path / "판"
+    판.mkdir()
+    (판 / "상태.json").write_text(상태글 if isinstance(상태글, str)
+                                 else json.dumps(상태글, ensure_ascii=False), encoding="utf-8")
+    도구.돌리개 = _가짜돌리개(tmp_path, "raise SystemExit(0)")
+    monkeypatch.setattr(sys, "argv", ["x", str(판)])
+    with pytest.raises(SystemExit) as e:
+        도구.main()
+    assert "승인한 기록이 없습니다" in str(e.value), e.value
+    assert _불린수(판) == 0, "승인 기록이 없는데 돌리개를 띄웠다"
+
+
+# ── 진짜 돌리개 + 가짜 판독자 ───────────────────────────────────────────────────
+#   판독자는 실제로 **한 창에 몇 회차만 하고 스스로 넘긴다** (2026-10-30 실측 — 53회차 중 10).
+#   가짜 판독자는 부를 때마다 판독결과를 하나 쓰고, **둘째 부름에서야** 번들을 낸다.
+#   그러면 진짜 돌리개는 첫 부름 뒤에 「번들 0개」 로 멈추고(종료 1), 지켜보기가 다시 띄운다.
+#   판독 폴더가 아닌 자리(총괄·감독)에서 불리면 아무것도 안 쓰고 실패한다 —
+#   그 뒤로는 늘어날 것이 없으니 지켜보기가 **한 바퀴만 더 돌고 멈춰야** 한다.
+
+_가짜판독 = r'''
+import sys, json
+from pathlib import Path
+누구 = sys.argv[1]
+sys.stdin.read()
+여기 = Path.cwd()
+with open(여기.parent / "불린판독.txt", "a", encoding="utf-8") as f:
+    f.write("%s %s\n" % (여기.name, 누구))
+if not 여기.name.startswith("판독"):
+    print("판독 자리가 아니다", file=sys.stderr)
+    raise SystemExit(3)
+결과 = 여기 / "_판독패키지" / "_결과"
+결과.mkdir(parents=True, exist_ok=True)
+n = len(list(결과.glob("판독결과_*"))) + 1
+(결과 / ("판독결과_full_%02d_%s.md" % (n, 누구))).write_text("x", encoding="utf-8")
+if n >= 2:
+    (결과 / "fake_bundle").mkdir(exist_ok=True)
+    (결과 / "fake_bundle" / "raw_voc.csv").write_text("atomic_id\n", encoding="utf-8")
+    말 = "다 했습니다"
+else:
+    말 = "full_%02d 까지 했습니다. 새 창에서 이어가 주십시오." % n
+if 누구 == "claude":
+    print(json.dumps({"type": "result", "result": 말}, ensure_ascii=False))
+else:
+    print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": 말}},
+                     ensure_ascii=False))
+'''
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="가짜 명령을 .cmd 로 만든다")
+def test_진짜_돌리개가_판독자가_넘길_때마다_이어_돌고_막히면_멈춘다(도구, tmp_path_factory, monkeypatch, capsys):
+    가짜 = tmp_path_factory.mktemp("fakebin")          # .cmd 안의 경로는 ASCII 로 둔다
+    (가짜 / "fake_reader.py").write_text(_가짜판독, encoding="utf-8")
+    for 명령 in ("claude", "codex"):
+        (가짜 / (명령 + ".cmd")).write_text(
+            '@"%s" "%s" %s %%*\r\n' % (sys.executable, 가짜 / "fake_reader.py", 명령), encoding="ascii")
+    monkeypatch.setenv("PATH", str(가짜) + os.pathsep + os.environ.get("PATH", ""))
+
+    판 = tmp_path_factory.mktemp("pan")
+    (판 / "상태.json").write_text(json.dumps(
+        {"끝난단계": ["1차", "2차준비"], "소견": [], "승인": True,
+         "조건": {"검색어": "시험", "영상": "1", "댓글": "5", "이름": "시험판"}},
+        ensure_ascii=False), encoding="utf-8")
+    (판 / "판독A").mkdir()
+    (판 / "판독B").mkdir()
+
+    코드 = 도구.지켜보기(판, 최대=10, 깨끗=False)
+    말 = capsys.readouterr().out
+    기록글 = (판 / "돌린기록.txt").read_text(encoding="utf-8")
+
+    불린 = (판 / "불린판독.txt").read_text(encoding="utf-8").split()
+    판독불림 = [불린[i] for i in range(0, len(불린), 2)]
+    assert 판독불림.count("판독A") == 2 and 판독불림.count("판독B") == 2, (
+        "판독자를 넘길 때마다 한 번씩 더 띄워야 한다 — %s\n%s" % (판독불림, 말))
+    끝난 = 도구.진행_세기(판)["끝난단계"]
+    assert "2차판독" in 끝난, "판독 둘이 번들을 냈는데 2차판독이 안 끝났다 — %s\n%s" % (끝난, 기록글[-3000:])
+    assert 코드 == 1, "판독 뒤에 막혔으면 1 이어야 한다 — %d\n%s" % (코드, 말)
+    assert "늘어난 것이 없습니다" in 말, 말
+    assert "--승인" not in 기록글, "돌리개에 --승인 이 넘어갔다"
+    assert "새 창에서 이어가" in 기록글, "판독자가 넘긴 말이 돌린기록에 없다 — 사람이 까닭을 못 본다"
+    # 바퀴마다 덮이는 AI 기록을 챙겼나 — 판독A 두 번 · 판독B 두 번이 따로 남아야 한다
+    보관 = list((판 / "기록" / 도구.기록보관).glob("*.jsonl"))
+    assert len(보관) >= 2, "AI 기록을 바퀴마다 챙기지 않았다 — %s" % 보관
