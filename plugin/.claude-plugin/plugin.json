@@ -1,6 +1,6 @@
 {
   "name": "youtube-voc",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "유튜브 댓글 VoC 분석 업무를 AI 역할별 스킬로 담은 플러그인 — 1차 엔진 실행, 2차 판독, 3차 감독, 총괄, 사내 보고서, 대시보드 (docs/ROLES.md). 지금 든 스킬: running-voc-engine(1차) · reading-voc-comments(2차 판독) · supervising-voc-disagreements(3차 감독) · coordinating-voc-pipeline(총괄 · 한 줄 돌리개) · building-voc-report(사내 보고서) · showing-voc-dashboard(대시보드 HTML).",
   "author": {
     "name": "skycloud-maker"
