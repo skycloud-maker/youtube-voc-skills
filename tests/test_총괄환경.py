@@ -937,6 +937,9 @@ def _감독_가로채기(monkeypatch, 낸것을_더함: int = 0):
 
     monkeypatch.setattr(총괄, "AI돌리기", 가짜)
     monkeypatch.setattr(총괄.subprocess, "run", lambda *a, **k: None)
+    # ★ 2026-11-09 — `git init` 은 이제 `_깃_자리묶기` 한 곳에서 부르고 종료코드를 본다.
+    #   위 가짜 run 은 None 을 돌려주므로 그 도우미를 따로 가로챈다 (보는 것은 그대로다).
+    monkeypatch.setattr(총괄, "_깃_자리묶기", lambda 자리: None)
     return 불린것
 
 
