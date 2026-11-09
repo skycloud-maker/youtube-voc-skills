@@ -285,6 +285,25 @@ class 멈춤(Exception):
     """크리티컬 — 여기서 멈추고 사람에게 알린다. 지어내지 않는다."""
 
 
+def _깃_자리묶기(자리: Path) -> None:
+    """Codex 자리를 **Git 저장소 뿌리로 묶는다** (`git init`).
+
+    왜 묶나 — Codex 는 `.agents/skills/` 를 찾을 때 저장소 뿌리까지 올라간다. 자리를
+      뿌리로 묶어 두어야 그 자리에 차린 스킬을 읽고 바깥 것을 집지 않는다.
+    ★ 2026-11-09 — 전에는 세 자리에서 `git` 을 맨손으로 불렀다. Git 이 없는 컴퓨터에서는
+      `FileNotFoundError` traceback 으로 터졌고, 그것도 **돈 관문(승인)을 지난 뒤**였다.
+      안내서에도 갖춤새에도 Git 이 없었다. 이제 여기 한 곳에서 부르고, 없으면 `멈춤` 으로 알린다.
+    """
+    if not shutil.which("git"):
+        raise 멈춤("`git` 명령이 이 컴퓨터에 없습니다 — Codex 자리를 Git 저장소로 묶어야 합니다. "
+                 "Git 을 깔고 창을 새로 켠 뒤 같은 명령을 다시 넣으십시오 (%s)" % _깔까글())
+    r = subprocess.run(["git", "init", "-q"], cwd=str(자리), capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
+    if r.returncode:
+        raise 멈춤("%s 를 Git 저장소로 묶지 못했습니다 (종료 %d):\n%s"
+                 % (자리, r.returncode, (r.stderr or r.stdout)[-500:]))
+
+
 _합계줄 = re.compile(r"✗\s*\d+건\s*[·|]")   # 자가점검 맨 끝의 합계 줄 — 지적이 아니다
 
 
@@ -440,7 +459,7 @@ def 단계_2차판독(판: Path, 상태: dict, 조건: dict, 확인만: bool) ->
                 shutil.copytree(_옆스킬("reading-voc-comments"), d / "skills" / "reading-voc-comments")
                 shutil.copytree(_찾기("shared"), d / "shared")
                 shutil.copytree(_찾기("engine"), d / "engine")
-            subprocess.run(["git", "init", "-q"], cwd=str(자리))
+            _깃_자리묶기(자리)
         코드, 답 = AI돌리기(누구, 자리, "이 폴더에 있는 1차 분석 결과로 2차 판독을 해 주세요.",
                         판 / "기록" / ("%s.jsonl" % 이름))
         상태.setdefault("기록", {})[이름] = 답[-1200:]
@@ -568,7 +587,7 @@ def 단계_3차감독(판: Path, 상태: dict, 조건: dict, 확인만: bool) ->
                 shutil.copytree(_옆스킬("supervising-voc-disagreements"), d / "skills" / "supervising-voc-disagreements")
                 shutil.copytree(_찾기("shared"), d / "shared")
                 shutil.copytree(_찾기("engine"), d / "engine")
-            subprocess.run(["git", "init", "-q"], cwd=str(자리))
+            _깃_자리묶기(자리)
         코드, 답 = AI돌리기(누구, 자리, 말, 판 / "기록" / ("%s.jsonl" % 이름))
         상태.setdefault("기록", {})[이름] = 답[-1200:]
         낸것 = list(자리.rglob("감독결과_*.md"))
@@ -1190,7 +1209,11 @@ def 사차반영(판: Path, 상태: dict, 조건: dict) -> int:
             shutil.copytree(스킬, d / "skills" / "coordinating-voc-pipeline")
             shutil.copytree(_찾기("shared"), d / "shared")
             shutil.copytree(_찾기("engine"), d / "engine")
-        subprocess.run(["git", "init", "-q"], cwd=str(판자리))
+        try:
+            _깃_자리묶기(판자리)
+        except 멈춤 as e:
+            print("  ✗ %s" % e)
+            return 1
     코드0, 답 = AI돌리기(누구, 판자리, 프롬프트, 판 / "기록" / "4차반영_총괄.jsonl")
     상태.setdefault("기록", {})["4차반영_총괄"] = 답[-1500:]
     상태쓰기(판, 상태)
@@ -1449,6 +1472,11 @@ def 갖춤새_점검(끝난: list, *, 사차: bool = False) -> list[str]:
         if not shutil.which(명령):
             안된것.append("`%s` 명령이 이 컴퓨터에 없습니다 — 띄울 수 없는 자리: %s"
                        % (명령, " · ".join(자리들)))
+    # ②-1 ★ Git — Codex 자리를 차릴 때 `git init` 으로 묶는다 (`_깃_자리묶기`) (2026-11-09)
+    #   전에는 여기서 안 봐서, Git 없는 컴퓨터는 「다 됐습니다」 로 통과하고 승인 뒤에 터졌다.
+    if "codex" in 종류 and not shutil.which("git"):
+        안된것.append("`git` 명령이 이 컴퓨터에 없습니다 — Codex 자리를 Git 저장소로 묶어야 합니다. "
+                   "Git 이 있어야 하는 자리: %s" % " · ".join(종류["codex"]))
 
     # ②-2 ★ Codex 내장 파이썬 — **판독자·감독자가 실제로 쓰는 파이썬**이다 (2026-10-27)
     #   왜 — 2026-10-09 에 pandas 때문에 이 파이썬을 PATH 앞에 놓았다 (`_코덱스파이썬_먼저`).
