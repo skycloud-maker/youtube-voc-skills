@@ -228,7 +228,9 @@ def main() -> int:
     R.mkdir(parents=True, exist_ok=True)
 
     # ── ① 감독자 결과를 모은다 ──────────────────────────────────────
-    준것 = [Path(a) for a in sys.argv[1:] if not a.startswith("--")]
+    _값자리 = {i + 1 for i, a in enumerate(sys.argv) if a == "--바탕"}
+    준것 = [Path(a) for i, a in enumerate(sys.argv) if i >= 1 and i not in _값자리
+          and not a.startswith("--")]
     자리 = 준것 or _감독폴더찾기()
     # ★ 파일 **이름**으로 센다 (2026-08-24).
     #   한 번 통합하면 다른 감독자 결과가 이 폴더로 복사된다. 다시 돌리면
@@ -297,7 +299,24 @@ def main() -> int:
             print("     · %s" % p)
         return 1
 
-    코드, 말 = _달리기("build_master.py", str(번들[0]), str(번들[1]))
+    # ★ `--바탕 <이름조각>` 을 받으면 build_master 에 그대로 넘긴다 (결정 0012 ㉢ · sky 2026-11-10).
+    #   돌리개(한줄_돌리기)는 `--바탕 claudecode` 를 준다 — 「판독A 바탕」.
+    #   전에는 번들을 정렬한 순서로만 넘겼다 — 윈도우는 대소문자를 안 가려 claudecode 가
+    #   먼저 오고, build_master 는 **둘째**를 바탕으로 쓰므로 Codex 가 바탕이 됐다.
+    #   실측 판에서 최종 서술 칸 825행이 전부 Codex 값 · CC 조각 60행 누락. 아무도 몰랐다.
+    #   ★ 안 주면 **옛 동작 그대로** — 얼린 2판 기준(tests/baseline)이 그 순서로 만들어졌다.
+    #     2판 재현을 깨지 않으려고 기본값을 바꾸지 않는다 (준비본 e1331da 의 원칙).
+    바탕인자 = []
+    if "--바탕" in sys.argv:
+        _i = sys.argv.index("--바탕") + 1
+        if _i >= len(sys.argv):
+            print("  ✗ `--바탕` 뒤에 번들 이름(조각)을 주십시오")
+            return 1
+        바탕인자 = ["--바탕", sys.argv[_i]]
+    코드, 말 = _달리기("build_master.py", str(번들[0]), str(번들[1]), *바탕인자)
+    for x in 말.splitlines():
+        if "바탕 번들 =" in x or "다른 쪽   =" in x:
+            print("  " + x.strip())
     print("\n".join("  " + x for x in 말.rstrip().splitlines()[-14:]))
     if 코드:
         try:
