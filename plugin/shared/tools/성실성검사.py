@@ -20,6 +20,8 @@
     ② 채움        rootcause 를 채운 비율이 다른 회차와 크게 다른가
     ③ 손댄 양     회차당 finding 수가 유독 적거나 많은가
     ④ 라벨 다양도  라벨 종수가 유독 적은가
+    ⑤ 사유        판정 칸의 사유가 몇 가지 문장뿐인가 (규칙 스크립트 판정 — 2026-11-10)
+    ⑥ 통째 인용    근거가 조각 본문을 통째로 붙인 것인가
 
   ★ 하나만 튀면 알림, 둘 이상 튀면 반려다.
     한 가지 잣대로 사람을 몰아붙이지 않는다 (오탐도 사고다).
@@ -57,6 +59,58 @@ ROOT = _HERE.parent if _HERE.name in ("스크립트", "scripts") else _HERE
 #   같은 말을 돌려 쓰면 원문을 안 읽고 틀로 찍은 것이다.
 근거무늬 = re.compile(r'"quote"\s*:\s*"([^"]{4,})"')
 
+# ★ 판정 칸의 사유(reason)도 행마다 달라야 정상이다 (sky 2026-11-10).
+#   실측 판(LG 로봇청소기)에서 한 판독자가 **규칙 스크립트로** 판정했다 —
+#   판정 칸 730줄의 사유가 9가지 문장뿐이었고 (회차별 고유율 6.7~9.8%),
+#   근거(quote)는 조각 본문을 통째로 붙여 「근거 돌려 씀」 검사를 피해 갔다.
+#   그런데 이 검사는 통과시켰다. 원문을 읽은 판독자는 같은 판에서 47~75% 였다.
+#   근거 칸 · 본문 · 요약 글은 뺀다 — 「라벨을 바꿨으니 근거도 바꾼다」 는 같은 말이 정상이다.
+사유뺄칸 = {"atomic_voc", "voc_cleaned", "atomic_voc_summary", "tee_summary", "rootcause_summary"}
+사유_최소줄 = 30        # 판정 칸 사유가 이보다 적으면 보지 않는다 (작은 회차의 헛경보 막기)
+사유_고유_하한 = 0.20   # 실측 — 읽은 판독자 47~75% · 규칙 스크립트 6.7~9.8%
+통째_상한 = 0.60        # 근거가 조각 본문 통째인 비율 — 실측 읽은 판독자 2~12% · 규칙 스크립트 42~90%
+
+
+def 판정행들(글: str) -> list[dict]:
+    """판정 파일에서 행(dict)을 꺼낸다 — ```json 배열과 한 줄 JSON 둘 다 읽는다."""
+    import json as _json
+    행 = []
+    for m in re.finditer(r"```json\s*\n(.*?)\n```", 글, re.S):
+        try:
+            v = _json.loads(m.group(1))
+        except ValueError:
+            continue
+        행 += v if isinstance(v, list) else [v]
+    for 줄 in 글.splitlines():
+        줄 = 줄.strip()
+        if 줄.startswith("{") and '"findings"' in 줄:
+            try:
+                행.append(_json.loads(줄))
+            except ValueError:
+                pass
+    return [r for r in 행 if isinstance(r, dict)]
+
+
+def 사유재기(글: str) -> dict:
+    사유 = []
+    인용 = 통째 = 0
+    for r in 판정행들(글):
+        본 = str(r.get("atomic_voc") or "").strip()
+        for x in r.get("findings") or []:
+            if not isinstance(x, dict):
+                continue
+            칸 = str(x.get("field") or "")
+            q = str(x.get("quote") or "").strip()
+            if q and len(본) >= 20:
+                인용 += 1
+                통째 += q == 본
+            if 칸.endswith("_evidence") or 칸 in 사유뺄칸 or 칸.startswith("structure"):
+                continue
+            사유.append(str(x.get("reason") or "").strip())
+    return {"사유": len(사유), "사유가짓": len(set(사유)),
+            "최다사유": max((사유.count(s) for s in set(사유)), default=0),
+            "인용": 인용, "통째": 통째}
+
 
 def 회차재기(길: Path) -> dict:
     글 = 길.read_text(encoding="utf-8", errors="replace")
@@ -93,6 +147,7 @@ def 회차재기(길: Path) -> dict:
         "근거": len(근거),
         "근거고유율": (len(set(근거)) / len(근거)) if 근거 else None,
         "쓰인때": 쓰인때,
+        **사유재기(글),
     }
 
 
@@ -239,6 +294,7 @@ def main() -> int:
         묶음.setdefault(이름, []).append(길)
 
     나쁨 = 0
+    판박이 = 0
     for 판독자, 파일들 in sorted(묶음.items()):
         잰것 = [회차재기(p) for p in sorted(파일들)]
         print("=" * 74)
@@ -300,6 +356,16 @@ def main() -> int:
             if len(얕음) >= 2:
                 까닭.append("★얕게 함 — " + " · ".join(얕음))
 
+            # ★ 사유가 판에 박힘 — 그 하나로 반려다 (sky 2026-11-10).
+            #   분리가 있어도 봐준다 — 규칙 스크립트도 분리 줄을 찍을 수 있다.
+            if r["사유"] >= 사유_최소줄 and r["사유가짓"] / r["사유"] < 사유_고유_하한:
+                까닭.append("★사유가 판에 박힘 — 판정 %d줄에 사유 %d가지(%.0f%%) · "
+                           "한 문장이 %d줄. 원문을 읽지 않고 규칙으로 찍은 것으로 보입니다"
+                           % (r["사유"], r["사유가짓"], 100 * r["사유가짓"] / r["사유"],
+                              r["최다사유"]))
+            if r["인용"] >= 사유_최소줄 and r["통째"] / r["인용"] > 통째_상한:
+                까닭.append("근거가 조각 본문 통째(%d/%d)" % (r["통째"], r["인용"]))
+
             if 까닭:
                 의심.append((r["이름"], 까닭))
 
@@ -329,6 +395,7 @@ def main() -> int:
 
         if 반려:
             나쁨 += len(반려)
+            판박이 += sum(1 for _n, k in 반려 if any(x.startswith("★사유가 판에 박힘") for x in k))
             print("  ★ 반려 %d회차 — 다른 회차와 뚜렷이 다릅니다" % len(반려))
             for 이름, 까닭 in 반려[:12]:
                 print("     %-30s %s" % (이름[:30], " · ".join(까닭)))
@@ -348,6 +415,11 @@ def main() -> int:
     if 나쁨:
         print("  ★ %d회차가 다른 회차와 뚜렷이 다릅니다." % 나쁨)
         print()
+        if 판박이:
+            print("  ★ 사유가 판에 박힌 회차가 있습니다 — 규칙 스크립트로 판정한 것으로 보입니다.")
+            print("    판정 칸(라벨 · 점수 · 제외 · 원인 …)은 원문을 한 줄씩 읽고 정해야 합니다.")
+            print("    스크립트는 형식 · 대조 · 세기 같은 기계적 처리와 후보 찾기에만 씁니다.")
+            print()
         print("  판독자에게 **그 회차만 다시 하라**고 하십시오.")
         print("  긴 판독은 뒤로 갈수록 얕아집니다 — 판독자를 탓할 일이 아니라,")
         print("  한 번에 너무 많이 시킨 것입니다. 회차를 나눠 여러 번에 걸쳐 하십시오.")

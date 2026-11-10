@@ -159,6 +159,48 @@ def _감독자가름():
     return 골라진[0], 골라진[1]
 
 
+def _바탕_맞추기(하나: str, 둘: str) -> tuple[str, str]:
+    """어느 번들이 **바탕**인지 정한다 — 그리고 **반드시 찍는다** (결정 0012 ㉢).
+
+    ★ 2026-11-01 — `base = dict(K[aid])` 의 `K` 는 **둘째** 번들이고, 거기서
+      `CC_FIELDS` 24칸을 가져온다. 즉 **둘째가 바탕**이다.
+      그런데 인자를 안 주면 둘째가 `sorted(os.listdir())` 의 **글자 순서**로 정해졌다.
+      `Codex_bundle` 과 `claudecode_bundle` 중 대문자 `C` 가 먼저 와서
+      **codex 가 바탕**이 됐다 — 설계가 아니라 **우연**이다.
+      폴더 이름을 고치거나 좌석을 바꾸면 최종 판정 24칸이 통째로 바뀐다.
+
+    ★ 그래서 둘을 한다 —
+      ① `--바탕 <이름조각>` 으로 **골라 줄 수 있게** 한다 (없으면 지금 그대로 — 2판 재현 조건을 지킨다)
+      ② 어느 쪽이 바탕인지 **화면에 찍는다.** 몰래 정해지지 않게.
+
+    ★ 2026-11-10 — 동결 3b 준비본(`e1331da`)에서 ㉢ 만 먼저 들여왔다 (sky 「판독A 바탕」).
+      실측 판(LG 로봇청소기)에서 3차_마무리 가 번들을 정렬해 넘겼고, 윈도우 경로 정렬은
+      대소문자를 가리지 않아 `claudecode_bundle` 이 먼저 와 **Codex 가 바탕**이 됐다 —
+      최종 데이터 825행의 서술 칸이 전부 Codex 값, CC 가 쪼갠 조각 60행이 통째로 빠졌다.
+      통합은 오류 없이 끝났고 아무도 몰랐다 (감사에서 드러남). 그래서 3차_마무리 가
+      `--바탕 claudecode` 를 준다. ㉠(감독이 고른 쪽 24칸 옮기기)은 아직 동결 3b 에 있다.
+    """
+    고른것 = None
+    if '--바탕' in sys.argv:
+        i = sys.argv.index('--바탕') + 1
+        if i >= len(sys.argv):
+            print('  ✗ `--바탕` 뒤에 번들 이름(조각)을 주십시오')
+            sys.exit(1)
+        조각 = sys.argv[i]
+        맞는것 = [x for x in (하나, 둘) if 조각 in os.path.basename(str(x).rstrip('/\\'))]
+        if len(맞는것) != 1:
+            print('  ✗ `--바탕 %s` 가 가리키는 번들이 **하나로 정해지지 않습니다**' % 조각)
+            print('    번들: %s · %s' % (os.path.basename(str(하나)), os.path.basename(str(둘))))
+            sys.exit(1)
+        고른것 = 맞는것[0]
+        하나, 둘 = ((둘, 하나) if 고른것 == 하나 else (하나, 둘))
+    print('  · 바탕 번들 = %s   (판정 24칸을 여기서 가져옵니다%s)'
+          % (os.path.basename(str(둘).rstrip('/\\')),
+             ' — `--바탕` 으로 고른 것' if 고른것 else ' — 인자를 안 주어 찾은 순서대로'))
+    print('    다른 쪽   = %s' % os.path.basename(str(하나).rstrip('/\\')))
+    return 하나, 둘
+
+
 def _판독번들():
     """2차 판독자 두 명의 최종 번들 폴더 이름을 찾는다.
 
@@ -167,10 +209,13 @@ def _판독번들():
       안 주면 `_판독패키지/_결과/` 에서 회차 번들이 아닌 것 둘을 찾는다.
       둘이 아니면 어디를 봐야 하는지 말하고 멈춘다. 짐작하지 않는다.
     """
-    준것 = [a for a in sys.argv[1:] if not a.startswith('--')]
+    # ★ `--바탕` 뒤의 값은 번들이 아니다 (2026-11-10) — 세면 값이 앞에 올 때 번들로 집힌다
+    _값자리 = {i + 1 for i, a in enumerate(sys.argv) if a == '--바탕'}
+    준것 = [a for i, a in enumerate(sys.argv) if i >= 1 and i not in _값자리
+          and not a.startswith('--')]
     if len(준것) >= 2:
         # ★ 이름만 떼면 옆 폴더에 있는 번들을 못 찾는다 — 자리를 그대로 준다
-        return 준것[0].rstrip('/\\'), 준것[1].rstrip('/\\')
+        return _바탕_맞추기(준것[0].rstrip('/\\'), 준것[1].rstrip('/\\'))
 
     후보 = []
     if os.path.isdir(R):
@@ -183,7 +228,7 @@ def _판독번들():
             if os.path.exists(os.path.join(길, 'raw_voc.csv')):
                 후보.append(이름)
     if len(후보) == 2:
-        return 후보[0], 후보[1]
+        return _바탕_맞추기(후보[0], 후보[1])
 
     print('  2차 판독자 두 명의 번들을 못 찾았습니다.')
     print('    본 자리 : %s' % R)
